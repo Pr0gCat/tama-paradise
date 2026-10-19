@@ -19,7 +19,9 @@ impl Tama {
     #[wasm_bindgen(constructor)]
     pub fn new(data: &str, seed: u32) -> Result<Tama, JsError> {
         let data = Data::from_json(data).map_err(|e| JsError::new(&e.to_string()))?;
-        Ok(Tama(Game::new(data, seed)))
+        let mut game = Game::new(data, seed);
+        game.begin_intro();
+        Ok(Tama(game))
     }
 
     /// Restore from a string made by `save()`. Advance afterwards to catch up offline time.

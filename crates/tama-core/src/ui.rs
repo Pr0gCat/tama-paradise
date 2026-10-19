@@ -90,6 +90,8 @@ mod elem {
 }
 
 const ARROWS: u16 = 89;
+/// String insert code for the planet name.
+const PLANET_NAME: u16 = 0xF003;
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
 const TABLE: u16 = 0x786;
@@ -322,15 +324,18 @@ pub(crate) enum Scene {
         picked: Vec<usize>,
     },
     /// EDIT PLANET NAME: 8 letters, `pos` = the one being chosen.
+    /// `intro` = part of the new-game setup (no way back; it goes on to the next step).
     PlanetName {
         chars: [u16; 8],
         pos: usize,
+        intro: bool,
     },
     /// EDIT BIRTHDAY: month and day, `pos` 0 = month.
     Birthday {
         m: u8,
         d: u8,
         pos: u8,
+        intro: bool,
     },
     /// CONNECTION → PLANETS: the friend list.
     Friends {
@@ -439,13 +444,16 @@ impl Game {
     }
 
     pub(crate) fn string(&self, id: u16) -> Vec<u16> {
-        self.data
+        let s = self
+            .data
             .strings
             .get(self.lang as usize)
             .or_else(|| self.data.strings.get(1))
             .and_then(|t| t.get(id as usize))
             .cloned()
-            .unwrap_or_default()
+            .unwrap_or_default();
+        // Insert code 0xF003 stands for the planet's name.
+        s.into_iter().flat_map(|c| if c == PLANET_NAME { self.pet.planet_name.clone() } else { vec![c] }).collect()
     }
 
     pub(crate) fn play(&self, scripts: &[u16], on_press: (u8, OnPress), food: Option<u16>, then: Scene) -> Scene {
@@ -526,8 +534,8 @@ impl Game {
             Scene::Missions { idx } => self.update_missions(idx, pressed),
             Scene::Mini { session, lab } => self.update_mini(session, lab, pressed),
             // Settings (ui/settings.rs).
-            Scene::PlanetName { chars, pos } => self.update_planet_name(chars, pos, pressed),
-            Scene::Birthday { m, d, pos } => self.update_birthday(m, d, pos, pressed),
+            Scene::PlanetName { chars, pos, intro } => self.update_planet_name(chars, pos, intro, pressed),
+            Scene::Birthday { m, d, pos, intro } => self.update_birthday(m, d, pos, intro, pressed),
             // Field, planet and connection (ui/decor.rs, ui/hunt.rs, ui/connect.rs).
             Scene::Setsubi { toy, field, area, idx } => self.update_setsubi(toy, field, area, idx, pressed),
             Scene::HuntTeam { kind, idx, picked } => self.update_hunt_team(kind, idx, picked, pressed),

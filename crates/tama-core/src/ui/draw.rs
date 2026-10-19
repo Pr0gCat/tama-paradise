@@ -255,11 +255,11 @@ impl Game {
                 self.draw_friend(*idx);
                 true
             }
-            Scene::PlanetName { chars, pos } => {
+            Scene::PlanetName { chars, pos, .. } => {
                 self.draw_planet_name(chars, *pos);
                 true
             }
-            Scene::Birthday { m, d, pos } => {
+            Scene::Birthday { m, d, pos, .. } => {
                 self.draw_birthday(*m, *d, *pos);
                 true
             }

@@ -322,11 +322,11 @@ impl Game {
                 for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {
                     *c = g;
                 }
-                Scene::PlanetName { chars, pos: 0 }
+                Scene::PlanetName { chars, pos: 0, intro: false }
             }
             Action::EditBirthday => {
                 let (m, d) = self.pet.birthday.unwrap_or((1, 1));
-                Scene::Birthday { m, d, pos: 0 }
+                Scene::Birthday { m, d, pos: 0, intro: false }
             }
             Action::Connect
             | Action::ConnectPlaydate
