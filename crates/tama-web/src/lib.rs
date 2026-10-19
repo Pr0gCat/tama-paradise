@@ -2,6 +2,14 @@ use tama_core::data::Data;
 use tama_core::Game;
 use wasm_bindgen::prelude::*;
 
+/// QR code for `text`: first byte = width in modules, then one byte per module (1 = dark).
+#[wasm_bindgen]
+pub fn qr(text: &str) -> Vec<u8> {
+    let Ok(code) = qrcode::QrCode::new(text.as_bytes()) else { return Vec::new() };
+    let w = code.width();
+    std::iter::once(w as u8).chain(code.to_colors().into_iter().map(|c| (c == qrcode::Color::Dark) as u8)).collect()
+}
+
 #[wasm_bindgen]
 pub struct Tama(Game);
 

@@ -33,6 +33,9 @@
   dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
     font: 14px ui-monospace, monospace; background: #1c1c22; color: var(--fg); border: 1px solid #555; border-radius: 6px; }
   dialog .check input { display: inline; width: auto; }
+  canvas.qr { display: block; width: 168px; height: 168px; margin: 8px auto; image-rendering: pixelated;
+              border-radius: 4px; }
+  canvas.qr[hidden] { display: none; }
   dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
 </style>
 <canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
@@ -50,6 +53,7 @@
   <form method="dialog">
     <h2>Friends</h2>
     <label>Your friend code<input id="my-code" readonly></label>
+    <canvas id="my-qr" class="qr" aria-label="QR code of your friend code"></canvas>
     <button type="button" id="copy-code" class="small">Copy</button>
     <label>Friend's code<input id="their-code" autocomplete="off" spellcheck="false" placeholder="TP1-…"></label>
     <label class="check"><input type="checkbox" id="marry"> Agree to marry (adults, best friends)</label>
@@ -58,6 +62,7 @@
     <label>Gift an item<select id="gift-item"></select></label>
     <button type="button" id="gift" class="small">Make gift code</button>
     <input id="gift-code" readonly>
+    <canvas id="gift-qr" class="qr" hidden aria-label="QR code of the gift"></canvas>
     <label>Receive a gift<input id="recv-code" autocomplete="off" spellcheck="false" placeholder="TG1-…"></label>
     <button type="button" id="recv" class="small">Receive</button>
     <p id="friends-msg" role="status"></p>
@@ -66,7 +71,7 @@
 </dialog>
 <pre id="s"></pre>
 <script type="module">
-  import init, { Tama } from "./pkg/tama_web.js";
+  import init, { Tama, qr } from "./pkg/tama_web.js";
   await init();
   const params = new URLSearchParams(location.search);
   // ?speed=60 runs the pet clock 60x faster for testing (kept in its own save slot).
@@ -132,11 +137,22 @@
     swipeX = null;
   };
   c.onpointercancel = () => { swipeX = null; };
-  // Friends: exchange friend codes / gift codes as text (the original uses a link cable).
+  // Friends: exchange friend codes / gift codes as text or QR (the original uses a link cable).
+  // The QR holds a link to this page with the code, so a phone's camera app opens the game with it.
   const $ = id => document.getElementById(id);
+  const link = (kind, code) => `${location.origin}${location.pathname}?${kind}=${encodeURIComponent(code)}`;
+  function drawQr(canvas, text) {
+    const m = qr(text), n = m[0], q = 4, size = n + 2 * q;
+    canvas.width = canvas.height = size;
+    const c = canvas.getContext("2d");
+    c.fillStyle = "#fff"; c.fillRect(0, 0, size, size); c.fillStyle = "#000";
+    for (let i = 0; i < n * n; i++) if (m[1 + i]) c.fillRect(q + i % n, q + Math.floor(i / n), 1, 1);
+    canvas.hidden = false;
+  }
   const dlg = $("friends"), msg = t => { $("friends-msg").textContent = t; };
   $("friends-btn").onclick = () => {
     $("my-code").value = game.friend_code();
+    drawQr($("my-qr"), link("friend", $("my-code").value));
     $("gift-item").replaceChildren(...JSON.parse(game.inventory()).map(([id, n, name]) => new Option(`${name || id} ×${n}`, id)));
     msg(""); dlg.showModal();
   };
@@ -147,12 +163,24 @@
   };
   $("gift").onclick = () => {
     const code = game.gift(Number($("gift-item").value));
-    $("gift-code").value = code; msg(code ? "Send this code to your friend" : "Nothing to give"); save();
+    $("gift-code").value = code; msg(code ? "Send this code or QR to your friend" : "Nothing to give"); save();
+    if (code) drawQr($("gift-qr"), link("gift", code)); else $("gift-qr").hidden = true;
   };
   $("recv").onclick = () => {
     const id = game.receive_gift($("recv-code").value);
     if (id) { save(); dlg.close(); } else msg("Invalid or already used code");
   };
+
+  // Opened from a scanned QR: fill in the code and show the panel (the link is then cleaned up).
+  for (const [kind, field] of [["friend", "their-code"], ["gift", "recv-code"]]) {
+    const code = params.get(kind);
+    if (!code) continue;
+    $("friends-btn").click();
+    $(field).value = code;
+    msg(kind === "friend" ? "Press Playdate to play with your friend" : "Press Receive to get the gift");
+    params.delete(kind);
+    history.replaceState(null, "", `${location.pathname}${params.size ? "?" + params : ""}`);
+  }
 
   // Sound: the original is a single-voice buzzer playing square-wave melodies (10% duty).
   const melodies = JSON.parse(data).melodies ?? [];
