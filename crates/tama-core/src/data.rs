@@ -275,6 +275,19 @@ pub struct MiniData {
     pub together04_cards: Vec<[u8; 3]>,
     #[serde(default)]
     pub together04_pet_slot: Vec<u8>,
+    /// Together game 00 (ARROW): where the pet looks, 0 left / 1 right, by answer index 0..17 (0x100a113a).
+    #[serde(default)]
+    pub together00_answers: Vec<u8>,
+    /// Together game 02 (3 UFOS): 5 sequences × 20 steps, UFO id 1..3 at each position (0x1009a710),
+    /// and 3 sets of swaps per round (0x1009a6fe).
+    #[serde(default)]
+    pub together02_layouts: Vec<Vec<[u8; 3]>>,
+    #[serde(default)]
+    pub together02_swaps: Vec<[u8; 3]>,
+    /// Together game 03 (WALKING): 3 mazes of 14 rows × 12 cells ('w' wall, 'S' start, 'G' goal,
+    /// 'H'/'V' swinging obstacle, '-' its track), XIP 0x1009c5b0.
+    #[serde(default)]
+    pub together03_maps: Vec<Vec<String>>,
 }
 
 impl Data {
