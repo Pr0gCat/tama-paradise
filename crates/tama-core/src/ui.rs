@@ -173,6 +173,9 @@ pub(crate) enum Action {
     ConnectGifts,
     GiftItem(u16),
     Planets,
+    /// CONNECTION → MINI GAMES: the Tama Space Arcade menu, and one of its two games.
+    Arcade,
+    PlayArcade(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -457,7 +460,10 @@ impl Game {
                             self.level = Level::Field;
                             Scene::Home
                         }
-                        Some(r) => self.after_mini(Some(r), lab),
+                        Some(r) => match session.arcade {
+                            Some(g) => self.after_arcade(g, r),
+                            None => self.after_mini(Some(r), lab),
+                        },
                         None => Scene::Mini { session, lab },
                     }
                 }

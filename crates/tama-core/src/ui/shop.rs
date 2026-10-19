@@ -233,7 +233,13 @@ impl Game {
                 let (m, d) = self.pet.birthday.unwrap_or((1, 1));
                 Scene::Birthday { m, d, pos: 0 }
             }
-            Action::Connect | Action::ConnectPlaydate | Action::ConnectGifts | Action::GiftItem(_) | Action::Planets => {
+            Action::Connect
+            | Action::ConnectPlaydate
+            | Action::ConnectGifts
+            | Action::GiftItem(_)
+            | Action::Planets
+            | Action::Arcade
+            | Action::PlayArcade(_) => {
                 self.open_connect(a)
             }
             Action::Together => {

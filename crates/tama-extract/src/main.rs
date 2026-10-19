@@ -494,6 +494,14 @@ fn main() {
                     w.chunks(3).map(|o| [o[0] as i16, o[1] as i16, o[2] as i16]).collect()
                 })
                 .collect(),
+            // Arcade 02 spawn tables: 3 × {u32 ptr, u32 count} → {u16 side << 14 | kind, u16 delay}.
+            arcade02_patterns: (0..3)
+                .map(|i| {
+                    let e = xip(0x1009_c4ec) + i * 8;
+                    let w = words(u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize * 2);
+                    w.chunks(2).map(|r| [r[0], r[1]]).collect()
+                })
+                .collect(),
             together07_maps: (0..3)
                 .map(|m| (0..19).map(|r| String::from_utf8_lossy(&dump[xip(0x1009_c7a8) + m * 0x156 + r * 18..][..18]).into_owned()).collect())
                 .collect(),

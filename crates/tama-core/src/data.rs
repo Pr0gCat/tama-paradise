@@ -263,6 +263,9 @@ pub struct MiniData {
     /// Game 06: `[level*3 + n]` courses of objects `[x distance, y, type]` (type 0 obstacle, 9 coin), sorted by x.
     #[serde(default)]
     pub lab06_courses: Vec<Vec<[i16; 3]>>,
+    /// Arcade 02 (SHOOTING): 3 spawn tables of `[side << 14 | kind, delay]` rows (XIP 0x1009c4ec).
+    #[serde(default)]
+    pub arcade02_patterns: Vec<Vec<[u16; 2]>>,
     /// Play-together game 07: 3 fields of 19 rows × 18 cells ('w' wall, 'S' start, 'T' shirotama,
     /// 'G' bump creature, ' ' floor), XIP 0x1009c7a8.
     #[serde(default)]

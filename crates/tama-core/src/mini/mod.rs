@@ -8,6 +8,8 @@ pub const LAB_POINTS: [[u32; 4]; 3] = [[10, 100, 150, 250], [10, 200, 300, 500],
 /// Planet rank needed for each lab-menu game (XIP 0x10093976) and for each difficulty (0x10093968).
 pub const LAB_GAME_RANK: [u8; 7] = [1, 4, 4, 1, 4, 1, 1];
 pub const LAB_LEVEL_RANK: [u8; 3] = [1, 6, 9];
+/// Tama Space Arcade points by `[game][result]` (`FUN_1008709c` / `FUN_1008805c`).
+pub const ARCADE_POINTS: [[u32; 3]; 2] = [[500, 100, 250], [100, 250, 500]];
 /// Mood for a "play together" result tier 0..3.
 pub const PLAY_MOOD: [i32; 4] = [0, 1, 5, 10];
 
@@ -27,6 +29,14 @@ impl Pet {
         if result >= 3 {
             self.count_mission(m::LAB_PERFECT, 1);
         }
+        pts
+    }
+
+    /// Arcade result (`FUN_100883e0`): points, and one more link for mission 11, win or lose.
+    pub fn arcade_reward(&mut self, game: usize, result: usize) -> u32 {
+        let pts = ARCADE_POINTS[game.min(1)][result.min(2)];
+        self.earn(pts);
+        self.count_mission(m::LINKS, 1);
         pts
     }
 
@@ -122,9 +132,14 @@ pub(crate) mod tests {
         assert_eq!(p.gokigen, 5);
         p.rank = 4;
         assert!(p.lab_game_open(1) && !p.lab_level_open(1));
+        let pts = p.points;
+        assert_eq!((p.arcade_reward(0, 2), p.arcade_reward(1, 2)), (250, 500));
+        assert_eq!((p.points - pts, p.mission_progress(m::LINKS)), (750, 2));
     }
 }
 
+pub mod arcade01;
+pub mod arcade02;
 pub mod lab00;
 pub mod lab01;
 pub mod lab02;
@@ -200,11 +215,13 @@ pub struct Session {
     pub level: Option<usize>,
     /// Calendar event (req id) this game is played for: no skipping, no quitting, no points.
     pub event: Option<u8>,
+    /// Tama Space Arcade game 0/1: pays arcade points and returns to the arcade menu.
+    pub arcade: Option<u8>,
 }
 
 impl Session {
     pub fn new(game: Box<dyn MiniGame>, level: Option<usize>) -> Self {
-        Session { game, phase: Phase::Ready(Node::new(READY_GO)), level, event: None }
+        Session { game, phase: Phase::Ready(Node::new(READY_GO)), level, event: None, arcade: None }
     }
 
     /// A play-together game: no READY/GO, the game plays its own opening (09-minigames-together).

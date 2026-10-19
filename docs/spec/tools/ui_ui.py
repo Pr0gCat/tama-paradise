@@ -1,6 +1,6 @@
 import struct, sys
 sys.path.insert(0, __import__("os").path.dirname(__file__))
-from anim import F, table, offs
+from ui_anim import F, table, offs
 T4, T5 = table(4), table(5)
 N4 = (offs[5]-offs[4])
 def u(a): return struct.unpack_from('<H', F, a)[0]
