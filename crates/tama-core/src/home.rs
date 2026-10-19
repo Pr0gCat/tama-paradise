@@ -27,7 +27,7 @@ pub fn forced_state(p: &Pet, now: u64) -> Option<u8> {
         Cond::Injury => return Some(0x18),
         Cond::Death | Cond::Dying => return Some(0x19),
         Cond::Dead => return Some(STATE_IDLE),
-        Cond::Normal => {}
+        Cond::Normal | Cond::Sitter => {}
     }
     if let Some(&(_, s)) = CALLS.iter().find(|(r, _)| p.is_pending(*r)) {
         return Some(s);

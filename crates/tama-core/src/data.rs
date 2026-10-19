@@ -172,6 +172,12 @@ pub struct Data {
     pub field_bg: Vec<[[u16; 16]; 2]>,
     #[serde(default)]
     pub melodies: Vec<Melody>,
+    /// Shop codes: (item unlocked, 8-digit code), XIP 0x100a1a20.
+    #[serde(default)]
+    pub shop_codes: Vec<(u16, String)>,
+    /// Cooking: (product, material needed ×3), XIP 0x10091fbc.
+    #[serde(default)]
+    pub recipes: Vec<(u16, u16)>,
 }
 
 impl Data {

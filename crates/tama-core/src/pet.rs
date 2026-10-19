@@ -69,6 +69,8 @@ const DAY: u64 = 86_400;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Cond {
     Normal,
+    /// Left with the tama sitter (firmware cond 1): only the hunger timer runs, until 19:00.
+    Sitter,
     Cold,
     Injury,
     Death,
@@ -134,6 +136,27 @@ pub struct Pet {
     /// Colour a juice will apply when its COLOR effect completes.
     #[serde(default = "no_color")]
     pub next_color: u8,
+    /// Planet rank 0–10 (05-content §2.6) and the last rank shown to the player.
+    #[serde(default)]
+    pub rank: u8,
+    #[serde(default)]
+    pub rank_seen: u8,
+    /// Mission counters / collection bits (`progress::TARGETS`) and the ones paid out.
+    #[serde(default)]
+    pub missions: [u32; 22],
+    #[serde(default)]
+    pub claimed: u32,
+    /// Items unlocked with shop codes, and the codes already used.
+    #[serde(default)]
+    pub unlocked: Vec<u16>,
+    #[serde(default)]
+    pub used_codes: Vec<String>,
+    /// Expansion areas bought, bit per field.
+    #[serde(default)]
+    pub areas: u8,
+    /// UNCHI METER (0x18000d13), 0–60.
+    #[serde(default)]
+    pub unchi_meter: u8,
     /// Inventory: (item id, count).
     #[serde(default)]
     pub inventory: Vec<(u16, u8)>,
@@ -239,6 +262,14 @@ impl Pet {
             generation: 1,
             color: NO_COLOR,
             next_color: NO_COLOR,
+            rank: 0,
+            rank_seen: 0,
+            missions: [0; 22],
+            claimed: 0,
+            unlocked: Vec::new(),
+            used_codes: Vec::new(),
+            areas: 0,
+            unchi_meter: 0,
             inventory: Vec::new(),
             no_wake_today: false,
             no_sleep_today: false,
@@ -441,6 +472,10 @@ impl Pet {
             }
             return;
         }
+        if p == 3 && self.cond == Cond::Sitter {
+            self.cond = Cond::Normal;
+            self.add_gokigen(-5);
+        }
         if !self.was_raised(req::WAKE) {
             self.raise(req::WAKE);
         }
@@ -572,6 +607,21 @@ impl Pet {
         if self.is_pending(req::DEATH_DELAY) {
             self.clear(req::DEATH_DELAY);
             self.raise(req::DEATH);
+            return;
+        }
+
+        if self.cond == Cond::Sitter {
+            // The sitter keeps the pet fed; time only fills the UNCHI METER.
+            self.onaka_timer += dt;
+            let hungry = self.def.hungry_min as u32 * 60;
+            if hungry != 0 && self.onaka_timer >= hungry {
+                self.onaka_timer = 0;
+                self.hunger_drops += 1;
+                if self.hunger_drops >= 2 {
+                    self.hunger_drops = 0;
+                    self.unchi_meter = (self.unchi_meter + 1).min(60);
+                }
+            }
             return;
         }
 
@@ -718,7 +768,10 @@ impl Pet {
     pub fn complete_effect(&mut self) -> Option<u8> {
         let id = req::EFFECTS.into_iter().find(|&r| self.is_pending(r))?;
         match id {
-            req::COLOR => self.color = self.next_color,
+            req::COLOR => {
+                self.color = self.next_color;
+                self.collect_mission(crate::progress::m::COLORS, self.color as u32);
+            }
             req::LOVE => self.status = self.status & status::DIRTY | status::LOVE,
             req::IMMUNITY => self.status = self.status & status::DIRTY | status::IMMUNITY,
             req::HAPPY => self.status = self.status & status::DIRTY | status::HAPPY,
@@ -774,8 +827,10 @@ impl Pet {
         self.snack_effect(item.id);
         if item.kind == KIND_SNACK {
             self.add_gokigen(item.gokigen as i32 + pref);
+            self.count_mission(crate::progress::m::SNACKS, 1);
         } else {
             self.add_gokigen(pref);
+            self.count_mission(crate::progress::m::MEALS, 1);
         }
         true
     }
@@ -786,6 +841,7 @@ impl Pet {
             return false;
         }
         self.clear(req::SOWASOWA);
+        self.count_mission(crate::progress::m::TOILET, 1);
         self.add_gokigen(1);
         true
     }
@@ -794,6 +850,8 @@ impl Pet {
     pub fn clean(&mut self) -> usize {
         let n = self.unchi.len();
         self.unchi.clear();
+        self.count_mission(crate::progress::m::CLEANINGS, 1);
+        self.count_mission(crate::progress::m::POOP_CLEANED, n as u32);
         self.clean_timer = 0;
         self.clear(req::UNCHI);
         n
@@ -818,6 +876,7 @@ impl Pet {
         }
         self.status &= !status::DIRTY;
         self.yogore = 0;
+        self.count_mission(crate::progress::m::GROOMED, 1);
         self.add_gokigen(1);
         self.mark_done(req::OTEIRE);
     }
@@ -833,6 +892,7 @@ impl Pet {
             return false;
         }
         self.mark_done(req::SLEEP);
+        self.count_mission(crate::progress::m::PUT_TO_BED, 1);
         self.status &= status::DIRTY;
         true
     }
@@ -854,6 +914,7 @@ impl Pet {
             return false;
         }
         self.mark_done(req::WAKE);
+        self.count_mission(crate::progress::m::WOKE_UP, 1);
         true
     }
 

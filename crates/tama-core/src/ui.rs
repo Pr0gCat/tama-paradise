@@ -7,6 +7,8 @@ use crate::motion::Node;
 use crate::pet::{req, Cond};
 use crate::Game;
 
+mod shop;
+
 /// String ids (English table; same ids in every language).
 mod text {
     pub const FOOD: u16 = 0x33;
@@ -93,6 +95,25 @@ pub(crate) enum Action {
     Feed,
     Groom,
     CleanPoop,
+    Lab,
+    Shop,
+    Help,
+    BuyMenu,
+    BuyTab(u8),
+    Sell,
+    Cook,
+    Code,
+    Expand,
+    ExpandField(u8),
+    CallSitter,
+    Missions,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CardKind {
+    Buy(u8),
+    Sell,
+    Cook,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -117,7 +138,18 @@ pub(crate) struct Play {
 
 pub(crate) enum Scene {
     Home,
-    Menu { items: Vec<(u16, Option<Action>)>, idx: usize },
+    /// Ring menu; C goes back to `back` (or HOME).
+    Menu { items: Vec<(u16, Option<Action>)>, idx: usize, back: Option<Action> },
+    /// Item carousel for the shop (buy / sell / cook).
+    Card { kind: CardKind, items: Vec<u16>, idx: usize },
+    /// A notice; any button continues.
+    Message { text: u16, then: Box<Scene> },
+    /// YES/NO question.
+    Ask { text: u16, yes: bool, on_yes: Action, back: Action },
+    /// 8-digit code entry.
+    Code { digits: [u8; 8], pos: usize },
+    /// Mission list (lab menu INFORMATION).
+    Missions { idx: usize },
     FoodCategory { idx: usize },
     FoodList { cat: u8, items: Vec<u16>, idx: usize },
     Confirm { cat: u8, items: Vec<u16>, idx: usize, yes: bool },
@@ -137,7 +169,7 @@ impl Game {
         self.data.ui(id)
     }
 
-    fn string(&self, id: u16) -> Vec<u16> {
+    pub(crate) fn string(&self, id: u16) -> Vec<u16> {
         self.data
             .strings
             .get(self.lang as usize)
@@ -147,7 +179,7 @@ impl Game {
             .unwrap_or_default()
     }
 
-    fn play(&self, scripts: &[u16], on_press: (u8, OnPress), food: Option<u16>, then: Scene) -> Scene {
+    pub(crate) fn play(&self, scripts: &[u16], on_press: (u8, OnPress), food: Option<u16>, then: Scene) -> Scene {
         let mut queue: Vec<u16> = scripts.iter().rev().copied().collect();
         let first = queue.pop().unwrap_or(0);
         Scene::Play(Play { node: Node::new(first), queue, presses: 0, on_press, food, then: Box::new(then) })
@@ -179,9 +211,18 @@ impl Game {
     pub(crate) fn update_scene(&mut self, pressed: u8) {
         if matches!(
             self.scene,
-            Scene::Menu { .. } | Scene::FoodCategory { .. } | Scene::FoodList { .. } | Scene::Confirm { .. } | Scene::Prompt { .. } | Scene::Status { .. }
+            Scene::Menu { .. }
+                | Scene::FoodCategory { .. }
+                | Scene::FoodList { .. }
+                | Scene::Confirm { .. }
+                | Scene::Prompt { .. }
+                | Scene::Status { .. }
+                | Scene::Card { .. }
+                | Scene::Ask { .. }
+                | Scene::Code { .. }
+                | Scene::Missions { .. }
         ) {
-            let disabled = matches!(&self.scene, Scene::Menu { items, idx } if items[*idx].1.is_none());
+            let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
             if pressed & C != 0 {
                 self.sfx(2, 100);
             } else if pressed & (B | PUSH) != 0 {
@@ -193,7 +234,7 @@ impl Game {
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
         self.scene = match scene {
             Scene::Home => self.update_home_input(pressed),
-            Scene::Menu { items, mut idx } => {
+            Scene::Menu { items, mut idx, back } => {
                 let n = items.len();
                 if pressed & (A | UP) != 0 {
                     idx = (idx + 1) % n;
@@ -202,17 +243,41 @@ impl Game {
                     idx = (idx + n - 1) % n;
                 }
                 if pressed & C != 0 {
-                    Scene::Home
+                    back.map_or(Scene::Home, |a| self.open(a))
                 } else if pressed & (B | PUSH) != 0 {
                     match items[idx].1 {
-                        Some(Action::Feed) => Scene::FoodCategory { idx: 0 },
-                        Some(Action::Groom) => self.play(&[script::GROOM_INTRO, script::GROOM], (4, OnPress::Groom), None, Scene::Home),
-                        Some(Action::CleanPoop) => self.start_poop_clean(),
-                        None => Scene::Menu { items, idx },
+                        Some(a) => self.open(a),
+                        None => Scene::Menu { items, idx, back },
                     }
                 } else {
-                    Scene::Menu { items, idx }
+                    Scene::Menu { items, idx, back }
                 }
+            }
+            Scene::Card { kind, items, idx } => self.update_card(kind, items, idx, pressed),
+            Scene::Message { text, then } => {
+                if pressed_any(pressed) { *then } else { Scene::Message { text, then } }
+            }
+            Scene::Ask { text, mut yes, on_yes, back } => {
+                if pressed & (A | UP | DOWN) != 0 {
+                    yes = !yes;
+                }
+                if pressed & (B | PUSH) != 0 && yes {
+                    self.open(on_yes)
+                } else if pressed & (B | PUSH | C) != 0 {
+                    self.open(back)
+                } else {
+                    Scene::Ask { text, yes, on_yes, back }
+                }
+            }
+            Scene::Code { digits, pos } => self.update_code(digits, pos, pressed),
+            Scene::Missions { mut idx } => {
+                if pressed & (A | UP) != 0 {
+                    idx = (idx + 1) % 22;
+                }
+                if pressed & DOWN != 0 {
+                    idx = (idx + 21) % 22;
+                }
+                if pressed & C != 0 { self.open(Action::Lab) } else { Scene::Missions { idx } }
             }
             Scene::FoodCategory { mut idx } => {
                 if pressed & (A | UP | DOWN) != 0 {
@@ -294,6 +359,18 @@ impl Game {
         };
     }
 
+    /// Rank-up and mission-clear notices when the pet is back at HOME.
+    pub(crate) fn check_notices(&mut self) {
+        if let Some(r) = self.pet.take_rank_up() {
+            self.sfx(1, 100);
+            let text = if r < 10 { 0x8e + r as u16 - 1 } else { 0x96 };
+            self.scene = Scene::Message { text, then: Box::new(Scene::Home) };
+        } else if !self.pet.claim_missions().is_empty() {
+            self.sfx(1, 100);
+            self.scene = Scene::Message { text: 0xa8, then: Box::new(Scene::Home) };
+        }
+    }
+
     /// Start a pending calendar event when HOME allows it (`FUN_1001abd0`): checked once a minute
     /// with a fresh roll, as the original rolls each time HOME opens.
     pub(crate) fn check_events(&mut self, now: u64, r: u32) {
@@ -327,10 +404,11 @@ impl Game {
         }
     }
 
-    fn pet_menu(&self) -> Scene {
+    pub(crate) fn pet_menu(&self) -> Scene {
         Scene::Menu {
             items: vec![(text::FEED, Some(Action::Feed)), (text::PLAY, None), (text::CLEAN_TAMA, Some(Action::Groom))],
             idx: 0,
+            back: None,
         }
     }
 
@@ -338,6 +416,7 @@ impl Game {
         Scene::Menu {
             items: vec![(text::OUTSIDE_TOY, None), (text::EGG_HUNT, None), (text::CLEAN_POOP, Some(Action::CleanPoop)), (text::FIELDS, None)],
             idx: 2,
+            back: None,
         }
     }
 
@@ -478,7 +557,7 @@ impl Game {
 
     // ---- drawing ----------------------------------------------------------
 
-    fn draw_elem(&mut self, id: u16, frame: Option<u16>, palette: Option<usize>) {
+    pub(crate) fn draw_elem(&mut self, id: u16, frame: Option<u16>, palette: Option<usize>) {
         let e = self.ui_elem(id);
         if e.kind != UI_SPRITE {
             return;
@@ -489,12 +568,12 @@ impl Game {
     }
 
     /// Font palette sets (font sprite 17): 0 = white, 1 = dark navy.
-    fn draw_text(&mut self, id: u16, x: i32, y: i32, center: bool, palette: usize) {
+    pub(crate) fn draw_text(&mut self, id: u16, x: i32, y: i32, center: bool, palette: usize) {
         let glyphs = self.string(id);
         self.screen.text(&self.data.fonts, &glyphs, x, y, center, palette);
     }
 
-    fn draw_number(&mut self, n: u32, x: i32, y: i32, palette: usize) {
+    pub(crate) fn draw_number(&mut self, n: u32, x: i32, y: i32, palette: usize) {
         let glyphs: Vec<u16> = n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect();
         self.screen.text(&self.data.fonts, &glyphs, x, y, true, palette);
     }
@@ -529,7 +608,7 @@ impl Game {
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
         let drawn = match &scene {
             Scene::Home => false,
-            Scene::Menu { items, idx } => {
+            Scene::Menu { items, idx, .. } => {
                 self.draw_elem(elem::MENU_BG, None, None);
                 // Vertical wheel: item k from the selection at y = 64 − 88·sin(25°·k).
                 let n = items.len() as i32;
@@ -580,19 +659,43 @@ impl Game {
                 self.draw_field_bg();
                 true
             }
+            Scene::Card { kind, items, idx } => {
+                self.draw_card(*kind, items, *idx);
+                true
+            }
+            Scene::Message { text, .. } => {
+                self.draw_list(&[], 0, Some(*text));
+                true
+            }
+            Scene::Ask { text, yes, .. } => {
+                self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(*text));
+                true
+            }
+            Scene::Code { digits, pos } => {
+                self.draw_code(digits, *pos);
+                true
+            }
+            Scene::Missions { idx } => {
+                self.draw_mission(*idx);
+                true
+            }
         };
         self.scene = scene;
         drawn
     }
 
     /// Simple vertical list (category, YES/NO): labels on the menu sprite, selection in colour.
-    fn draw_list(&mut self, labels: &[u16], sel: usize, title: Option<u16>) {
+    pub(crate) fn draw_list(&mut self, labels: &[u16], sel: usize, title: Option<u16>) {
         self.draw_elem(elem::LIST_BG, None, None);
         let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
-        let top = if title.is_some() { 60 } else { 40 };
+        let mut top = 40;
         if let Some(t) = title {
-            self.screen.rect(8, 16, 112, 28, [255, 255, 255]);
-            self.draw_text(t, 64, 30, true, 1);
+            let glyphs = crate::screen::wrap(&self.data.fonts, &self.string(t), 104);
+            let lines = glyphs.iter().filter(|&&c| c == crate::screen::NEWLINE).count() as i32 + 1;
+            let h = lines * 13 + 8;
+            self.screen.rect(8, 10, 112, h, [255, 255, 255]);
+            self.screen.text(&self.data.fonts, &glyphs, 64, 10 + 4 + 6, true, 1);
+            top = 10 + h + 24;
         }
         for (i, &l) in labels.iter().enumerate() {
             let y = top + i as i32 * 40;
@@ -603,7 +706,7 @@ impl Game {
     }
 
     /// One food card of the carousel (`itemlist_create` 0x1002cc90, mode 2).
-    fn draw_food_card(&mut self, items: &[u16], idx: usize) {
+    pub(crate) fn draw_food_card(&mut self, items: &[u16], idx: usize) {
         self.draw_elem(elem::LIST_BG, None, None);
         self.draw_elem(elem::CARD_PANEL, None, None);
         let Some(item) = self.data.item(items[idx]) else { return };

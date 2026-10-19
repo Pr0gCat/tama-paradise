@@ -92,6 +92,10 @@ impl Screen {
         for line in glyphs.split(|&c| c == NEWLINE) {
             let mut x = if center { cx - Self::text_width(fonts, line) / 2 } else { cx };
             for &c in line {
+                if c == SPACE {
+                    x += advance(fonts.get(1).unwrap_or(&fonts[0]), c);
+                    continue;
+                }
                 let Some((f, sprite)) = glyph(fonts, c) else { continue };
                 let w = self.sprites.get(&sprite).map_or(16, |s| s.w as i32);
                 let pal = (palette > 0).then_some((sprite, palette));
@@ -104,6 +108,29 @@ impl Screen {
     }
 }
 
+/// Glyph code of a space in the built-in fonts.
+pub const SPACE: u16 = 305;
+
+/// Break lines at spaces so none is wider than `max` pixels.
+pub fn wrap(fonts: &[Font], glyphs: &[u16], max: i32) -> Vec<u16> {
+    let mut out: Vec<u16> = Vec::with_capacity(glyphs.len());
+    let mut line_start = 0;
+    for &c in glyphs {
+        out.push(c);
+        if c == NEWLINE {
+            line_start = out.len();
+            continue;
+        }
+        if Screen::text_width(fonts, &out[line_start..]) > max {
+            if let Some(sp) = out[line_start..].iter().rposition(|&g| g == SPACE) {
+                out[line_start + sp] = NEWLINE;
+                line_start += sp + 1;
+            }
+        }
+    }
+    out
+}
+
 fn glyph(fonts: &[Font], c: u16) -> Option<(&Font, u16)> {
     if c >= 0xF000 || c == 0 {
         return None;
@@ -114,4 +141,21 @@ fn glyph(fonts: &[Font], c: u16) -> Option<(&Font, u16)> {
 
 fn advance(f: &Font, c: u16) -> i32 {
     f.advance as i32 + f.adj.get(c as usize).copied().unwrap_or(0) as i32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wraps_at_spaces() {
+        let font = Font { sprite: 17, advance: 10, line_height: 11, adj: vec![0; 400] };
+        let fonts = vec![font.clone(), font];
+        // "aaaa aaaa aaaa" with 10 px glyphs, max 95 px → two lines
+        let a = 318;
+        let g = [a, a, a, a, SPACE, a, a, a, a, SPACE, a, a, a, a];
+        let w = wrap(&fonts, &g, 95);
+        assert_eq!(w.iter().filter(|&&c| c == NEWLINE).count(), 1);
+        assert!(w.iter().position(|&c| c == NEWLINE) == Some(9));
+    }
 }

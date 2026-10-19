@@ -5,8 +5,10 @@ pub(crate) mod evolve;
 pub mod home;
 pub mod motion;
 pub mod pet;
+pub mod progress;
 pub mod save;
 pub mod screen;
+pub mod shop;
 pub mod sprite;
 mod ui;
 
@@ -60,6 +62,8 @@ pub struct Game {
     sounds: Vec<(u16, u8)>,
     /// Minute of the last calendar-event check.
     event_minute: u64,
+    /// Frames the dial button has been held (long press opens the lab menu).
+    push_frames: u16,
 }
 
 impl Game {
@@ -93,6 +97,7 @@ impl Game {
             lang: 1,
             sounds: Vec::new(),
             event_minute: 0,
+            push_frames: 0,
         };
         g.render();
         g
@@ -111,11 +116,20 @@ impl Game {
                 self.pet.evolve(&self.data);
             }
         }
+        self.push_frames = if held & input::PUSH != 0 { self.push_frames.saturating_add(1) } else { 0 };
+        // Holding the dial button for more than 13 frames opens the lab menu (08-care-ui §2.2.3).
+        if self.push_frames == 14 && matches!(self.scene, Scene::Home) && self.pet.def.stage > 1 {
+            self.sfx(1, 100);
+            self.scene = self.open(ui::Action::Lab);
+        }
         self.update_scene(pressed);
         if matches!(self.scene, Scene::Home) && now / 60 != self.event_minute {
             self.event_minute = now / 60;
             let r = self.rand();
             self.check_events(now, r);
+        }
+        if matches!(self.scene, Scene::Home) {
+            self.check_notices();
         }
         if matches!(self.scene, Scene::Home) {
             self.update_home(now);

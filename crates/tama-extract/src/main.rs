@@ -362,6 +362,16 @@ fn main() {
                 })
                 .collect()
         },
+        // 109 × {u16 item, u16 pad, u32 char* code}. Six more codes live in encrypted PRAM (not read).
+        shop_codes: (0..109)
+            .map(|i| {
+                let e = xip(0x100a_1a20) + i * 8;
+                let at = xip(u32_at(&dump, e + 4) as usize);
+                let code: String = dump[at..at + 8].iter().map(|&b| b as char).collect();
+                (u16_at(&dump, e), code)
+            })
+            .collect(),
+        recipes: words(0x1009_1fbc, 24).chunks(2).map(|c| (c[0], c[1])).collect(),
         field_bg: {
             let bg = words(0x1009_2e06, 96);
             (0..3).map(|f| std::array::from_fn(|v| std::array::from_fn(|k| bg[f * 32 + v * 16 + k]))).collect()

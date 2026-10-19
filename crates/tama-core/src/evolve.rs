@@ -13,7 +13,6 @@ pub const FIELD_LOG_MAX: usize = 11;
 pub const METAMORPHO_AFTER: u32 = 3600;
 pub const SUPPORT_TIMEOUT: u32 = 900;
 
-pub const POINTS_MAX: u32 = 99_999;
 
 /// Native food categories (1-based) per field: tropical 13–15, frozen 16–18, forest 10–12.
 const NATIVE_FIRST: [u8; 3] = [13, 16, 10];
@@ -155,7 +154,7 @@ impl Pet {
     }
 
     fn add_points(&mut self, n: u32) {
-        self.points = (self.points + n).min(POINTS_MAX);
+        self.earn(n);
     }
 
     /// Complete a pending evolution and switch character (`tama_evolve` 0x1000fc98).
@@ -180,7 +179,11 @@ impl Pet {
                         && self.comm[1] != 0
                         && attr_to_field(data.rom_type) == Some(self.field)
                         && b != 3;
-                    let id = if rare { e.rare[f] } else { e.adults[f][b as usize][self.care_quality() as usize] };
+                    let q = self.care_quality();
+                    let id = if rare { e.rare[f] } else { e.adults[f][b as usize][q as usize] };
+                    if !rare {
+                        self.collect_mission(crate::progress::m::ADULTS_FIELD0 + f, b as u32 * 4 + q as u32);
+                    }
                     (id, 800)
                 }
                 _ => return false,
@@ -200,6 +203,13 @@ impl Pet {
             self.clear(r);
         }
         self.status &= status::DIRTY;
+        // Planet rank 0→1→2→3 for the first child, teen and adult (05-content §2.6).
+        if def.stage as u8 == self.rank + 3 && def.stage >= 3 {
+            self.rank_up();
+        }
+        if self.color == crate::pet::NO_COLOR && def.stage == 5 {
+            self.collect_mission(crate::progress::m::COLORS, def.color as u32);
+        }
         self.def = def;
         self.age = 0;
         self.cold = 0;
@@ -208,15 +218,25 @@ impl Pet {
         true
     }
 
-    /// Start over with a new egg (`tama_birth` 0x1000f708, no partner).
+    /// Start over with a new egg (`tama_birth` 0x1000f708, no partner). Player progress — points,
+    /// rank, missions, inventory, unlocks, areas — carries over; the pet's own state resets.
     pub fn new_egg(&mut self, data: &Data) {
         let egg = data.character(1000).expect("egg 1000 in data");
-        let seed = self.rng;
-        let (points, field, last) = (self.points, self.field, self.last);
-        *self = Pet::new(egg, seed);
-        self.points = points;
-        self.field = field;
-        self.last = last;
+        let mut fresh = Pet::new(egg, self.rng);
+        fresh.points = self.points;
+        fresh.field = self.field;
+        fresh.last = self.last;
+        fresh.generation = self.generation;
+        fresh.rank = self.rank;
+        fresh.rank_seen = self.rank_seen;
+        fresh.missions = self.missions;
+        fresh.claimed = self.claimed;
+        fresh.unlocked = std::mem::take(&mut self.unlocked);
+        fresh.used_codes = std::mem::take(&mut self.used_codes);
+        fresh.areas = self.areas;
+        fresh.unchi_meter = self.unchi_meter;
+        fresh.inventory = std::mem::take(&mut self.inventory);
+        *self = fresh;
     }
 }
 
@@ -244,7 +264,7 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![] }
+        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![] }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;
@@ -429,13 +449,19 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn new_egg_keeps_points() {
+    fn new_egg_keeps_player_progress() {
         let d = data();
         let mut p = Pet::new(d.character(4017).unwrap(), 1);
         p.points = 1234;
+        p.rank = 3;
+        p.missions[0] = 7;
+        p.give(5000, 2);
+        p.unlocked.push(5033);
+        p.onaka = 4;
         p.new_egg(&d);
         assert_eq!(p.def.id, 1000);
-        assert_eq!(p.points, 1234);
+        assert_eq!((p.points, p.rank, p.missions[0], p.count(5000), p.unlocked.len()), (1234, 3, 7, 2, 1));
+        assert_eq!(p.onaka, 0);
     }
 
     #[test]
