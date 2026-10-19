@@ -65,6 +65,9 @@ const LAB_CHARS: [u16; 36] = {
 const SEARCH_FRAMES: u16 = 40;
 /// Found character: background, the character, NEW!, name bar (UI 0x272–0x276).
 const FOUND_BG: u16 = 0x272;
+/// Card list sprites shared with the hunt team picker (`FUN_1002e120`): card frame, cursor.
+const COLLECTION_CARD: u16 = 0x83;
+const COLLECTION_CURSOR: u16 = 0x80;
 const FOUND_NEW: u16 = 0x274;
 const FOUND_NAME_BAR: u16 = 0x276;
 
@@ -218,10 +221,14 @@ impl Game {
             // MICROSCOPE (`FUN_1005ce28`): ponytail: its COLLECTION viewer is not built yet, so it
             // stays greyed out (the original greys it out until a character is found).
             Action::Microscope => Scene::Menu {
-                items: vec![(t::LAB_CODE, Some(Action::LabCode)), (t::COLLECTION_CELLS, None)],
+                items: vec![
+                    (t::LAB_CODE, Some(Action::LabCode)),
+                    (t::COLLECTION_CELLS, (self.pet.lab_cells != 0).then_some(Action::LabCollection)),
+                ],
                 idx: 0,
                 back: Some(Action::Book),
             },
+            Action::LabCollection => Scene::Collection { idx: 0 },
             Action::LabCode => {
                 let entry = Scene::LabCode { chars: [LAB_CHARS[0]; 8], pos: 0 };
                 Scene::Message { text: t::INPUT_LAB_CODE, then: Box::new(entry) }
@@ -623,7 +630,7 @@ impl Game {
             return Scene::Searching { code, t: t + 1 };
         }
         let text = match self.pet.lab_code(&code) {
-            crate::shop::LabCode::Found(chr) => return Scene::Found { chr },
+            crate::shop::LabCode::Found(chr) => return Scene::Found { chr, zoom: false, from: None },
             crate::shop::LabCode::NoData { bonus: true } => {
                 return Scene::Message { text: t::NO_DATA, then: Box::new(Scene::Bonus) };
             }
@@ -645,20 +652,85 @@ impl Game {
         }
     }
 
-    /// A character found under the microscope (`FUN_1005c0b0`), with its name and NEW!.
-    pub(super) fn draw_found(&mut self, chr: u16) {
+    /// A microscope character: dial up zooms in (×2), dial down back out; any button returns.
+    pub(super) fn update_found(&mut self, chr: u16, mut zoom: bool, from: Option<usize>, pressed: u8) -> Scene {
+        if pressed & UP != 0 {
+            zoom = true;
+        }
+        if pressed & DOWN != 0 {
+            zoom = false;
+        }
+        if pressed & (A | B | C | PUSH) != 0 {
+            return match from {
+                Some(idx) => Scene::Collection { idx },
+                None => self.open(Action::Microscope),
+            };
+        }
+        Scene::Found { chr, zoom, from }
+    }
+
+    /// A character under the microscope (`FUN_1005c0b0`), with its name, and NEW! when just found.
+    pub(super) fn draw_found(&mut self, chr: u16, zoom: bool, new: bool) {
         self.draw_elem(FOUND_BG, None, None);
         let Some(def) = self.data.characters.iter().find(|c| c.chr_id == chr).copied() else { return };
-        // The NEW! glow fills the screen, so the character and its name go on top.
-        let new = self.ui_elem(FOUND_NEW);
-        let mut node = crate::motion::Node::new(new.p[3] as u16);
-        node.tick(&self.data.motions);
-        let mut draws = Vec::new();
-        node.draws(new.x as i32, new.y as i32, &mut draws);
-        self.draw_list_of(&draws, None);
-        self.draw_character(def.id, None, 64, 91);
+        if new {
+            // The NEW! glow fills the screen, so the character and its name go on top.
+            let e = self.ui_elem(FOUND_NEW);
+            let mut node = crate::motion::Node::new(e.p[3] as u16);
+            node.tick(&self.data.motions);
+            let mut draws = Vec::new();
+            node.draws(e.x as i32, e.y as i32, &mut draws);
+            self.draw_list_of(&draws, None);
+        }
+        if zoom {
+            // ×2 about the screen centre: y 72 lands at 80, the character's feet above the name.
+            self.screen.zoom = 2.0;
+            self.draw_character(def.id, None, 64, 72);
+            self.screen.zoom = 1.0;
+        } else {
+            self.draw_character(def.id, None, 64, 91);
+        }
         self.draw_elem(FOUND_NAME_BAR, None, None);
         self.draw_text(def.name_id, 64, 104, true, 1);
+    }
+
+    /// Lab-code characters in table order (the 29 entries with a character).
+    fn collection(&self) -> Vec<(usize, u16)> {
+        crate::shop::LAB_CODES.iter().enumerate().filter(|(_, c)| c.1 != 0).map(|(i, c)| (i, c.1)).collect()
+    }
+
+    /// COLLECTION: 2×2 cards a page; B opens a collected one, C goes back.
+    pub(super) fn update_collection(&mut self, idx: usize, pressed: u8) -> Scene {
+        let cards = self.collection();
+        let idx = super::cycle(idx, cards.len(), pressed);
+        if pressed & C != 0 {
+            return self.open(Action::Microscope);
+        }
+        if pressed & (B | PUSH) != 0 {
+            let (i, chr) = cards[idx];
+            if self.pet.lab_cells & 1 << i != 0 {
+                return Scene::Found { chr, zoom: false, from: Some(idx) };
+            }
+            self.sfx(0x0b, 100);
+        }
+        Scene::Collection { idx }
+    }
+
+    pub(super) fn draw_collection(&mut self, idx: usize) {
+        const CARD_POS: [(i32, i32); 4] = [(30, 34), (87, 34), (30, 92), (87, 92)];
+        self.draw_elem(FOUND_BG, None, None);
+        let cards = self.collection();
+        let page = idx / 4;
+        for (k, &(x, y)) in CARD_POS.iter().enumerate() {
+            let Some(&(i, chr)) = cards.get(page * 4 + k) else { break };
+            let found = self.pet.lab_cells & 1 << i != 0;
+            self.screen.blit(COLLECTION_CARD, 0, x, y, 64, false, (!found).then_some((COLLECTION_CARD, 1)));
+            if let Some(def) = self.data.characters.iter().find(|c| c.chr_id == chr).copied().filter(|_| found) {
+                self.draw_character_pose(def.id, None, 30, x + 1, y + 19);
+            }
+        }
+        let (cx, cy) = CARD_POS[idx % 4];
+        self.screen.blit(COLLECTION_CURSOR, 0, cx, cy, 64, false, None);
     }
 
     pub(super) fn draw_code(&mut self, digits: &[u8; 8], pos: usize) {
@@ -891,5 +963,23 @@ mod tests {
             press(&mut g, B);
         }
         assert_eq!(g.pet.planet_name, vec![318, 319]);
+    }
+
+    #[test]
+    fn microscope_collection_opens_collected_characters() {
+        let mut g = game();
+        g.scene = g.open(super::super::Action::Microscope);
+        assert!(matches!(&g.scene, super::Scene::Menu { items, .. } if items[1].1.is_none()), "nothing collected yet");
+        assert!(matches!(g.pet.lab_code("XKGDC0FX"), crate::shop::LabCode::Found(_)));
+        g.scene = g.open(super::super::Action::LabCollection);
+        press(&mut g, B); // card 0 (4RG89EWK) not collected
+        assert!(matches!(g.scene, super::Scene::Collection { idx: 0 }));
+        press(&mut g, crate::input::A);
+        press(&mut g, B); // card 1: collected
+        assert!(matches!(g.scene, super::Scene::Found { zoom: false, from: Some(1), .. }));
+        press(&mut g, crate::input::UP);
+        assert!(matches!(g.scene, super::Scene::Found { zoom: true, .. }));
+        press(&mut g, crate::input::A);
+        assert!(matches!(g.scene, super::Scene::Collection { idx: 1 }));
     }
 }

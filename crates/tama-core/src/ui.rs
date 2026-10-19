@@ -208,6 +208,7 @@ pub(crate) enum Action {
     Book,
     Microscope,
     LabCode,
+    LabCollection,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -415,8 +416,16 @@ pub(crate) enum Scene {
         code: String,
         t: u16,
     },
+    /// A microscope character (`FUN_1005c0b0`): just found (`from` None, with NEW!) or opened
+    /// from COLLECTION (`from` = its card); the dial zooms in and out.
     Found {
         chr: u16,
+        zoom: bool,
+        from: Option<usize>,
+    },
+    /// MICROSCOPE → COLLECTION (`FUN_1005ead0`): cards of the 29 lab-code characters.
+    Collection {
+        idx: usize,
     },
 }
 
@@ -490,13 +499,8 @@ impl Game {
                     Scene::Bonus
                 }
             }
-            Scene::Found { chr } => {
-                if pressed_any(pressed) {
-                    self.open(Action::Microscope)
-                } else {
-                    Scene::Found { chr }
-                }
-            }
+            Scene::Found { chr, zoom, from } => self.update_found(chr, zoom, from, pressed),
+            Scene::Collection { idx } => self.update_collection(idx, pressed),
             // Care (ui/care.rs).
             Scene::FoodCategory { idx } => self.update_food_category(idx, pressed),
             Scene::FoodList { cat, items, idx } => self.update_food_list(cat, items, idx, pressed),
@@ -594,6 +598,7 @@ impl Scene {
                 | Scene::PlanetName { .. }
                 | Scene::PlanetLv { .. }
                 | Scene::LabCode { .. }
+                | Scene::Collection { .. }
         )
     }
 }

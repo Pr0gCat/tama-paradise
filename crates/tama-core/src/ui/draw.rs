@@ -197,8 +197,12 @@ impl Game {
                 self.draw_list(&[], 0, Some(0xe1));
                 true
             }
-            Scene::Found { chr } => {
-                self.draw_found(*chr);
+            Scene::Found { chr, zoom, from } => {
+                self.draw_found(*chr, *zoom, from.is_none());
+                true
+            }
+            Scene::Collection { idx } => {
+                self.draw_collection(*idx);
                 true
             }
             Scene::Card { kind, items, idx } => {
