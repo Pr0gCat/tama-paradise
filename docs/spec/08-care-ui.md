@@ -239,7 +239,7 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 
 ### 2.16 墓碑（PSID_EVENT_DEAD 0x4a，`FUN_1003ccb0`）[確認]
 
-- 頁 0（墓碑）：layout 0x13f（sprite 109）；花 0x142/0x143（anim 21，(24,110)/(104,110)，進場有 y tween 未做）；墓碑 0x140（anim 169）或大往生 0x141（anim 170），(64,96)。
+- 頁 0（墓碑）：layout 0x13f（sprite 109）；花 0x142/0x143（anim 21，(24,110)/(104,110)，進場從 y−256 落下；曲線未解，重製用 16 frames 直線）；墓碑 0x140（anim 169）或大往生 0x141（anim 170），(64,96)。
 - 輸入：**B** → 音效 1 → 紀錄頁；**按住 C 再按 A** → 音效 1 → 單項清單「NEW EGG」(0x18)。
 - 紀錄頁（state 2000）：背景 0x194（sprite 141），條 0x147/0x14a/0x14d；名字 0x146 (64,18)、天數 0x148 (60,47)（最後一筆死亡紀錄的 days）、「YEARS」0x149、「CAUSE」(0x79) 0x14b、死因 0x14c：cause 1 → 「TAMA SICK」0x7a、cause 3 → 「HUNGER」0x7c。C（或閒置逾時）→ 音效 2 → 回墓碑。
 - NEW EGG 清單：選定 → 場地背景、播 0x672、HOME 層 = 場地（`0x18001c6a` = 1）→ 結束 `tama_birth_reset(0)` 0x1000f708 → HOME。取消 → 回墓碑。

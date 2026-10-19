@@ -134,7 +134,7 @@
 - MICROSCOPE 選單（`FUN_1005ce28`）：LAB CODE（0x10）、COLLECTION（0x11，`0x18001684` 沒有任何位元時反灰）。
 - LAB CODE（`FUN_1005c9f8`）：訊息 0xe3 → 文字鍵盤（`FUN_10065034`，最多 16 字）→ SEARCHING…（0xe1，40 frames，`FUN_1005e61c`）→ 比對：長度 ≠ 8 → 0xe4；表外 → 0xe5；已收集 → 0xe6；表中 chr = 0 → 0xe7「NO DATA」（+ 每日 +50，見 §2.2）；否則 → 結果畫面（`FUN_1005c0b0`：UI 0x272 背景、0x273 角色、0x274 NEW!、0x275 名字），並 `FUN_1001f8a8(index)` 記錄收集。
 - 碼表 XIP `0x100a1660`：60 筆 × 16 B `{u16 chr, u16, char* code8, ..}`（`FUN_1006db1c`；英數 8 碼）。0–28 有角色（ChrID 0x40–0xa1，都是成體），29–59 是 NO DATA 碼。NO DATA 碼不會被標成已用，所以每天都能換 +50。重製：`shop::LAB_CODES`、`Pet::lab_code`。
-- 未做：COLLECTION 檢視（0xdac `FUN_1005ead0`）、結果畫面的放大（dial 上，0x1194）。
+- COLLECTION 檢視（0xdac `FUN_1005ead0`：29 位角色的 2×2 卡片清單，已收集的可開啟結果畫面）與結果畫面的放大（dial 上，0x1194）已實作；放大倍率 ×2 為 [推測]。
 
 ### 2.5 世界：field、區域、天氣
 

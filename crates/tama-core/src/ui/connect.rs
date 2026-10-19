@@ -23,6 +23,9 @@ mod t {
 const DEFAULT_FRIEND: u16 = 4022;
 
 /// Playdate animations by HOW PLAY 0–6 (0x10093912): play ×4, fight, eat, eaten.
+/// Getting cleaned up before a connection.
+const CLEAN_UP: u16 = 0x8e0;
+
 pub(crate) const PLAYDATE_ANIM: [u16; 7] = [0x8c9, 0x8ca, 0x8cb, 0x8cc, 0x8cd, 0x8ce, 0x8cf];
 
 impl Game {
@@ -45,7 +48,7 @@ impl Game {
             }
             Action::ConnectPlaydate => {
                 self.connect = Some("playdate".into());
-                Scene::Home
+                self.clean_up_first(Scene::Home)
             }
             Action::ConnectGifts => {
                 let items = self.giftable();
@@ -73,11 +76,12 @@ impl Game {
                 if self.pet.def.stage < 3 {
                     return self.message(t::STILL_CANT, Action::Connect);
                 }
-                Scene::Menu {
+                let menu = Scene::Menu {
                     items: vec![(t::HOCKEY, Some(Action::PlayArcade(0))), (t::SHOOTING, Some(Action::PlayArcade(1)))],
                     idx: 0,
                     back: Some(Action::Connect),
-                }
+                };
+                self.clean_up_first(menu)
             }
             Action::PlayArcade(g) => {
                 // The CPU stands in for the most recent friend (role 1 in the scripts).
@@ -104,6 +108,16 @@ impl Game {
         let points = self.pet.arcade_reward(game as usize, result as usize);
         let then = self.open(Action::Arcade);
         Scene::Points { points, then: Box::new(then) }
+    }
+
+    /// A dirty tama is cleaned before meeting a friend (`FUN_1008cffc` state 2000: OTEIRE done,
+    /// anim 0x8e0), then the connection goes on.
+    fn clean_up_first(&mut self, then: Scene) -> Scene {
+        if self.pet.status & crate::pet::status::DIRTY == 0 {
+            return then;
+        }
+        self.pet.groom();
+        self.play(&[CLEAN_UP], (0, super::OnPress::None), None, then)
     }
 
     /// Items that can be given away: owned and not placed or worn.
@@ -215,5 +229,15 @@ mod tests {
         assert_eq!(g.pet.friends[0].friendship, 3);
         g.after_arcade(1, 2);
         assert_eq!(g.pet.friends[0].friendship, 4);
+    }
+
+    #[test]
+    fn a_dirty_tama_is_cleaned_before_the_arcade() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        g.pet.status |= crate::pet::status::DIRTY;
+        g.scene = g.open(Action::Arcade);
+        assert!(matches!(g.scene, Scene::Play(_)), "the clean-up animation first");
+        assert_eq!(g.pet.status & crate::pet::status::DIRTY, 0);
     }
 }

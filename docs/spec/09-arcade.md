@@ -133,7 +133,7 @@ RW 0x18000000 表 game 1：結果 0 → sprite 0x8cf + anim 0xb31；1 → 0x8ce 
 
 | 項目 | 忠於原作 | 為單機而加的（invented） |
 |---|---|---|
-| 入口 | CONNECTION 第 4 項 MINI GAMES（原作是第 5 項，DOWNLOAD 未實作）→ HOCKEY / SHOOTING；階段 < 3 → 0x6b | 不檢查「髒」的 EM_REQ_OTEIRE 分支 |
+| 入口 | CONNECTION 第 4 項 MINI GAMES（原作是第 5 項，DOWNLOAD 未實作）→ HOCKEY / SHOOTING；階段 < 3 → 0x6b | 髒的話先清潔（`FUN_1008cffc` state 2000：OTEIRE done、anim 0x8e0），PLAYDATE 也一樣 |
 | 開場 | anim 0xb4b / 0xb66、3-2-1 倒數 | 省略連線對話框和 HOW TO PLAY demo；開場不能跳過 |
 | 朋友 | role 1 = `pet.friends` 最後一位的 tama；沒有朋友時用 Mametchi（4022）。結束時照 §1.1 更新這位朋友：HOCKEY +1、SHOOTING 結果 ≥ 1 +2（否則 +1），上限 4，last result 5 | 假設對方也記得我們（離線看不到對方的紀錄），所以本局 friendship = 我們的紀錄（1..4，不會是 0）；沒有朋友時不新增紀錄（Mametchi 沒有 uid）；朋友的顏色不套用 |
 | HOCKEY | 板子、球、角落、球門、計時、進球動畫、結果碼與點數都照 §2 | 對方板子 = CPU：球朝它來且在 y < 60 時，每 4 frames 重新瞄準球的 x（±8 px 誤差），最快 4 px/frame（玩家 6）；球在前方 40 px、左右 20 px 內時蓄力 1 frame 後衝刺。畫面只顯示自己那一半（跟原作一樣，對方那一半在另一台機器上）。減速以線性 tween 表示 |

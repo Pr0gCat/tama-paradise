@@ -63,6 +63,7 @@ const NEW_EGG: u16 = 0x18;
 const YEARS: u16 = 0xa0;
 const CAUSE: u16 = 0x79;
 const SFX_OK: u16 = 1;
+const FLOWER_DROP: i32 = 256;
 const SFX_BACK: u16 = 2;
 
 impl Game {
@@ -212,8 +213,9 @@ impl Game {
         let mut nodes: Vec<(Node, i32, i32)> = elem::FLOWERS
             .iter()
             .map(|&f| {
+                // The flowers drop in from 256 px above (`FUN_10066968`).
                 let (x, y) = at(f);
-                (Node::new(script::FLOWERS), x, y)
+                (Node::new(script::FLOWERS), x, y - FLOWER_DROP)
             })
             .collect();
         let (x, y) = at(elem::TOMB);
@@ -238,9 +240,13 @@ impl Game {
             self.sfx(SFX_OK, 100);
             return Scene::Menu { items: vec![(NEW_EGG, Some(Action::NewEgg))], idx: 0, back: Some(Action::Tomb) };
         }
-        for (n, _, _) in &mut nodes {
+        for (k, (n, _, y)) in nodes.iter_mut().enumerate() {
             n.tick(&self.data.motions);
             n.take_sounds(&mut self.sounds);
+            if let Some(&f) = elem::FLOWERS.get(k) {
+                // ponytail: the firmware's tween curve is not decoded; a straight 16-frame drop.
+                *y = (*y + FLOWER_DROP / 16).min(self.ui_elem(f).y as i32);
+            }
         }
         Scene::Dead { page, nodes }
     }
