@@ -81,6 +81,9 @@ pub struct Game {
     toy_key: Option<(u8, bool, [u16; 6])>,
     /// Characters standing in for script roles 1–3 in the current scene (ChrID), see `motion::ROLE`.
     pub(crate) roles: [Option<u16>; 4],
+    /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
+    visitor: Option<(u16, Node)>,
+    visitor_day: Option<u64>,
     /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
     zoom: f32,
 }
@@ -123,6 +126,8 @@ impl Game {
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
+            visitor: None,
+            visitor_day: None,
         };
         g.render();
         g
@@ -178,7 +183,7 @@ impl Game {
         self.render();
     }
 
-    fn rand(&mut self) -> u32 {
+    pub(crate) fn rand(&mut self) -> u32 {
         let mut x = self.rng;
         x ^= x << 13;
         x ^= x >> 17;
@@ -387,6 +392,7 @@ impl Game {
                 if self.level == Level::Field {
                     self.draw_toys();
                     self.draw_grazing();
+                    self.draw_visitor();
                     self.draw_poop();
                 }
                 // The pet keeps its size; only the world around it zooms.

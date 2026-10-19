@@ -39,6 +39,9 @@ const PLANET_POS: (i32, i32) = (90, 92);
 const REMOVE_ORDER: [usize; 6] = [0, 4, 1, 2, 5, 3];
 /// DECO PLANET sparkle (anim 199).
 const SPARKLE: u16 = 0xc7;
+/// An outfit-set visitor on the field (`home_scene_build` 0x10084df8), at the area's visitor anchor.
+const VISITOR: u16 = 0x2f1;
+const VISITOR_ANCHOR: usize = 8;
 
 impl Game {
     /// World position of a toy slot on a field area.
@@ -90,6 +93,22 @@ impl Game {
                 .collect();
             self.toy_nodes.sort_by_key(|(s, _)| self.data.decor.home_pos.get(f as usize).map_or(0, |p| p[a as usize][*s].2));
         }
+        // A matching outfit set brings one of its two visitors, with a 1-in-3 chance a day.
+        let day = self.pet.last.unwrap_or(0) / 86_400;
+        if self.visitor_day != Some(day) {
+            self.visitor_day = Some(day);
+            let (r1, r2) = (self.rand(), self.rand());
+            self.visitor = self.pet.outfit_visitors(&self.data).filter(|_| r1 % 3 == 0).and_then(|v| {
+                let chr = self.data.character(v[(r2 % 2) as usize])?.chr_id;
+                Some((chr, Node::new(VISITOR)))
+            });
+        }
+        if let Some((_, n)) = &mut self.visitor {
+            if n.is_finished() {
+                *n = Node::new(VISITOR);
+            }
+            n.tick(&self.data.motions);
+        }
         for (_, n) in &mut self.toy_nodes {
             if n.is_finished() {
                 *n = Node::new(n.script());
@@ -108,6 +127,20 @@ impl Game {
         for (s, n) in &self.toy_nodes {
             let (x, y) = self.slot_pos(f, a, *s);
             n.draws(x, y, &mut draws);
+        }
+        self.draw_all(&draws);
+    }
+
+    /// The outfit-set visitor, drawn over the grazing tamas so it is not hidden.
+    pub(crate) fn draw_visitor(&mut self) {
+        let Some((chr, n)) = &self.visitor else { return };
+        let (x, y) = self.slot_pos(self.pet.field, self.pet.in_area2 as u8, VISITOR_ANCHOR);
+        let mut draws = Vec::new();
+        n.draws(x, y, &mut draws);
+        for d in &mut draws {
+            if let Look::Chr { chr: c @ crate::motion::PET, .. } = &mut d.look {
+                *c = *chr;
+            }
         }
         self.draw_all(&draws);
     }
@@ -496,5 +529,31 @@ mod tests {
         press(&mut g, B); // CREPE HAT: IS THIS OKAY?
         press(&mut g, B);
         assert_eq!(g.pet.equip[0], 8001);
+    }
+
+    #[test]
+    fn matching_outfits_bring_a_visitor_some_days() {
+        let mut g = game();
+        g.data.decor.equip_sets = vec![[8001, 0, 8002, 9000, 9001]];
+        for id in [9000, 9001] {
+            let mut c = crate::pet::tests::def(id, 5, 0, 0, 0);
+            c.chr_id = 150 + (id - 9000);
+            g.data.characters.push(c);
+        }
+        g.pet.give(8001, 1);
+        g.pet.give(8002, 1);
+        assert!(g.pet.wear(&g.data, 0, 8001) && g.pet.wear(&g.data, 2, 8002));
+        g.level = Level::Field;
+        let mut seen = 0;
+        for day in 0..30 {
+            let t = NOON + day * 86_400;
+            g.pet.last = Some(t);
+            g.frame(t, 0);
+            if let Some((chr, _)) = &g.visitor {
+                assert!([150, 151].contains(chr));
+                seen += 1;
+            }
+        }
+        assert!((3..=20).contains(&seen), "about one day in three: {seen}");
     }
 }
