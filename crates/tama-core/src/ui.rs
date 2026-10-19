@@ -203,6 +203,9 @@ pub(crate) enum Action {
     /// New-game setup: the language list and a chosen language.
     IntroLanguage,
     IntroLang(u8),
+    /// SETTINGS: change the language later.
+    Language,
+    SetLang(u8),
     ConnectPlaydate,
     ConnectGifts,
     GiftItem(u16),

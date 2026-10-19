@@ -313,11 +313,16 @@ impl Game {
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
             Action::Settings => Scene::Menu {
-                items: vec![(0x0b, Some(Action::EditBirthday)), (0x0c, Some(Action::EditPlanetName))],
+                // The remake also lets the language change later; the item shows its name.
+                items: vec![
+                    (0x0b, Some(Action::EditBirthday)),
+                    (0x0c, Some(Action::EditPlanetName)),
+                    (0x56 + self.pet.lang as u16, Some(Action::Language)),
+                ],
                 idx: 0,
                 back: Some(Action::Lab),
             },
-            Action::IntroLanguage | Action::IntroLang(_) => self.open_intro(a),
+            Action::IntroLanguage | Action::IntroLang(_) | Action::Language | Action::SetLang(_) => self.open_intro(a),
             Action::EditPlanetName => {
                 let mut chars = [crate::screen::SPACE; 8];
                 for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {

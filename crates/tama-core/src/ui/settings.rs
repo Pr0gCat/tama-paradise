@@ -33,6 +33,15 @@ impl Game {
                 self.pet.lang = i;
                 Scene::Birthday { m: 1, d: 1, pos: 0, intro: true }
             }
+            Action::Language => Scene::Menu {
+                items: (0..9u8).map(|i| (LANGUAGE_NAMES + i as u16, Some(Action::SetLang(i)))).collect(),
+                idx: self.pet.lang as usize,
+                back: Some(Action::Settings),
+            },
+            Action::SetLang(i) => {
+                self.pet.lang = i;
+                self.open(Action::Settings)
+            }
             _ => Scene::Home,
         }
     }
@@ -153,5 +162,22 @@ mod tests {
         assert!(matches!(g.scene, Scene::Message { text: INTRO_GOAL, .. }));
         press(&mut g, B);
         assert!(matches!(g.scene, Scene::Home));
+    }
+
+    #[test]
+    fn language_can_change_in_settings() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.scene = g.open(Action::Settings);
+        let press = |g: &mut Game, b: u8| {
+            g.frame(86_400 * 3 + 12 * 3600, b);
+            g.frame(86_400 * 3 + 12 * 3600, 0);
+        };
+        press(&mut g, DOWN); // the language entry (last)
+        press(&mut g, B);
+        assert!(matches!(&g.scene, Scene::Menu { idx: 1, .. }), "current language selected");
+        press(&mut g, DOWN); // にほんご
+        press(&mut g, B);
+        assert_eq!(g.pet.lang, 0);
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[2].0 == 0x56), "shows the new name");
     }
 }
