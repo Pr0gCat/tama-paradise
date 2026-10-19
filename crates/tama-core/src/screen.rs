@@ -68,6 +68,9 @@ impl Screen {
         }
         let (w, h) = (s.w as i32, s.h as i32);
         let f = (frame % s.frames.max(1)) as usize * (w * h) as usize;
+        // A palette borrowed from another sprite (pet colours, sprite 206) only defines entries
+        // 0–7; the body keeps its own 8–15 (blush, shading).
+        let borrowed = palette.is_some_and(|(pid, _)| pid != id);
         let pal = palette.and_then(|(pid, set)| self.sprites.get(&pid).map(|p| (p, set)));
         let a = alpha.min(64) as u32;
         // Zoom scales positions and sizes about the screen centre (HOME zoom between layers).
@@ -85,6 +88,7 @@ impl Screen {
                     continue;
                 }
                 let c = match pal {
+                    Some(_) if borrowed && idx >= BORROWED_COLOURS => s.rgba(0, idx),
                     Some((p, set)) => p.rgba(set, idx),
                     None => s.rgba(0, idx),
                 };
@@ -98,6 +102,9 @@ impl Screen {
         true
     }
 }
+
+/// Entries a borrowed palette replaces (sprite 206's colour sets have 8 colours).
+const BORROWED_COLOURS: u8 = 8;
 
 /// Glyph codes 0xF000.. are control codes; 0xF000 is a newline.
 pub const NEWLINE: u16 = 0xF000;
@@ -183,5 +190,31 @@ mod tests {
         let w = wrap(&fonts, &g, 95);
         assert_eq!(w.iter().filter(|&&c| c == NEWLINE).count(), 1);
         assert!(w.iter().position(|&c| c == NEWLINE) == Some(9));
+    }
+
+    #[test]
+    fn borrowed_colour_palette_keeps_the_bodys_upper_entries() {
+        use crate::sprite::Sprite;
+        let sprite = |pal: Vec<u16>, pixels: Vec<u8>| Sprite {
+            w: 2,
+            h: 1,
+            frames: 1,
+            bits: 4,
+            transparent: false,
+            key: 0,
+            palettes: vec![pal],
+            pixels,
+        };
+        let mut body_pal = vec![0; 16];
+        body_pal[2] = 0x001f; // blue body
+        body_pal[13] = 0xf800; // red blush
+        let mut colours = vec![0; 16];
+        colours[2] = 0x07e0; // green body colour; entry 13 is black (unused)
+        let mut sc = Screen::default();
+        sc.sprites.insert(1, sprite(body_pal, vec![2, 13]));
+        sc.sprites.insert(206, sprite(colours, vec![0, 0]));
+        sc.blit(1, 0, 1, 0, 64, false, Some((206, 0)));
+        assert_eq!(&sc.fb[0..3], &[0, 255, 0], "body takes the colour");
+        assert_eq!(&sc.fb[4..7], &[255, 0, 0], "blush stays");
     }
 }
