@@ -32,6 +32,7 @@ pub mod req {
     pub const DOSSARI: u8 = 0x19;
     pub const NAP: u8 = 0x1a;
     pub const REDU_CM: u8 = 0x1b;
+    pub const BIRTHDAY: u8 = 0x06;
     pub const NEWYEAR: u8 = 0x07;
     /// DODODO: the 13th of each month at 17:00 (rank ≥ 6); unanswered by 17:15 it turns bad.
     pub const DODODO: u8 = 0x1c;
@@ -203,6 +204,9 @@ pub struct Pet {
     /// Play-together cycle counters by game number 0–7 (09-minigames-together C10).
     #[serde(default)]
     pub together_plays: [u8; 8],
+    /// The player's birthday (month, day), set in SETTINGS (`DAT_18000c6a`).
+    #[serde(default)]
+    pub birthday: Option<(u8, u8)>,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -265,7 +269,7 @@ fn calendar_events(t: u64) -> Vec<u8> {
     ev
 }
 
-pub const EVENTS: [u8; 8] = [req::NEWYEAR, req::DODODO, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
+pub const EVENTS: [u8; 9] = [req::BIRTHDAY, req::NEWYEAR, req::DODODO, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
 
 fn no_color() -> u8 {
     NO_COLOR
@@ -329,6 +333,7 @@ impl Pet {
             hunt_used: [0; 3],
             mini_plays: [0; 7],
             together_plays: [0; 8],
+            birthday: None,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,
@@ -574,8 +579,20 @@ impl Pet {
         self.no_sleep_today = false;
         self.hunt_used = [0; 3];
         self.breeds_today = 0;
+        self.raise_calendar(t);
+    }
+
+    /// Today's calendar events, plus the player's birthday (`FUN_1006d904`: 2/29 falls on 3/1 in
+    /// other years).
+    fn raise_calendar(&mut self, t: u64) {
         for id in calendar_events(t) {
             self.raise(id);
+        }
+        let (y, m, d) = date(t);
+        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        let bd = self.birthday.map(|(bm, bd)| if (bm, bd) == (2, 29) && !leap { (3, 1) } else { (bm as u32, bd as u32) });
+        if bd == Some((m, d)) {
+            self.raise(req::BIRTHDAY);
         }
     }
 
@@ -609,9 +626,7 @@ impl Pet {
     pub fn advance_to(&mut self, now: u64) {
         let Some(last) = self.last else {
             self.last = Some(now);
-            for id in calendar_events(now) {
-                self.raise(id);
-            }
+            self.raise_calendar(now);
             return;
         };
         if now <= last {
@@ -1298,6 +1313,21 @@ pub(crate) mod tests {
         p.finish_meteor(false);
         assert_eq!((p.gokigen, p.cond), (5, Cond::Injury));
         assert!(!p.is_pending(req::METEOR) && p.is_pending(req::INJURY));
+    }
+
+    #[test]
+    fn birthday_is_an_event_and_feb_29_moves_to_march_1() {
+        let mut p = Pet::new(KID(), 1);
+        p.birthday = Some((2, 29));
+        let mar1_2027 = 20_878 * DAY; // 2027-03-01
+        assert_eq!(date(mar1_2027), (2027, 3, 1));
+        p.advance_to(mar1_2027 - 3600);
+        assert!(!p.was_raised(req::BIRTHDAY));
+        p.advance_to(mar1_2027 + 3600);
+        assert!(p.is_pending(req::BIRTHDAY));
+        p.finish_event(req::BIRTHDAY);
+        p.advance_to(mar1_2027 + DAY + 3600);
+        assert!(!p.was_raised(req::BIRTHDAY), "cleared the next day");
     }
 
     #[test]

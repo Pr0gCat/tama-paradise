@@ -56,6 +56,8 @@ mod script {
     pub const EFFECTS: [u16; 5] = [0x622, 0x623, 0x624, 0x625, 0x626];
     pub const SHOOTINGSTAR: u16 = 0x6ac;
     pub const DODODO: u16 = 0x64a;
+    /// Birthday cake; role 1 = a grazing tama of this field.
+    pub const BIRTHDAY: u16 = 0x6b2;
     pub const UFO: u16 = 0x6ae;
     pub const SANTA: u16 = 0x6af;
     pub const EVE: u16 = 0x6b0;
@@ -161,6 +163,9 @@ pub(crate) enum Action {
     HuntGo { kind: u8, team: [u8; 3] },
     /// Planet menu CONNECTION and its entries.
     Connect,
+    /// Lab menu SETTINGS and its birthday editor.
+    Settings,
+    EditBirthday,
     ConnectPlaydate,
     ConnectGifts,
     GiftItem(u16),
@@ -221,6 +226,8 @@ pub(crate) enum Scene {
     /// Page 0: rank; page 1: the next goal.
     PlanetLv { page: u8 },
     HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
+    /// EDIT BIRTHDAY: month and day, `pos` 0 = month.
+    Birthday { m: u8, d: u8, pos: u8 },
     /// CONNECTION → PLANETS: the friend list.
     Friends { idx: usize },
     /// Opened eggs; `peach` = the golden-peach page after a great result.
@@ -304,6 +311,7 @@ impl Game {
                 | Scene::Graves { .. }
                 | Scene::Setsubi { .. }
                 | Scene::Friends { .. }
+                | Scene::Birthday { .. }
                 | Scene::PlanetLv { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
@@ -372,6 +380,27 @@ impl Game {
                     Scene::Ask { text: 0xdb, yes: true, on_yes: Action::BreedWith(cands[idx]), back: Action::Breed }
                 } else {
                     Scene::Breed { cands, idx }
+                }
+            }
+            Scene::Birthday { mut m, mut d, pos } => {
+                let days = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m as usize - 1];
+                let step = |v: u8, max: u8, up: bool| if up { v % max + 1 } else { (v + max - 2) % max + 1 };
+                if pressed & (A | UP | DOWN) != 0 {
+                    let up = pressed & DOWN == 0;
+                    if pos == 0 { m = step(m, 12, up) } else { d = step(d, days, up) }
+                }
+                d = d.min([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m as usize - 1]);
+                if pressed & C != 0 {
+                    if pos == 0 { self.open(Action::Settings) } else { Scene::Birthday { m, d, pos: 0 } }
+                } else if pressed & (B | PUSH) != 0 {
+                    if pos == 0 {
+                        Scene::Birthday { m, d, pos: 1 }
+                    } else {
+                        self.pet.birthday = Some((m, d));
+                        self.open(Action::Settings)
+                    }
+                } else {
+                    Scene::Birthday { m, d, pos }
                 }
             }
             Scene::Friends { mut idx } => {
@@ -533,6 +562,13 @@ impl Game {
         let sleeping = p.is_sleeping_at(now);
         let hour = now % 86_400 / 3600;
         let busy = [req::ONAKA, req::GOKIGEN, req::SOWASOWA].iter().any(|&q| p.is_pending(q));
+        if p.is_pending(req::BIRTHDAY) && !sleeping && p.cond == Cond::Normal {
+            let mate = self.pet.grazing[self.pet.field as usize].last().copied();
+            self.roles[1] = mate.and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
+            let cake = self.play(&[script::BIRTHDAY], (0, OnPress::Event(req::BIRTHDAY)), None, Scene::Home);
+            self.scene = Scene::Message { text: 0x102, then: Box::new(cake) };
+            return;
+        }
         // DODODO only lasts 15 minutes and does not wait for care calls.
         if p.is_pending(req::DODODO) && !sleeping && p.cond == Cond::Normal {
             self.scene = self.play(&[script::DODODO], (0, OnPress::Event(req::DODODO)), None, Scene::Home);
@@ -914,6 +950,17 @@ impl Game {
             }
             Scene::Friends { idx } => {
                 self.draw_friend(*idx);
+                true
+            }
+            Scene::Birthday { m, d, pos } => {
+                self.draw_list(&[], 0, Some(0x60));
+                for (i, (v, x)) in [(*m, 40), (*d, 88)].into_iter().enumerate() {
+                    if i == *pos as usize {
+                        self.screen.rect(x - 12, 98, 24, 2, [40, 40, 120]);
+                    }
+                    self.draw_digits(v as u32, x, 86);
+                }
+                self.screen.rect(62, 85, 4, 4, [40, 40, 120]);
                 true
             }
             Scene::HuntTeam { idx, picked, .. } => {

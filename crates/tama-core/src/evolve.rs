@@ -247,6 +247,7 @@ impl Pet {
         fresh.device_uid = self.device_uid;
         fresh.mini_plays = self.mini_plays;
         fresh.together_plays = self.together_plays;
+        fresh.birthday = self.birthday;
         fresh.toys = self.toys;
         fresh.equip = self.equip;
         fresh.travel_toggle = self.travel_toggle;

@@ -71,7 +71,7 @@ impl Game {
                     (t::SHOP, Some(Action::Shop)),
                     (t::HELP, Some(Action::Help)),
                     (t::COLLECTION, Some(Action::Graves)),
-                    (t::SETTINGS, None),
+                    (t::SETTINGS, Some(Action::Settings)),
                 ],
                 idx: 2,
                 back: None,
@@ -228,6 +228,11 @@ impl Game {
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
+            Action::Settings => Scene::Menu { items: vec![(0x0b, Some(Action::EditBirthday))], idx: 0, back: Some(Action::Lab) },
+            Action::EditBirthday => {
+                let (m, d) = self.pet.birthday.unwrap_or((1, 1));
+                Scene::Birthday { m, d, pos: 0 }
+            }
             Action::Connect | Action::ConnectPlaydate | Action::ConnectGifts | Action::GiftItem(_) | Action::Planets => {
                 self.open_connect(a)
             }
@@ -568,5 +573,19 @@ mod tests {
         assert_eq!(g.pet.mini_plays[6], 1, "game 06 moves on at start");
         assert!(matches!(g.after_mini(Some(1), Some((5, 0))), super::super::Scene::Points { .. }));
         assert_eq!(g.pet.mini_plays[5], 1);
+    }
+
+    #[test]
+    fn edit_birthday_in_settings() {
+        let mut g = game();
+        g.scene = g.open(super::super::Action::Settings);
+        press(&mut g, B); // EDIT BIRTHDAY
+        for _ in 0..3 {
+            press(&mut g, crate::input::A); // month 4
+        }
+        press(&mut g, B);
+        press(&mut g, crate::input::DOWN); // day 31 → clamped to 30 for April
+        press(&mut g, B);
+        assert_eq!(g.pet.birthday, Some((4, 30)));
     }
 }
