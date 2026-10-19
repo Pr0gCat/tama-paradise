@@ -34,7 +34,7 @@ pub struct Friend {
     pub color: u8,
     /// 1–4.
     pub friendship: u8,
-    /// Last result (`Outcome as u8`).
+    /// Last result (`Outcome as u8`; 5 = arcade).
     pub result: u8,
 }
 

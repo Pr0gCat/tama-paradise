@@ -285,7 +285,7 @@ UNCHI(0x10)、ONAKA(0x11)、GOKIGEN(0x12)、EVOL_SUPPORT(0x13)、METAMORPHO(0x14
   - 0..3：普通玩耍，值 = friendship − 1。
   - 動畫表 `0x10093912`。
 - RESULT：0 玩耍、1 打架（`d08` < 4 時 EM_REQ_INJURY）、2 吃掉對方、3 被吃（便便量 +6，`FUN_1006706c`）、4 結婚、5 arcade。
-- 友好度成長（`FUN_1006cb04`）：首次見面或 result ≠ 0 → +0；否則 +1，一方 LOVE → +2，雙方 LOVE → +3；上限 4。
+- 友好度成長（`FUN_1006cb04`）：首次見面或 result ≠ 0 → +0；否則 +1，一方 LOVE → +2，雙方 LOVE → +3；上限 4。arcade 用另一條規則 `FUN_1006cb9c`（HOCKEY +1、SHOOTING 結果 ≥ 1 +2／否則 +1、首次見面 +0，見 09-arcade §1.1）。
 - 每次 playdate／arcade：mission 11 +1。playdate 本身**不給點數、不加心情**；只有 arcade 會給點數。
 - 交換物品（`FUN_100899c0`）：送出 −1、收到 +1，mission 12 +1。
 

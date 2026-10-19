@@ -92,6 +92,16 @@ impl Germ {
         true
     }
 
+    /// Sprite 0x8e2 frame (palette = kind, `FUN_10063abc`): 0 up, 1 once hit (`FUN_10063ce4`),
+    /// 2 when the shake ends and it fades (`FUN_10063eb0`).
+    fn frame(&self) -> u16 {
+        match self.hit {
+            None => 0,
+            Some(h) if h <= HIT_SHOW => 1,
+            Some(_) => 2,
+        }
+    }
+
     /// Pop-up / hide drawn as a fade (the original scales; draws here have no scale).
     fn alpha(&self) -> u8 {
         let a = match (self.hit, self.hide) {
@@ -339,7 +349,7 @@ impl MiniGame for Arcade02 {
                 }
             }
             St::Panel(p) => {
-                if p.update(pressed, data) {
+                if p.update(pressed, data, sounds) {
                     return Some(self.result());
                 }
             }
@@ -357,7 +367,7 @@ impl MiniGame for Arcade02 {
         for (i, g) in self.germs.iter().enumerate() {
             let Some(g) = g else { continue };
             let (x, y) = hole(i);
-            let frame = if g.hit.is_some_and(|h| h > HIT_SHOW) { 2 } else { 0 };
+            let frame = g.frame();
             let at = (x as i32, y as i32 + v);
             if (0..128).contains(&at.1) {
                 out.push(Draw { alpha: g.alpha(), palette: g.kind, ..sprite(GERM, frame, at.0, at.1) });
@@ -387,7 +397,7 @@ impl MiniGame for Arcade02 {
     fn hud(&self) -> Vec<Hud> {
         match self.st {
             St::Intro => Vec::new(),
-            St::Panel(_) => vec![Hud::Sprite { id: 0x8cb, frame: 0, x: 64, y: 44 }, Hud::Number { n: self.score as u32, x: 64, y: 44 }],
+            St::Panel(ref p) => vec![Hud::Sprite { id: 0x8cb, frame: 0, x: 64 + p.dx(), y: 44 }, Hud::Number { n: self.score as u32, x: 64 + p.dx(), y: 44 }],
             _ => {
                 let mut h = Vec::new();
                 if self.view() == 0 {
@@ -473,6 +483,16 @@ mod tests {
         }
         assert_eq!(g.score, 1, "cross at {:?}", g.cross);
         assert!(g.cross.1 < 0.0 && g.view() == 128);
+    }
+
+    #[test]
+    fn germ_frame_follows_the_hit() {
+        let mut g = Germ { kind: 2, t: POP, stay: 10, hit: None, hide: None };
+        assert_eq!(g.frame(), 0);
+        g.hit = Some(0);
+        assert_eq!(g.frame(), 1, "shaking");
+        g.hit = Some(HIT_SHOW + 1);
+        assert_eq!(g.frame(), 2, "fading");
     }
 
     #[test]
