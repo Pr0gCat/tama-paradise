@@ -72,7 +72,8 @@
 <pre id="s"></pre>
 <script type="module">
   import init, { Tama, qr } from "./pkg/tama_web.js";
-  await init();
+  // Revalidate the engine and data on every load (cheap 304s) so a rebuilt game is never stale.
+  await init({ module_or_path: fetch("./pkg/tama_web_bg.wasm", { cache: "no-cache" }) });
   const params = new URLSearchParams(location.search);
   // ?speed=60 runs the pet clock 60x faster for testing (kept in its own save slot).
   const speed = Number(params.get("speed")) || 1;
@@ -86,7 +87,7 @@
   // ?hours=N shifts the clock for testing (debug only).
   const shift = params.has("debug") ? (Number(params.get("hours")) || 0) * 3600 : 0;
   const t0 = localSecs() + shift, wall0 = performance.now();
-  const data = await (await fetch("game.json")).text();
+  const data = await (await fetch("game.json", { cache: "no-cache" })).text();
   let game;
   const saved = store.get();
   if (saved) {

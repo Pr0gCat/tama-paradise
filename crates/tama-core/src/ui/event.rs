@@ -392,6 +392,7 @@ mod tests {
     #[test]
     fn dying_then_graves_then_tombstone_then_new_egg() {
         let mut g = game(2113);
+        g.pet.generation = 3;
         g.pet.raise(req::DYING);
         g.frame(NOON, 0);
         assert!(matches!(g.scene, Scene::Dying { .. }));
@@ -424,6 +425,7 @@ mod tests {
         press(&mut g, B);
         run_until_home(&mut g);
         assert_eq!((g.pet.def.id, g.pet.cond, g.level), (1000, Cond::Normal, crate::Level::Field));
+        assert_eq!(g.pet.generation, 1, "an egg without a partner starts over at generation 1");
     }
 
     #[test]

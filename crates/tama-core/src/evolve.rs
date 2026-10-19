@@ -217,15 +217,16 @@ impl Pet {
         true
     }
 
-    /// Start over with a new egg (`tama_birth` 0x1000f708, no partner). Player progress — points,
-    /// rank, missions, inventory, unlocks, areas — carries over; the pet's own state resets.
+    /// Start over with a new egg (`tama_birth` 0x1000f708, no partner): generation 1. Player
+    /// progress — points, rank, missions, inventory, unlocks, areas — carries over; the pet's own
+    /// state resets. Breeding and marriage set the next generation afterwards.
     pub fn new_egg(&mut self, data: &Data) {
         let egg = data.character(1000).expect("egg 1000 in data");
         let mut fresh = Pet::new(egg, self.rng);
         fresh.points = self.points;
         fresh.field = self.field;
         fresh.last = self.last;
-        fresh.generation = self.generation;
+        fresh.generation = 1;
         fresh.rank = self.rank;
         fresh.rank_seen = self.rank_seen;
         fresh.missions = self.missions;
