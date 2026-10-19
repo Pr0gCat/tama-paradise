@@ -66,7 +66,7 @@ Paradise 是 2025 年 7 月上市，主控為 Sonix SNC73410，雙核心 ARM Cor
 
 - [x] **M0 開案**：建 Cargo workspace 三個 crate，`tama-web` 能在瀏覽器顯示測試 framebuffer
 - [x] **M1 Dump**：備份實機 flash 與存檔
-- [ ] **M2 素材**：`tama-extract` 抽出第一批 sprite，網頁上能顯示
+- [x] **M2 素材**：`tama-extract` 抽出第一批 sprite，網頁上能顯示（靜態 idle 姿勢；動畫未做）
 - [x] **M3 最小遊戲**：一隻寵物，餵食、清理、時間流逝、存檔（畫面仍是除錯色塊）
 - [x] **M4 離線補算**：關頁再開，狀態正確推進
 - [ ] **M5 進化與事件**：資料驅動的進化樹與隨機事件（進化已完成，事件未做）
