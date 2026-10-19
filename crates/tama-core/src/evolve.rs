@@ -248,6 +248,8 @@ impl Pet {
         fresh.mini_plays = self.mini_plays;
         fresh.together_plays = self.together_plays;
         fresh.birthday = self.birthday;
+        fresh.start_date = self.start_date;
+        fresh.play_days = self.play_days;
         fresh.planet_name = self.planet_name.clone();
         fresh.lang = self.lang;
         fresh.toys = self.toys;

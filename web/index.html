@@ -254,7 +254,8 @@
 
   let last = performance.now(), acc = 0;
   function frame(now) {
-    acc += now - last; last = now;
+    // A throttled background tab must not fast-forward the animations when it comes back.
+    acc = Math.min(acc + now - last, 5 * tickMs); last = now;
     const n = Math.floor(acc / tickMs);
     acc -= n * tickMs;
     if (n) {

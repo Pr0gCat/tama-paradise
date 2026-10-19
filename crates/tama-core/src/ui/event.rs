@@ -16,6 +16,12 @@ mod script {
     /// EVENT_EVOL_SUPPORT (`FUN_1003bd20`): the baby waiting, and taking in an icon.
     pub const SUPPORT_WAIT: u16 = 0x54a;
     pub const SUPPORT_TAKE: u16 = 0x547;
+    /// EVENT_EVOLUTION (`FUN_1003dab8`): hatching (alone / with a parent), each in two parts,
+    /// and the evolution of the other stages (old look role 0, new look role 1).
+    pub const HATCH: [[u16; 2]; 2] = [[0x53c, 0x53e], [0x541, 0x543]];
+    pub const EVOLVE: u16 = 0x549;
+    /// LABOGAME_RESULT: a star dropping into its slot.
+    pub const RESULT_STAR: u16 = 0x95e;
     /// EVENT_RESCUE (`FUN_1003eae4`): first aid, then recovered.
     pub const RESCUE: [u16; 2] = [0x5ce, 0x5d4];
     /// EVENT_DYING (`FUN_1003d474`): dying (young / old age), saved by an ancestor, death
@@ -37,6 +43,19 @@ mod script {
 /// UI elements.
 mod elem {
     pub const SUPPORT_ICONS: [u16; 4] = [0x35a, 0x377, 0x374, 0x364];
+    /// Memory icon slots 0x35a + i (`FUN_1003bd20` state 3000).
+    pub const MEMORY_SLOTS: u16 = 0x35a;
+    /// Evolution points screen: background, balance bar, bonus bar, banner, then (z 10) the
+    /// points icon and the "G" mark.
+    pub const EVOLVE_POINTS: [u16; 6] = [0x223, 0x226, 0x229, 0x22a, 0x224, 0x228];
+    pub const EVOLVE_BALANCE: u16 = 0x225;
+    pub const EVOLVE_BONUS: u16 = 0x227;
+    /// Lab game result: background, balance bar, points icon; balance; star slots; panel and "G".
+    pub const RESULT: [u16; 3] = [0x3da, 0x3db, 0x3dd];
+    pub const RESULT_BALANCE: u16 = 0x3dc;
+    pub const RESULT_STAR_SLOTS: [u16; 3] = [0x3df, 0x3e0, 0x3e1];
+    pub const RESULT_PANEL: [u16; 2] = [0x3e4, 0x3e3];
+    pub const RESULT_POINTS: u16 = 0x3e2;
     pub const GRAVE_SLOTS: u16 = 0x2d0;
     pub const TOMB_BG: u16 = 0x13f;
     pub const FLOWERS: [u16; 2] = [0x142, 0x143];
@@ -52,6 +71,31 @@ mod elem {
 
 /// Area icon sprites for the support scene (`FUN_1000ae44`, XIP 0x10092ddc).
 const AREA_ICONS: [u16; 3] = [0x4a0, 0x4a1, 0x49c];
+/// Food category icons 0–17 (`FUN_1000ae78`, XIP 0x10092de2).
+const FOOD_ICONS: [u16; 18] = [
+    0x490, 0x491, 0x492, 0x493, 0x494, 0x495, 0x496, 0x497, 0x498, 0x49d, 0x49e, 0x49f, 0x4a2, 0x4a3, 0x4a4, 0x4a5,
+    0x4a6, 0x4a7,
+];
+/// Memory icons for care mistakes, full-hunger and full-mood top-ups.
+const MISS_ICON: u16 = 0x499;
+const ONAKA_ICON: u16 = 0x49a;
+const GOKIGEN_ICON: u16 = 0x49b;
+/// A memory icon starts flying every 2 frames; 20 frames' pause after the last one.
+const MEMORY_GAP: u16 = 2;
+const MEMORY_PAUSE: u16 = 20;
+/// Babies older than this (4 h) evolve with memories, not support (`FUN_1003bd20`).
+const SUPPORT_LIMIT: u32 = 14_400;
+/// Evolution points screen: keys work after 20 frames, it closes itself after 200.
+const POINTS_WAIT: u16 = 20;
+const POINTS_TIMEOUT: u16 = 200;
+const SND_EVOLVE_POINTS: u16 = 0x21;
+/// Lab game result: stars drop in after 11 frames and land 40 frames later with the sound for
+/// the result (XIP 0x100a13b8); keys work 11 frames after that, and it closes itself after 100.
+const RESULT_STARS_AT: u16 = 11;
+const RESULT_STAR_LAND: u16 = 40;
+const RESULT_WAIT: u16 = 11;
+const RESULT_TIMEOUT: u16 = 100;
+const RESULT_SOUNDS: [u16; 4] = [36, 41, 41, 24];
 /// Icons are taken in this order (context slots 10, 13, 12, 11).
 const SUPPORT_ORDER: [usize; 4] = [0, 3, 2, 1];
 /// Where the icons fly to (`FUN_1006f290(.., 0x40, 0x36)`).
@@ -150,14 +194,178 @@ impl Game {
             }
         } else if round == 4 {
             if t >= 20 {
-                self.pet.support(&self.data);
-                return Scene::Home;
+                return self.evolution();
             }
         } else if pressed & (A | B | C | crate::input::PUSH) != 0 || t >= 200 {
             self.sfx(SFX_OK, 100);
             (pet, busy, t) = (Node::new(script::SUPPORT_TAKE), true, 0);
         }
         Scene::Support { pet, round, t, busy }
+    }
+
+    /// A pending EVOLUTION at HOME (`FUN_10019b48` → EVENT_EVOL_SUPPORT `FUN_1003bd20`): the egg
+    /// hatches at once, a young baby waiting for support evolves at once, everyone else first
+    /// takes in the icons of what it lived through.
+    pub(crate) fn begin_evolution(&mut self) -> Scene {
+        let p = &self.pet;
+        if p.def.stage == 2 && p.age < SUPPORT_LIMIT && p.is_pending(req::EVOL_SUPPORT) {
+            return Scene::Support { pet: Node::new(script::SUPPORT_WAIT), round: 0, t: 0, busy: false };
+        }
+        if p.def.stage < 2 || (p.def.stage == 2 && p.age < SUPPORT_LIMIT) {
+            return self.evolution();
+        }
+        // Areas lived in (≤ 10), native foods (≤ 4), care mistakes, full hunger and mood (≤ 6 each).
+        let mut icons: Vec<u16> = p.field_log.iter().take(10).map(|&f| AREA_ICONS[(f as usize).min(2)]).collect();
+        icons.extend(p.food_log.iter().take(4).map(|&c| FOOD_ICONS.get(c as usize).copied().unwrap_or(FOOD_ICONS[0])));
+        for (n, icon) in [(p.miss_count, MISS_ICON), (p.onaka_max, ONAKA_ICON), (p.gokigen_max, GOKIGEN_ICON)] {
+            icons.extend(std::iter::repeat_n(icon, n.min(6) as usize));
+        }
+        // They fly in in random order.
+        let mut order: Vec<u8> = (0..icons.len() as u8).collect();
+        for i in (1..order.len()).rev() {
+            let j = self.rand() as usize % (i + 1);
+            order.swap(i, j);
+        }
+        let icons = icons.into_iter().zip(order).collect();
+        Scene::Memories { pet: Node::new(script::SUPPORT_WAIT), icons, t: 0 }
+    }
+
+    pub(crate) fn update_memories(&mut self, mut pet: Node, icons: Vec<(u16, u8)>, t: u16) -> Scene {
+        pet.tick(&self.data.motions);
+        pet.take_sounds(&mut self.sounds);
+        if t >= icons.len() as u16 * MEMORY_GAP + SUPPORT_FLY + MEMORY_PAUSE {
+            return self.evolution();
+        }
+        Scene::Memories { pet, icons, t: t + 1 }
+    }
+
+    pub(crate) fn draw_memories(&mut self, pet: &Node, icons: &[(u16, u8)], t: u16) {
+        self.draw_field_bg();
+        let mut draws = Vec::new();
+        pet.draws(64, 64, &mut draws);
+        self.draw_list_of(&draws, None);
+        for (slot, &(icon, k)) in icons.iter().enumerate() {
+            let flown = t.saturating_sub(k as u16 * MEMORY_GAP).min(SUPPORT_FLY) as i32;
+            if flown == SUPPORT_FLY as i32 {
+                continue;
+            }
+            let e = self.ui_elem(elem::MEMORY_SLOTS + slot as u16);
+            let x = e.x as i32 + (SUPPORT_TARGET.0 - e.x as i32) * flown / SUPPORT_FLY as i32;
+            let y = e.y as i32 + (SUPPORT_TARGET.1 - e.y as i32) * flown / SUPPORT_FLY as i32;
+            self.screen.blit(icon, 0, x, y, (64 - 64 * flown / SUPPORT_FLY as i32) as u8, false, None);
+        }
+    }
+
+    /// EVENT_EVOLUTION (`FUN_1003dab8`): evolve, then hatch (with the parent who stayed on the
+    /// field from the second generation on), or show the old look turning into the new one and
+    /// the points it brought. Back at the pet level.
+    pub(crate) fn evolution(&mut self) -> Scene {
+        let old = self.pet.def.chr_id;
+        if !self.pet.evolve(&self.data) {
+            return Scene::Home;
+        }
+        self.level = Level::Pet;
+        if self.pet.def.stage == 2 {
+            let pair = self.pet.generation >= 2;
+            if pair {
+                // ponytail: the parent is the latest tama left on this field (`FUN_1001887c`
+                // reads the last grazing field); fine while the family stays on one field.
+                let parent = self.pet.grazing[self.pet.field as usize].last().map(|g| g.id);
+                self.roles[1] = parent.and_then(|id| self.data.character(id)).map(|c| c.chr_id);
+            }
+            return self.play(&script::HATCH[pair as usize], (0, OnPress::None), None, Scene::Home);
+        }
+        self.old_chr = Some(old);
+        self.play(&[script::EVOLVE], (0, OnPress::None), None, Scene::EvolvePoints { t: 0 })
+    }
+
+    pub(crate) fn update_evolve_points(&mut self, t: u16, pressed: u8) -> Scene {
+        if t == 0 {
+            self.sfx(SND_EVOLVE_POINTS, 100);
+        }
+        if (t >= POINTS_WAIT && pressed_any(pressed)) || t >= POINTS_TIMEOUT {
+            return Scene::Home;
+        }
+        Scene::EvolvePoints { t: t + 1 }
+    }
+
+    /// The balance after the evolution and the bonus for the new stage (300 / 500 / 800).
+    pub(crate) fn draw_evolve_points(&mut self) {
+        for id in elem::EVOLVE_POINTS {
+            self.draw_elem(id, None, None);
+        }
+        let bonus = match self.pet.def.stage {
+            3 => 300,
+            4 => 500,
+            5 => 800,
+            _ => 0,
+        };
+        for (id, n) in [(elem::EVOLVE_BALANCE, self.pet.points), (elem::EVOLVE_BONUS, bonus)] {
+            self.draw_number_elem(id, n);
+        }
+    }
+
+    /// A number in a text element, right-aligned against the bar, "G" or "/" after it
+    /// (p[7] = font palette set).
+    pub(crate) fn draw_number_elem(&mut self, id: u16, n: u32) {
+        let e = self.ui_elem(id);
+        // ponytail: the text box format (p[5], p[8..10]) is not decoded; x + 4 lines up with the art.
+        self.draw_number_right(n, e.x as i32 + 4, e.y as i32, e.p[7].max(0) as usize);
+    }
+
+    /// Text centred in a text element.
+    pub(crate) fn draw_text_elem(&mut self, id: u16, glyphs: &[u16]) {
+        let e = self.ui_elem(id);
+        self.screen.text(&self.data.fonts, glyphs, e.x as i32, e.y as i32, true, e.p[7].max(0) as usize);
+    }
+
+    pub(crate) fn update_lab_result(
+        &mut self,
+        stars: u8,
+        points: u32,
+        mut nodes: Vec<Node>,
+        t: u16,
+        pressed: u8,
+    ) -> Scene {
+        for n in &mut nodes {
+            n.tick(&self.data.motions);
+        }
+        if t == RESULT_STARS_AT {
+            nodes = (0..stars).map(|_| Node::new(script::RESULT_STAR)).collect();
+        }
+        if t == RESULT_STARS_AT + if stars > 0 { RESULT_STAR_LAND } else { 0 } {
+            self.sfx(RESULT_SOUNDS[stars as usize], 100);
+        }
+        let open = RESULT_STARS_AT + if stars > 0 { RESULT_STAR_LAND } else { 0 } + RESULT_WAIT;
+        if t >= open && (pressed_any(pressed) || t >= open + RESULT_TIMEOUT) {
+            if pressed_any(pressed) {
+                self.sfx(SFX_OK, 100);
+            }
+            return self.open(Action::MiniGames);
+        }
+        Scene::LabResult { stars, points, nodes, t: t + 1 }
+    }
+
+    pub(crate) fn draw_lab_result(&mut self, stars: u8, points: u32, nodes: &[Node], t: u16) {
+        for id in elem::RESULT {
+            self.draw_elem(id, None, None);
+        }
+        self.draw_number_elem(elem::RESULT_BALANCE, self.pet.points);
+        let landed = t >= RESULT_STARS_AT + RESULT_STAR_LAND;
+        for (i, &id) in elem::RESULT_STAR_SLOTS.iter().enumerate() {
+            let frame = (landed && (i as u8) < stars) as u16;
+            self.draw_elem(id, Some(frame), None);
+        }
+        for id in elem::RESULT_PANEL {
+            self.draw_elem(id, None, None);
+        }
+        self.draw_number_elem(elem::RESULT_POINTS, points);
+        let mut draws = Vec::new();
+        for (n, &slot) in nodes.iter().zip(&elem::RESULT_STAR_SLOTS) {
+            let e = self.ui_elem(slot);
+            n.draws(e.x as i32, e.y as i32, &mut draws);
+        }
+        self.draw_list_of(&draws, None);
     }
 
     /// DeathRemain (60 s) runs out, then: an old-age ancestor saves the pet, or it dies (young,
@@ -331,6 +539,7 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::super::Scene;
+    use super::{Action, Level, RESULT_STARS_AT, RESULT_STAR_LAND, RESULT_WAIT};
     use crate::input::{A, B, C};
     use crate::pet::{req, Cond};
     use crate::Game;
@@ -483,5 +692,77 @@ mod tests {
             assert_eq!(matches!(g.scene, Scene::Bonus), round == 0);
         }
         assert_eq!(g.pet.points, 50);
+    }
+
+    #[test]
+    fn the_egg_hatches_in_front_of_the_player() {
+        let mut g = game(1000);
+        g.pet.raise(req::EVOLUTION);
+        g.frame(NOON, 0);
+        assert!(matches!(g.scene, Scene::Play(_)), "hatching");
+        assert_eq!(g.pet.def.stage, 2);
+        run_until_home(&mut g);
+        assert_eq!(g.level, Level::Pet);
+    }
+
+    #[test]
+    fn a_child_takes_in_its_memories_then_shows_the_bonus() {
+        let mut g = game(2113);
+        g.pet.field_log = vec![1; 4];
+        g.pet.miss_count = 2;
+        g.pet.raise(req::EVOLUTION);
+        g.frame(NOON, 0);
+        let Scene::Memories { icons, .. } = &g.scene else { panic!("memories") };
+        assert_eq!(icons.len(), 6, "4 areas + 2 mistakes");
+        let old = g.pet.def.chr_id;
+        while matches!(g.scene, Scene::Memories { .. }) {
+            g.frame(NOON, 0);
+        }
+        assert_eq!(g.pet.def.stage, 4);
+        assert_eq!(g.old_chr, Some(old), "the old look plays role 0");
+        while matches!(g.scene, Scene::Play(_)) {
+            g.frame(NOON, 0);
+        }
+        assert!(matches!(g.scene, Scene::EvolvePoints { .. }));
+        press(&mut g, B);
+        assert!(matches!(g.scene, Scene::EvolvePoints { .. }), "keys wait 20 frames");
+        for _ in 0..20 {
+            g.frame(NOON, 0);
+        }
+        press(&mut g, B);
+        assert!(matches!(g.scene, Scene::Home));
+        g.frame(NOON, 0);
+        assert_eq!(g.old_chr, None);
+    }
+
+    #[test]
+    fn poop_plays_at_home_but_not_after_a_menu() {
+        let mut g = game(2113);
+        g.pet.raise(req::UNCHI);
+        g.frame(NOON, 0);
+        assert!(!g.pet.is_pending(req::UNCHI), "pooped at HOME");
+        run_until_home(&mut g);
+        g.scene = g.open(Action::Lab);
+        g.pet.raise(req::UNCHI);
+        g.frame(NOON, 0);
+        assert!(!g.pet.is_pending(req::UNCHI), "settled when HOME opens again");
+    }
+
+    #[test]
+    fn lab_result_drops_the_stars_then_waits_for_a_key() {
+        let mut g = game(2113);
+        g.scene = g.after_mini(Some(3), Some((0, 0)));
+        let mut sounds = Vec::new();
+        for _ in 0..RESULT_STARS_AT + RESULT_STAR_LAND + 1 {
+            g.frame(NOON, 0);
+            sounds.extend(g.take_sounds());
+        }
+        assert!(sounds.contains(&(24, 100)), "three stars");
+        assert!(matches!(&g.scene, Scene::LabResult { nodes, .. } if nodes.len() == 3));
+        for _ in 0..RESULT_WAIT {
+            g.frame(NOON, 0);
+        }
+        press(&mut g, B);
+        assert!(matches!(g.scene, Scene::Menu { .. }), "back to the game menu");
     }
 }

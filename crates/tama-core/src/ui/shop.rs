@@ -99,7 +99,7 @@ impl Game {
             Action::CleanPoop => self.start_poop_clean(),
             Action::Lab => Scene::Menu {
                 items: vec![
-                    (t::INFORMATION, Some(Action::Missions)),
+                    (t::INFORMATION, Some(Action::Info)),
                     (t::MINI_GAMES, Some(Action::MiniGames)),
                     (t::SHOP, Some(Action::Shop)),
                     (t::HELP, Some(Action::Help)),
@@ -312,17 +312,15 @@ impl Game {
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
-            Action::Settings => Scene::Menu {
-                // The remake also lets the language change later; the item shows its name.
-                items: vec![
-                    (0x0b, Some(Action::EditBirthday)),
-                    (0x0c, Some(Action::EditPlanetName)),
-                    (0x56 + self.pet.lang as u16, Some(Action::Language)),
-                ],
-                idx: 0,
-                back: Some(Action::Lab),
-            },
-            Action::IntroLanguage | Action::IntroLang(_) | Action::Language | Action::SetLang(_) => self.open_intro(a),
+            Action::IntroLanguage
+            | Action::IntroLang(_)
+            | Action::Language
+            | Action::SetLang(_)
+            | Action::Settings
+            | Action::UserEdit
+            | Action::Info
+            | Action::InfoFromMissions
+            | Action::UserInfo => self.open_intro(a),
             Action::EditPlanetName => {
                 let mut chars = [crate::screen::SPACE; 8];
                 for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {
@@ -409,9 +407,8 @@ impl Game {
                 if g == 5 {
                     self.pet.mini_plays[5] = self.pet.mini_plays[5].wrapping_add(1);
                 }
-                let pts = self.pet.lab_reward(level as usize, r as usize);
-                let then = self.open(Action::MiniGames);
-                Scene::Points { points: pts, then: Box::new(then) }
+                let points = self.pet.lab_reward(level as usize, r as usize);
+                Scene::LabResult { stars: r.min(3), points, nodes: Vec::new(), t: 0 }
             }
             (Some(r), None) => {
                 self.pet.play_reward(r as usize);
@@ -778,7 +775,7 @@ impl Game {
     pub(super) fn update_missions(&mut self, idx: usize, pressed: u8) -> Scene {
         let idx = super::cycle(idx, crate::progress::TARGETS.len(), pressed);
         if pressed & C != 0 {
-            self.open(Action::Lab)
+            self.open(Action::InfoFromMissions)
         } else {
             Scene::Missions { idx }
         }
@@ -915,7 +912,7 @@ mod tests {
         assert_eq!(g.pet.mini_plays[5], 0);
         g.scene = g.open(super::super::Action::PlayLab(6, 0));
         assert_eq!(g.pet.mini_plays[6], 1, "game 06 moves on at start");
-        assert!(matches!(g.after_mini(Some(1), Some((5, 0))), super::super::Scene::Points { .. }));
+        assert!(matches!(g.after_mini(Some(1), Some((5, 0))), super::super::Scene::LabResult { stars: 1, .. }));
         assert_eq!(g.pet.mini_plays[5], 1);
     }
 

@@ -28,14 +28,18 @@ impl Game {
         self.screen.text(&self.data.fonts, &glyphs, x, y, center, palette);
     }
 
+    pub(crate) fn digits(&self, n: u32) -> Vec<u16> {
+        n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect()
+    }
+
     pub(crate) fn draw_number(&mut self, n: u32, x: i32, y: i32, palette: usize) {
-        let glyphs: Vec<u16> = n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect();
+        let glyphs = self.digits(n);
         self.screen.text(&self.data.fonts, &glyphs, x, y, true, palette);
     }
 
     /// A number whose right edge is at `right` (balances that must stay on screen).
     pub(crate) fn draw_number_right(&mut self, n: u32, right: i32, y: i32, palette: usize) {
-        let glyphs: Vec<u16> = n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect();
+        let glyphs = self.digits(n);
         let w = crate::screen::Screen::text_width(&self.data.fonts, &glyphs);
         self.screen.text(&self.data.fonts, &glyphs, right - w, y, false, palette);
     }
@@ -186,6 +190,22 @@ impl Game {
             }
             Scene::Support { pet, round, t, busy } => {
                 self.draw_support(pet, *round, *t, *busy);
+                true
+            }
+            Scene::Memories { pet, icons, t } => {
+                self.draw_memories(pet, icons, *t);
+                true
+            }
+            Scene::LabResult { stars, points, nodes, t } => {
+                self.draw_lab_result(*stars, *points, nodes, *t);
+                true
+            }
+            Scene::UserInfo { page } => {
+                self.draw_user_info(*page);
+                true
+            }
+            Scene::EvolvePoints { .. } => {
+                self.draw_evolve_points();
                 true
             }
             Scene::Graveyard { nodes } => {
@@ -355,7 +375,18 @@ impl Game {
 
     /// Draw motion-script output with the food placeholder replaced.
     pub(super) fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
+        let saved = (self.screen.zoom, self.screen.off);
         for d in draws {
+            if d.scale == 0 {
+                continue;
+            }
+            // A node's own scale is about its position: fold it into the screen zoom and offset.
+            if d.scale != 256 {
+                let s = d.scale as f32 / 256.0;
+                let o = |p: i32, off: i32| ((p as f32 * (1.0 - s) + off as f32 - 64.0) / s + 64.0).round() as i32;
+                self.screen.off = (o(d.x, saved.1 .0), o(d.y, saved.1 .1));
+                self.screen.zoom = saved.0 * s;
+            }
             match d.look {
                 crate::motion::Look::Sprite { id, frame } => {
                     let id = if id == FOOD_PLACEHOLDER { food.unwrap_or(id) } else { id };
@@ -374,6 +405,7 @@ impl Game {
                 }
                 crate::motion::Look::None => {}
             }
+            (self.screen.zoom, self.screen.off) = saved;
         }
     }
 

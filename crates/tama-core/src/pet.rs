@@ -213,6 +213,11 @@ pub struct Pet {
     /// The player's birthday (month, day), set in SETTINGS (`DAT_18000c6a`).
     #[serde(default)]
     pub birthday: Option<(u8, u8)>,
+    /// New-game setup date (month, day) and days played since (USER INFO, `c0c` / `c98`).
+    #[serde(default)]
+    pub start_date: Option<(u8, u8)>,
+    #[serde(default)]
+    pub play_days: u16,
     /// Planet name as font glyph codes (`0x18000c58`, up to 8), set in SETTINGS.
     #[serde(default)]
     pub planet_name: Vec<u16>,
@@ -315,6 +320,8 @@ impl Pet {
             mini_plays: [0; 7],
             together_plays: [0; 8],
             birthday: None,
+            start_date: None,
+            play_days: 0,
             planet_name: Vec::new(),
             lang: 1,
             toys: [[[0; 6]; 2]; 3],

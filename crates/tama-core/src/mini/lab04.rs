@@ -371,8 +371,15 @@ impl MiniGame for Lab04 {
     }
 
     fn draws(&self, out: &mut Vec<Draw>) {
-        let sprite =
-            |id, x, y, flip, alpha| Draw { look: Look::Sprite { id, frame: 0 }, x, y, flip, alpha, palette: 0 };
+        let sprite = |id, x, y, flip, alpha| Draw {
+            look: Look::Sprite { id, frame: 0 },
+            x,
+            y,
+            flip,
+            alpha,
+            palette: 0,
+            scale: 256,
+        };
         out.push(sprite(BG, 64, 64, false, 64));
         for (i, b) in self.bricks.iter().enumerate() {
             let (x, y) = brick_xy(i);
@@ -400,6 +407,7 @@ impl MiniGame for Lab04 {
                 flip: false,
                 alpha: 64,
                 palette: 0,
+                scale: 256,
             });
         }
         out.push(sprite(BALL.0, self.ball.0 >> 16, (self.ball.1 >> 16) + BALL.1, self.ball_flip, 64));

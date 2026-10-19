@@ -41,7 +41,9 @@ mod text {
 }
 
 /// Motion scripts used by the care screens (08-care-ui §2.4–2.10).
-mod script {
+pub(crate) mod script {
+    /// EVENT_UNCHI (`FUN_1003e824`): squat, poop, happy.
+    pub const POOP: u16 = 0x574;
     pub const SERVE: [u16; 3] = [0x60c, 0x60f, 0x611];
     pub const EAT: [[u16; 2]; 3] = [[0x5fa, 0x600], [0x5fd, 0x603], [0x606, 0x609]];
     pub const DRINK: [u16; 3] = [0x619, 0x61c, 0x61f];
@@ -198,6 +200,12 @@ pub(crate) enum Action {
     Connect,
     /// Lab menu SETTINGS and its birthday editor.
     Settings,
+    /// INFORMATION submenu (cursor on MISSION when coming back from it), USER INFO, and its
+    /// edit menu.
+    Info,
+    InfoFromMissions,
+    UserInfo,
+    UserEdit,
     EditBirthday,
     EditPlanetName,
     /// New-game setup: the language list and a chosen language.
@@ -414,6 +422,29 @@ pub(crate) enum Scene {
         t: u16,
         busy: bool,
     },
+    /// Before an evolution (`FUN_1003bd20` states 3000–4001): icons of the pet's memories
+    /// (sprite, flight order) fly into it, `t` frames in.
+    Memories {
+        pet: Node,
+        icons: Vec<(u16, u8)>,
+        t: u16,
+    },
+    /// After an evolution (`FUN_1003dab8` states 1001–1003): points balance and bonus.
+    EvolvePoints {
+        t: u16,
+    },
+    /// LABOGAME_RESULT (`labogame_result_tick` 0x1003298c): the stars earned drop in, then the
+    /// balance and the points earned; back to the game menu.
+    LabResult {
+        stars: u8,
+        points: u32,
+        nodes: Vec<Node>,
+        t: u16,
+    },
+    /// INFORMATION → USER INFO: planet, days and points; egg-bang day; birthday.
+    UserInfo {
+        page: u8,
+    },
     /// EVENT_DYING (`FUN_1003d474`) until DeathRemain runs out.
     Dying {
         node: Node,
@@ -536,6 +567,10 @@ impl Game {
             // Life events (ui/event.rs).
             Scene::Sitter { node } => self.update_sitter(node, pressed),
             Scene::Support { pet, round, t, busy } => self.update_support(pet, round, t, busy, pressed),
+            Scene::Memories { pet, icons, t } => self.update_memories(pet, icons, t),
+            Scene::EvolvePoints { t } => self.update_evolve_points(t, pressed),
+            Scene::UserInfo { page } => self.update_user_info(page, pressed),
+            Scene::LabResult { stars, points, nodes, t } => self.update_lab_result(stars, points, nodes, t, pressed),
             Scene::Dying { node } => self.update_dying(node),
             Scene::Graveyard { nodes } => self.update_graveyard(nodes),
             Scene::Dead { page, nodes } => self.update_dead(page, nodes, pressed),
@@ -612,6 +647,7 @@ impl Scene {
                 | Scene::Ask { .. }
                 | Scene::Code { .. }
                 | Scene::Missions { .. }
+                | Scene::UserInfo { .. }
                 | Scene::Breed { .. }
                 | Scene::Graves { .. }
                 | Scene::Setsubi { .. }

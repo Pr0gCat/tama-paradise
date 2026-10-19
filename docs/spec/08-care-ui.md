@@ -253,6 +253,21 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 2000…0x7d7：四輪。每輪任意鍵（0xf）或 200 frames → 寵物播 0x547、一個 icon tween 到目標並淡出、音效 1；40 frames 後寵物回 0x54a。順序是 icon 0、3、2、1。
 - 0x7d8：20 frames → 7000：support 計時器清零、進 EVENT_EVOLUTION 0x4c，那裡 `req_done(EVOL_SUPPORT)` → `tama_evolve`（用 dominant 區域進化，+300）。
 - 重製：`Scene::Support`、`Pet::support`。icon 飛行用線性 20 frames（ponytail：tween 曲線 5 未解）。
+- **進入點 [確認]**：HOME 每 frame 的 `FUN_10019b48` 取最優先 request（優先序表 `0x100a2fdf`：13,12,8,15,2,**20 METAMORPHO**,**1 EVOLUTION**,29,10,11,19,17,18,28,14,**16 UNCHI**,3,6,7）。EVOLUTION：蛋（stage 1）→ 直接 0x4c；其他 → 0x4b。METAMORPHO → 0x4d（init 直接 `req_done(0x14)` → HOME，**沒有動畫**）。UNCHI → 0x52。HOME init（`FUN_1001abd0`）會先靜默 `req_done(HOMETRG/UNCHI)`，所以在選單裡大的便回 HOME 時不播動畫。
+- **state 3000（回憶 icon）[確認]**：寵物播 0x54a；依序建立 icon，位置用 UI 0x35a + i：區域紀錄（TamaCare+5 筆數 ≤10，+6.. → `FUN_1000ae44` 區域 icon）、食物紀錄（+0x12 筆數 ≤4，+0x13.. → `FUN_1000ae78` 表 `0x10092de2`：0x490–0x498、0x49d–0x49f、0x4a2–0x4a7）、照顧失誤（+0x17 miss_idx ≤6 → 0x499）、吃飽次數（+0x1e onaka_max ≤6 → 0x49a）、心情滿次數（+0x1f gokigen_max ≤6 → 0x49b）。4000/0xfa1：每 2 frames 隨機挑一個沒飛的 icon tween 到目標；全部飛完再等 20 frames → 7000 → 0x4c。
+- 重製：`Game::begin_evolution`、`Scene::Memories`（每 2 frames 一個、飛行沿用線性 20 frames）。
+
+### 2.17.1 EVENT_EVOLUTION（0x4c，`FUN_1003dab8`）[確認]
+
+- init：存 DIRTY；`req_done(EVOL_SUPPORT 或 EVOLUTION)`（= `tama_evolve`，之後 TamaData 已是新角色）；清 DIRTY。
+- 新 stage == 2（孵化）：世代 < 2 → 0x53c，否則 0x541（role 1 = `FUN_1001887c` 最後放牧區域的最新一隻 = 父/母）；role 0 = 0xbd → 2000：完成後 0x53e / 0x543 → 0x7d1：完成後 HOME 層 = 寵物（`c6a` 低 2 bit = 2）→ 淡出結束。**孵化沒有點數畫面**。chr 0x1f 在這些腳本裡畫的是蛋（只有 0x538/0x539/0x53d/0x53f 用到）。
+- 其他：0x549，role 0 = 0xdb（舊外觀）、role 1 = 0xbd（新）→ 1000：完成後淡出 → 1001：點數畫面（背景 0x223、點數 icon 0x224、底條 0x226、總點數 0x225、獎勵 0x227 = 新 stage 3/4/5 → 300/500/800、「G」0x228、底框 0x229、橫幅 0x22a；z 10 的元件畫在上層）→ 1002：音效 0x21、HOME 層 = 寵物 → 1003：20 frames 後任意鍵，或 200 frames 自動 → 淡出結束。
+- 重製：`Game::evolution`、`Game::old_chr`（chr 0xdb）、`Scene::EvolvePoints`。
+
+### 2.17.2 EVENT_UNCHI（0x52，`FUN_1003e824`）[確認]
+
+- init：播 0x574（下蹲用力 → 大出來、音效 19 → 開心、音效 52）→ 1000：完成後淡出 → 結束回 HOME。不改任何數值（大便本身在 `care_tick` 的 SOWASOWA 計時到時已加上）。
+- 重製：`Game::frame` 在 HOME（非星球層）看到 UNCHI 待處理時清掉並播放；不在 HOME 時直接清掉。
 
 ### 2.18 保母（PSID_HELP_SITTER 0x41，`FUN_1004d304`）[確認]
 
@@ -260,6 +275,59 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 2000：0x832 / 0x833（80% / 20%，每次播完重抽）循環。cond 不再是 1（19:00 由 `care_time_update` 結束並 gokigen −5）→ 3000：播 0x834 → HOME，層 = 場地。任意鍵 → 0xd4「END TAMA SITTING?」（**預設 NO**）：YES → 播 0x834 → cond=0（不扣心情、不退點數）→ HOME；NO → 回 0x832。
 - 保母期間 HOME 路由永遠進 0x41，玩家看不到 HOME。`care_tick`：cond 1 只跑 onaka 計時器、累加 UNCHI METER，不掉飢餓、心情（01-care §2）。
 - 重製：`Scene::Sitter`、`Action::SitterView/EndSitter`、`Pet::end_sitter`。
+
+### 2.19 LABOMENU → INFORMATION（0x2b）與 USER INFO（0x38）[確認]
+
+**2.19.1 共用清單選單 `listmenu_create`（0x1002d5c4 → 0x1006968c）**
+
+- 參數 `(layer, parent, style, flags, n, items, bg)`。項目 12 B：`{u32 text_id, u32 value, u32 flags}`，flags bit0 = 灰（不可選）。灰項文字 palette 2 [確認]。
+- `style` 查表 `0x10093e5a + style·14`（7×u16）：`[0][1]` 上/下箭頭動畫元件（項目數 > 每頁列數時才建立）、`[2]` 第 1 列文字元件、`[3]` 第 1 列底條 sprite 元件、`[4]` 游標元件（列距 = 下一個元件 y − 本元件 y）、`[5]`（這兩個場景未用）、`+12` 每頁列數 [確認]。
+  - style 0：0xa7/0xa8 箭頭（anim 12/13 = sprite 89 上/下箭頭上下晃，(96,122)/(116,120)）、文字 0xa9–0xac（x=20，y=18/46/74/102）、底條 0xad–0xb0（sprite 65，x=64）、游標 0xb1（sprite 90 frame 1，(8,18)），列距 28，**每頁 4 列**。
+  - style 1：箭頭 0xba/0xbb、文字 0xbc–0xbe（x=20，y=22/61/100，p[5]=3 → 兩行字）、底條 0xbf–0xc1（sprite 66）、游標 0xc2（(8,22)），列距 39，**每頁 3 列**。
+- `bg` 查表 `0x10093e9a + bg·4`（u16 元件, u8 palette）：bg 6 = 元件 0x19a = sprite 141（粉紅格子全螢幕），palette 0 [確認]。
+- 輸入（callback `FUN_1002d8ac`，flags=0 時）：A 或 UP → 游標 +1、DN → −1（兩端循環、跨頁時整頁滑動），音效 0；B 或 P → 灰項音效 0xb，否則設「確定」並音效 1；C → 設「取消」並音效 2 [確認]。`FUN_1002d654(m,&idx)` 有結果時回 1（確定 → idx=游標，取消 → −1）；`FUN_1002d640` = 確定、`FUN_1002d62c` = 取消；`FUN_1002d6ec(m, i)` 設游標。
+
+**2.19.2 PSID_LABOMENU_INFO（0x2b；init 0x1001fc48、update 0x1001fd0c、tick 0x10046b84、draw 0x1001fbf4 = `layer_draw(ctx+0x18)` 0x1000a228）**
+
+- init：layer、`FUN_1007b4cc(0x20)`、**上一個場景（`FUN_10002780`）是 0x39 MISSION → 游標 1，否則 0**；`listmenu_create(layer,0,style 0,0,2,0x100941e8,bg 6)`；預設返回目標 `scene_set_next(0x72 PSID_DATETIME)`（只在被系統強制離開時用到）。
+- 項目表 `0x100941e8`（XIP，2 項 × 12 B）：
+
+| # | 文字 | 目標場景 |
+|---|---|---|
+| 0 | 7「USER INFO」（ユーザーじょうほう） | 0x38 PSID_INFO_USERINFO |
+| 1 | 8「MISSION」（ミッション） | 0x39 PSID_INFO_MISSION |
+
+  （表後面緊接 `{0x49 STATUS, 0x29}`、`{0x18 NEW EGG, 0x42}`，沒有直接參照，n=2 不會讀到。）
+- tick：state 0 → `fade_set(0,0x20,0,4,0)` 淡入 → 1000：等選單結果；確定 → `scene_set_next(item.value)`；取消 → `scene_set_next(0x2a PSID_LABOMENU)`；兩者都 → 0x7fe0 → `fade_set(0xff, 目前亮度, 1, 4, 0)` 淡出 → 0x7ff0 done。音效由選單本身播（0 移動 / 1 確定 / 2 取消）。
+
+**2.19.3 PSID_INFO_USERINFO（0x38；init 0x1001c2c0、update 0x1001c350、tick 0x10047f10、draw 0x1001c26c = `layer_draw` 0x1000a228）**
+
+- init：ctx 0xa8 B；layer；`FUN_1007b4cc(0)`（亮度 0）；`DAT_18001cbb &= 0x7f`；頁 `ctx+0x20 = 0`、編輯選單游標 `ctx+0x80 = 0`；鏡頭偏移 0、`FUN_1007bd00(0x40)`、縮放 1.0；**返回目標 `scene_set_next(0x2b)`**（回 INFORMATION，游標 0）。
+- **3 頁**（state 1000 每次重建子群組）。每頁共用：背景 0x1ce（sprite 141 粉紅格子，(64,64)）、頁面箭頭 0x1cf（anim 12，上箭頭，(96,122)）與 0x1d0（anim 13，下箭頭，(116,120)）、標題底條 = 元件 `0x1009df2c[頁]`（0x1d2 / 0x1dd / 0x1ec）。數字都用 `text_printf(elem, "%d"(0x100a4129), v)`，沒有補零。
+
+| 頁 | 元件（座標） | 內容 / 來源 |
+|---|---|---|
+| 0 | 0x1d2 sprite 60（深藍標題條 128×32）(64,16)；0x1d1 文字 (64,16) | **星球名** `0x18000c58` u16[9] glyph（`text_set`） |
+| | 0x1d5 sprite 64（白色圓角框 128×48）(64,64)；0x1d3 文字 (64,55) | 文字 161「DAYS」（にっすう），字串 id 取自 `0x100a4cda[0]` |
+| | 0x1d4 文字 (64,73) | `%d` **play_days** `0x18000c98`（u16，跨日 +1，≤999） |
+| | 0x1d8 sprite 71 palette 2（96×24 框）(64,102)；0x1d6 文字 (72,102) 寬 96；0x1d7 sprite 19 frame 16 =「G」點數圖示 (88,102) | `%d` **Gotchi 點數** `0x18000ca4`（u32，≤99999） |
+| 1 | 0x1dd sprite 61 (64,20)；0x1eb 文字 (64,16)（p[5]=3 兩行） | 文字 268「DAY OF THE\nEGG BANG」（エッグバンがおこったひ），`0x100a4cdc` |
+| | 0x1ed sprite 74（80×24 框）(64,72)；0x1ee 文字 (52,72) 寬 32；0x1ef sprite 19 frame 14 =「/」(64,72)；0x1f0 文字 (76,72) | `%d/%d` = **初始設定日期** `0x18000c0c` dt 的 月 `0x18000c0e` / 日 `0x18000c10` |
+| 2 | 同頁 1 的 0x1eb/0x1ec(64,16)/0x1ed/0x1ee/0x1ef/0x1f0，另加 0x1e8 sprite 142（彩旗＋小雞裝飾，全螢幕） | 文字 163「BIRTHDAY」（`0x100a4cde`）；`%d/%d` = **生日** 月 `c6a & 0xf` / 日 `(c6a & 0x1ff) >> 4` |
+
+- 頁面輸入（state 2000）：
+  - A 或 UP → 下一頁（0→1→2→0）、DN → 上一頁（循環），音效 0；呼叫 `fade_set(0,0,1,4,0)` 後立刻回 state 1000 重建並 `fade_set(0,0x20,0,4,0)` 淡入（視覺上是閃一下黑 [推測]）。
+  - B 或 P → 音效 1 → **編輯選單**（0xdac，**任何一頁都可進入**）。
+  - C → 音效 2 → 0x7fe0 淡出 → done → 0x2b。
+  - 本場景**沒有閒置逾時**（只有系統的 200/600 frames 閒置規則）。
+- 編輯選單（0xdac/0xdad）：`listmenu_create(..., style 1, 0, 2, 0x18000708, bg 6)`，項目在 RW 初始資料 `0x18000708`：{文字 11「EDIT \nBIRTHDAY」}、{文字 12「EDIT \nPLANET NAME」}，value/flags 皆 0。游標 = `ctx+0x80`（夾在 0..1，記住上次）。確定 0 → 4000 生日編輯；確定 1 → 0x1194 星球名鍵盤（兩者先 `fade_set(0,0,1,4,0)`）；取消（C，音效 2）→ state 1000 回原頁。
+- 生日編輯（4000 → 0xfa1/0xfa2，`FUN_10004c20` 建 UI）：背景 0x8c（sprite 55）、標題條 0x8d（sprite 59）(64,12)、標題文字 0x8e (64,10) = 236「MONTH」/ 237「DATE」（`0x100a4d24[欄]`）、兩個框 0x8f (64,46) / 0x91 (64,75)（sprite 69）、數字 0x90 (64,45)（月）/ 0x92 (64,74)（日）、按鍵提示 0x93 (24,114) / 0x94 (64,114) / 0x95 (104,114) = sprite 96 frame 4「+」/ 1「OK」/ 3「←」。
+  - 數字轉輪 `numspin_create` 0x1002dbf0：月 1..12、日 1..31，都**循環**、**閃爍**（10 frames 亮 / 10 暗，改值時重置）；初值取自 `c6a`（0 會被夾到 1）。
+  - 轉輪輸入（`FUN_1002df08`）：A（含長按連發 `key_pressed_or_repeat`）→ +1，**按住 C 時 A = −1**（提示 0x93 改成 frame 5「−」）；UP → +1、DN → −1；每步音效 0。B 或 P → 確定（音效 1）；**C 連按兩下**（`key_double(4)`，放開後 3–10 frames 內再按）→ 取消（音效 2）。
+  - 月確定 → 日的上限改成該月天數（`days_in_month(400, 月)`，表 `0x10091190` = 31,28,31,…，年 400 為閏年 → **2 月 29 天**）→ 換日欄；日確定 → `c6a = (c6a & 0xfe00) | 月 | (日 & 0x1f) << 4`，淡出 → 編輯選單。日欄取消 → 回月欄；月欄取消 → 直接回編輯選單（不寫入）。
+- 星球名（0x1194/0x1195）：`idle_reset` 後把閒置門檻暫改 0x4b0/0x4ba（1200/1210 frames）；複製 `c58..c68` 到 ctx，開文字鍵盤 `FUN_10065034(layer, grp, type 0, 0, buf, 100)`（type 0 最多 **8 字**，提示文字 100「NAME YOUR\nPLANET」，與新遊戲同一個鍵盤）。結束時 `idle_reset`（門檻回 200/600）；OK → 寫回 `c58..c67`、`c68 = 0`；取消 → 不變。兩者都淡出 → 編輯選單。
+- 音效總結：0 = 翻頁/游標/轉輪加減、1 = 確定、2 = 取消/離開、0xb = 灰項（此處不會出現）。全部 vol 100。
+- 重製對照：星球名 = `Pet::planet_name`；Gotchi 點數 = `Pet::points`；生日 = `Pet::birthday`（`Option<(月,日)>`）；**play_days（c98）與初始設定日期（c0c）目前 `Pet` 沒有對應欄位**（`Pet::days` 是寵物年齡天數，不是 play_days）。字串 169–184（「TIMES YOU FED FOOD」等）不屬於 USER INFO，而是 MISSION 場景（0x39）用的表 `0x100a4ce0`。
 
 ---
 
@@ -458,6 +526,39 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 100a106e poopclean_elems l
 10093d20 starter_items l
 1009a968 sin_table l
+1002d5c4 listmenu_create f
+1006968c listmenu_create_impl f
+1002d8ac listmenu_input_cb f
+1002d794 listmenu_build_page f
+1002d654 listmenu_result f
+1002d640 listmenu_confirmed f
+1002d62c listmenu_canceled f
+1002d6ec listmenu_set_cursor f
+1002dbf0 numspin_create f
+1002df08 numspin_input_cb f
+1002de14 numspin_activate f
+1002de84 numspin_set_range f
+1002dd9c numspin_result f
+1002dd60 numspin_canceled f
+1002dd88 numspin_c_held f
+10006a1c days_in_month f
+10004c20 userinfo_bday_build f
+10065034 textkbd_create f
+1000a228 layer_draw f
+1001fc48 labomenu_info_init f
+1001fd0c labomenu_info_update f
+10046b84 labomenu_info_tick f
+1001c2c0 userinfo_init f
+1001c350 userinfo_update f
+10047f10 userinfo_tick f
+100941e8 labomenu_info_items l
+18000708 userinfo_edit_items l
+1009df2c userinfo_page_headers l
+100a4cda userinfo_page_labels l
+100a4d24 userinfo_bday_titles l
+10093e5a listmenu_styles l
+10093e9a listmenu_bgs l
+10091190 month_days l
 ```
 
 ---

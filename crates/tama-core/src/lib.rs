@@ -29,6 +29,8 @@ use ui::Scene;
 
 /// Sprite with the 16 pet body colour palettes; set n = colour n (game-spec §8).
 const COLOR_PALETTES: u16 = 206;
+/// The egg character (chr placeholder 0x1f).
+const EGG_ID: u16 = 1000;
 /// HOME anchors (character's bottom centre) for field, pet and cell zoom.
 /// World point the camera centres on in the pet layer, so the field pet lands where the
 /// close-up pet stands.
@@ -79,6 +81,10 @@ pub struct Game {
     toy_key: Option<(u8, bool, [u16; 6])>,
     /// Characters standing in for script roles 1–3 in the current scene (ChrID), see `motion::ROLE`.
     pub(crate) roles: [Option<u16>; 4],
+    /// The pet's look before an evolution (chr 0xdb, EVENT_EVOLUTION), drawn with its palette.
+    pub(crate) old_chr: Option<u16>,
+    /// The menu the birthday and planet-name editors return to (SETTINGS or USER INFO's).
+    pub(crate) edit_from: ui::Action,
     /// Planet ranks shown for planet roles 0 and 1 (rank-up: old, new).
     pub(crate) planet_ranks: Option<[u8; 2]>,
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
@@ -129,6 +135,8 @@ impl Game {
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
+            old_chr: None,
+            edit_from: ui::Action::Settings,
             calls_heard: 0,
             planet_ranks: None,
             connect: None,
@@ -152,10 +160,21 @@ impl Game {
             self.pet.weather_day = now / 86_400;
             self.pet.roll_weather(&self.data, now);
         }
-        if matches!(self.scene, Scene::Home)
-            && (self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO))
-        {
-            self.pet.evolve(&self.data);
+        if matches!(self.scene, Scene::Home) {
+            // HOME's request check (`FUN_10019b48`): METAMORPHO changes the child at once,
+            // EVOLUTION goes through its event scenes.
+            if self.pet.is_pending(pet::req::METAMORPHO) {
+                self.pet.evolve(&self.data);
+            } else if self.pet.is_pending(pet::req::EVOLUTION) {
+                self.scene = self.begin_evolution();
+            } else if self.pet.is_pending(pet::req::UNCHI) && self.level != Level::Space {
+                // EVENT_UNCHI (`FUN_1003e824`): the pet poops in front of the player.
+                self.pet.clear(pet::req::UNCHI);
+                self.scene = self.play(&[ui::script::POOP], (0, ui::OnPress::None), None, Scene::Home);
+            }
+        } else {
+            // Opening HOME again settles a poop made elsewhere without the scene (`FUN_1001abd0`).
+            self.pet.clear(pet::req::UNCHI);
         }
         self.push_frames = if held & input::PUSH != 0 { self.push_frames.saturating_add(1) } else { 0 };
         // Holding the dial button for more than 13 frames opens the lab menu (08-care-ui §2.2.3).
@@ -180,6 +199,7 @@ impl Game {
         }
         if matches!(self.scene, Scene::Home) {
             self.roles = [None; 4];
+            self.old_chr = None;
             self.planet_ranks = None;
             self.check_notices();
         }
@@ -244,6 +264,7 @@ impl Game {
         if self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO) {
             self.pet.evolve(&self.data);
         }
+        self.pet.clear(pet::req::UNCHI);
         self.render();
     }
 
@@ -337,10 +358,11 @@ impl Game {
     /// Script character id → (ChrID to draw, is the player's pet, face shown).
     pub(crate) fn resolve_chr(&self, chr: u16) -> (u16, bool, bool) {
         match chr {
+            motion::PET if self.old_chr.is_some() => (self.old_chr.unwrap_or(0), true, true),
             motion::PET if self.roles[0].is_some() => (self.roles[0].unwrap_or(0), false, true),
             // 0 = the pet, 1 = the pet inside the cell (medicine), 0xbd–0xdc = pet slots.
             motion::PET | motion::PET_IN_CELL | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
-            motion::PET_NO_FACE => (self.pet.def.chr_id, true, false),
+            motion::EGG => (self.data.character(EGG_ID).map_or(self.pet.def.chr_id, |c| c.chr_id), false, true),
             motion::PLANET => (self.planet_chr_at(self.planet_ranks.map_or(self.pet.rank, |r| r[0])), false, true),
             c if (motion::PLANET_ROLE..motion::ROLE).contains(&c) => {
                 let rank = self.planet_ranks.map_or(self.pet.rank, |r| r[((c - motion::PLANET_ROLE) as usize).min(1)]);

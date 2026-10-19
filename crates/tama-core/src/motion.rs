@@ -12,9 +12,10 @@ const MAX_STEPS: usize = 1000;
 /// Argument presence bits in the opcode word, in reading order.
 const ARGS: [(u16, usize); 6] = [(15, 0), (14, 1), (13, 2), (11, 3), (10, 4), (9, 5)];
 
-/// Character placeholder ids that mean "the player's pet". 0x1f also hides the eyes and mouth.
+/// Character placeholder ids: the player's pet, and the egg (the egg's HOME scripts and the
+/// shell in the hatching, 07-animation §3.2).
 pub const PET: u16 = 0;
-pub const PET_NO_FACE: u16 = 0x1f;
+pub const EGG: u16 = 0x1f;
 pub const PET_IN_CELL: u16 = 1;
 /// The planet (HOME_SPACE character, wearing the planet outfits).
 pub const PLANET: u16 = 2;
@@ -84,6 +85,8 @@ pub struct Node {
     y: Tween,
     /// 0–256, 256 = opaque.
     alpha: Tween,
+    /// 256 = 1.0.
+    scale: Tween,
     pub flip: bool,
     pub visible: bool,
     /// Palette set of the node's sprite (op 0x03, or set by game code).
@@ -109,6 +112,8 @@ pub struct Draw {
     /// 0–64 like the blitter.
     pub alpha: u8,
     pub palette: u8,
+    /// Size about (x, y), 256 = 1.0 (ops 0x07 / 0x09).
+    pub scale: u16,
 }
 
 impl Node {
@@ -123,6 +128,7 @@ impl Node {
             x: Tween::default(),
             y: Tween::default(),
             alpha: Tween { from: 256, to: 256, t: 0, len: 0 },
+            scale: Tween { from: 256, to: 256, t: 0, len: 0 },
             flip: false,
             visible: true,
             palette: 0,
@@ -148,6 +154,7 @@ impl Node {
         self.x.step();
         self.y.step();
         self.alpha.step();
+        self.scale.step();
         if self.done || self.paused || self.wait == KEEP as u16 {
             return;
         }
@@ -207,6 +214,8 @@ impl Node {
                 self.x.start(KEEP, c, e);
                 self.y.start(KEEP, d, e);
             }
+            0x07 => self.scale.start(c, d, e),
+            0x09 => self.scale.start(KEEP, c, e),
             0x0a | 0x0c => self.alpha.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e),
             0x0d => self.flip = c & 1 != 0,
             0x0e => self.sounds.push((a as u16, c.clamp(0, 100) as u8)),
@@ -222,7 +231,7 @@ impl Node {
             0x1b => self.loop_pc = self.pc,
             0x1c => {
                 let chr = match a as u16 {
-                    PET | PET_NO_FACE if b > 0 => ROLE + b as u16,
+                    PET | EGG if b > 0 => ROLE + b as u16,
                     PLANET if b > 0 => PLANET_ROLE + b as u16,
                     c => c,
                 };
@@ -238,7 +247,7 @@ impl Node {
                 }
             }
             0x20 => self.children.clear(),
-            // Scale, rotation, sound, scene effects and actor signals are not used yet.
+            // Rotation, sound, scene effects and actor signals are not used yet.
             _ => {}
         }
     }
@@ -278,7 +287,8 @@ impl Node {
         }
         if self.visible && self.look != Look::None {
             let alpha = (self.alpha.value().clamp(0, 256) / 4) as u8;
-            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha, palette: self.palette });
+            let scale = self.scale.value().clamp(0, u16::MAX as i32) as u16;
+            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha, palette: self.palette, scale });
         }
         for c in kids.iter().filter(|c| c.z >= 0) {
             c.draws_tinted(px, py, self.palette, out);

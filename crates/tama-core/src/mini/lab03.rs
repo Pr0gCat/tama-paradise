@@ -287,8 +287,15 @@ impl MiniGame for Lab03 {
     }
 
     fn draws(&self, out: &mut Vec<Draw>) {
-        let sprite =
-            |id, frame, x, y, alpha| Draw { look: Look::Sprite { id, frame }, x, y, flip: false, alpha, palette: 0 };
+        let sprite = |id, frame, x, y, alpha| Draw {
+            look: Look::Sprite { id, frame },
+            x,
+            y,
+            flip: false,
+            alpha,
+            palette: 0,
+            scale: 256,
+        };
         let phase = self.dist % 128;
         for k in 0..2 {
             out.push(sprite(self.bg[k], 0, 64 + phase - 128 * k as i32, 64, 64));

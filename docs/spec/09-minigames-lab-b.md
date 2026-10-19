@@ -390,6 +390,7 @@ tick `labogame_result_tick` 0x1003298c：
 
 - 已知 bug **[確認]**：result == 0 時仍對 `ctx+0x4c`（未建立 = 0）的 `+0x120` 註冊 callback（讀位址 0x120），實機無明顯症狀 **[推測]**；重製直接略過。
 - 結果畫面不顯示寵物、不改心情/飢餓、不給物品 **[確認]**。
+- 重製：`Scene::LabResult`。星星動畫 0x95e 放在星槽座標（不減 32）；落地時間取 40 frames（20 縮放 + 20 彈）而非等 `EVT 15` callback；結束回 MINI GAMES 選單。
 
 ---
 

@@ -238,6 +238,7 @@ impl MiniGame for Together06 {
                 flip: false,
                 alpha,
                 palette: 0,
+                scale: 256,
             });
             let look = Look::Sprite { id: MARKER.0, frame: 0 };
             out.push(Draw {
@@ -247,6 +248,7 @@ impl MiniGame for Together06 {
                 flip: false,
                 alpha,
                 palette: self.gauge.palette(),
+                scale: 256,
             });
         }
     }

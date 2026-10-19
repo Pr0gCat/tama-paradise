@@ -62,6 +62,7 @@ impl Pet {
         for id in [req::WAKE, req::SLEEP, req::OTEIRE].into_iter().chain(EVENTS) {
             self.clear(id);
         }
+        self.play_days = (self.play_days + 1).min(999);
         self.no_wake_today = false;
         self.no_sleep_today = false;
         self.lab_bonus = false;

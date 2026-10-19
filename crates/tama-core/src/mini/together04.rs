@@ -331,6 +331,7 @@ impl MiniGame for Together04 {
                             flip: false,
                             alpha: 64,
                             palette,
+                            scale: 256,
                         });
                     }
                 }

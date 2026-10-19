@@ -198,6 +198,7 @@ impl MiniGame for Together00 {
                     flip: side == 1,
                     alpha,
                     palette: 0,
+                    scale: 256,
                 });
             }
         }
