@@ -450,6 +450,18 @@ fn main() {
                 .collect(),
             // Game 02 boards: 15 × 15 × u32 card type at 0x1009436c.
             lab02_boards: (0..15).map(|b| std::array::from_fn(|i| u32_at(&dump, xip(0x1009_436c) + b * 60 + i * 4) as u8)).collect(),
+            lab03_layouts: (0..6)
+                .map(|l| words(0x1009_3984 + 0x98 * l, 76).iter().map(|&w| [w as u8 as i8, (w >> 8) as u8 as i8]).collect())
+                .collect(),
+            // u16[3 level][3 n][5 round] and u16[3 level][10][5] (only the first 5 rows are used).
+            lab04_launch: words(0x1009_bb5c, 45).chunks(5).map(|c| std::array::from_fn(|r| c[r] as u8)).collect(),
+            lab04_prize_brick: (0..15)
+                .map(|i| words(0x1009_1d30 + (i / 5) * 100 + (i % 5) * 10, 5))
+                .map(|c| std::array::from_fn(|r| c[r] as u8))
+                .collect(),
+            lab04_prize_chr: words(0x1009_3320, 49),
+            sin_q12: words(0x1009_a968, 1024).into_iter().map(|w| w as i16).collect(),
+            tan_q12: (0..1025).map(|i| u32_at(&dump, xip(0x1009_cbd4) + i * 4) as i32).collect(),
         },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),
         weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),

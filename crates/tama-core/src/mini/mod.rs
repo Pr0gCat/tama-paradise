@@ -39,10 +39,79 @@ impl Pet {
     }
 }
 
+/// 16-bit angles (0x10000 = one turn, 0x4000 = up), 16.16 results (09-minigames-lab-b §2.0 C10).
+pub fn cos16(m: &MiniData, a: u32) -> i32 {
+    (m.sin_q12[(((a >> 6) + 0x100) & 0x3ff) as usize] as i32) << 4
+}
+
+pub fn sin16(m: &MiniData, a: u32) -> i32 {
+    (m.sin_q12[((a & 0xffff) >> 6) as usize] as i32) << 4
+}
+
+/// `FUN_1000371c`: 12-bit quadrant search of the tan table, shifted to 16 bits.
+pub fn atan2_16(m: &MiniData, y: i32, x: i32) -> u32 {
+    if x == 0 {
+        return (if y < 0 { -0x4000 } else { 0x4000 }) as u32;
+    }
+    let q = ((y.unsigned_abs() as i64) << 12) / x.unsigned_abs() as i64;
+    let a = if q <= 0x7fff_fffe { atan_lookup(&m.tan_q12, q as i32) } else { 0x400 };
+    let a = match (x > 0, y >= 0) {
+        (true, true) => a,
+        (false, true) => 0x800 - a,
+        (false, false) => 0x800 + a,
+        (true, false) => 0x1000 - a,
+    };
+    (a << 4) as u32
+}
+
+/// `FUN_1000382c`: binary search, then the nearer neighbour.
+fn atan_lookup(tan: &[i32], q: i32) -> i32 {
+    let (mut lo, mut hi, mut mid) = (0i32, 0x400i32, 0x200i32);
+    loop {
+        let t = tan[mid as usize];
+        if q == t {
+            break;
+        }
+        if q < t { hi = mid - 1 } else { lo = mid + 1 }
+        mid = (hi + lo) >> 1;
+        if hi - lo <= 0 {
+            break;
+        }
+    }
+    let t = tan[mid as usize];
+    if q != t {
+        let n = if t < q { mid + 1 } else { mid - 1 };
+        if (q - tan[n as usize]).abs() < (q - t).abs() {
+            mid = n;
+        }
+    }
+    mid
+}
+
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::pet::tests::def;
+
+    /// Data with trig tables close to the firmware's (tests have no game.json).
+    pub fn data() -> Data {
+        let mut d = crate::evolve::tests::data();
+        let tau = std::f64::consts::TAU;
+        d.mini.sin_q12 = (0..1024).map(|i| ((i as f64 * tau / 1024.0).sin() * 4096.0).round() as i16).collect();
+        d.mini.tan_q12 = (0..1025).map(|i| if i == 1024 { i32::MAX } else { ((i as f64 * tau / 4096.0).tan() * 4096.0) as i32 }).collect();
+        d
+    }
+
+    #[test]
+    fn trig() {
+        let d = data();
+        let m = &d.mini;
+        assert_eq!((cos16(m, 0), sin16(m, 0x4000)), (0x10000, 0x10000));
+        assert_eq!(sin16(m, 0xc000), -0x10000);
+        for a in [0u32, 0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000] {
+            assert_eq!(atan2_16(m, sin16(m, a), cos16(m, a)) & 0xffff, a, "angle {a:#x}");
+        }
+    }
 
     #[test]
     fn rewards() {
@@ -59,8 +128,10 @@ mod tests {
 pub mod lab00;
 pub mod lab01;
 pub mod lab02;
+pub mod lab03;
+pub mod lab04;
 
-use crate::data::Data;
+use crate::data::{Data, MiniData};
 use crate::motion::{Draw, Node};
 
 /// Shared opening (READY / GO), script 0x952 at (64,64).
