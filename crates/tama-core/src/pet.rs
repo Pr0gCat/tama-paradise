@@ -161,6 +161,23 @@ pub struct Pet {
     pub weather_day: u64,
     #[serde(default)]
     pub in_area2: bool,
+    /// Tamas released to each field (grazing), graves, breeding state.
+    #[serde(default)]
+    pub grazing: [Vec<crate::family::Ghost>; 3],
+    #[serde(default)]
+    pub graves: Vec<crate::family::Grave>,
+    #[serde(default)]
+    pub adults_raised: [u8; 3],
+    #[serde(default)]
+    pub breeds_today: u8,
+    #[serde(default)]
+    pub seen_partners: Vec<u16>,
+    /// Looks inherited from a breeding partner (drawn instead of the own character's eyes).
+    #[serde(default)]
+    pub looks: Option<u16>,
+    /// Egg-hunt slots used today per field (13 bits each).
+    #[serde(default)]
+    pub hunt_used: [u32; 3],
     /// UNCHI METER (0x18000d13), 0–60.
     #[serde(default)]
     pub unchi_meter: u8,
@@ -279,6 +296,13 @@ impl Pet {
             weather: 0,
             weather_day: 0,
             in_area2: false,
+            hunt_used: [0; 3],
+            grazing: Default::default(),
+            graves: Vec::new(),
+            adults_raised: [0; 3],
+            breeds_today: 0,
+            seen_partners: Vec::new(),
+            looks: None,
             unchi_meter: 0,
             inventory: Vec::new(),
             no_wake_today: false,
@@ -341,6 +365,7 @@ impl Pet {
             req::DEAD => {
                 self.clear(req::DYING);
                 self.cond = Cond::Dead;
+                self.add_grave();
             }
             req::ONAKA => {
                 if self.death_by_hungry == 0 {
@@ -507,6 +532,8 @@ impl Pet {
         }
         self.no_wake_today = false;
         self.no_sleep_today = false;
+        self.hunt_used = [0; 3];
+        self.breeds_today = 0;
         for id in calendar_events(t) {
             self.raise(id);
         }
@@ -860,8 +887,17 @@ impl Pet {
     pub fn clean(&mut self) -> usize {
         let n = self.unchi.len();
         self.unchi.clear();
+        // Grazing tamas' poop adds a bonus by how long since the last cleaning (`FUN_100108d4`).
+        let k = (0..3).map(|f| self.grazing_in(f)).sum::<usize>().min(12);
+        let bonus = match self.clean_timer {
+            3600..=7199 => 2 * k,
+            7200..=14_399 => k,
+            _ => 0,
+        };
+        let reward = (n + bonus) as u32;
         self.count_mission(crate::progress::m::CLEANINGS, 1);
-        self.count_mission(crate::progress::m::POOP_CLEANED, n as u32);
+        self.count_mission(crate::progress::m::POOP_CLEANED, reward);
+        self.unchi_meter = (self.unchi_meter as u32 + reward).min(60) as u8;
         self.clean_timer = 0;
         self.clear(req::UNCHI);
         n

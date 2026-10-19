@@ -236,6 +236,14 @@ impl Pet {
         fresh.areas = self.areas;
         fresh.unchi_meter = self.unchi_meter;
         fresh.inventory = std::mem::take(&mut self.inventory);
+        fresh.weather = self.weather;
+        fresh.weather_day = self.weather_day;
+        fresh.hunt_used = self.hunt_used;
+        fresh.grazing = std::mem::take(&mut self.grazing);
+        fresh.graves = std::mem::take(&mut self.graves);
+        fresh.adults_raised = self.adults_raised;
+        fresh.breeds_today = self.breeds_today;
+        fresh.seen_partners = std::mem::take(&mut self.seen_partners);
         *self = fresh;
     }
 }
@@ -264,7 +272,7 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![] }
+        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![], hunt_finds: vec![] }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;

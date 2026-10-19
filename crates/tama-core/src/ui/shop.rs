@@ -7,6 +7,16 @@ use crate::Game;
 
 mod t {
     pub const INFORMATION: u16 = 0x00;
+    pub const TAMA_SITTER: u16 = 0x16;
+    pub const NEW_EGG: u16 = 0x18;
+    pub const BREED: u16 = 0x19;
+    pub const BRED: u16 = 0x77;
+    pub const CAUSE: u16 = 0x79;
+    pub const CAUSES: [u16; 3] = [0x7a, 0x7c, 0x7d];
+    pub const RELEASE: u16 = 0xda;
+    pub const RELEASED: u16 = 0xdd;
+    pub const NO_MORE_TODAY: u16 = 0xde;
+    pub const SEE_YOU_AGAIN: u16 = 0xe2;
     pub const COLLECTION: u16 = 0x01;
     pub const MINI_GAMES: u16 = 0x02;
     pub const SHOP: u16 = 0x03;
@@ -50,7 +60,7 @@ impl Game {
                     (t::MINI_GAMES, None),
                     (t::SHOP, Some(Action::Shop)),
                     (t::HELP, Some(Action::Help)),
-                    (t::COLLECTION, None),
+                    (t::COLLECTION, Some(Action::Graves)),
                     (t::SETTINGS, None),
                 ],
                 idx: 2,
@@ -116,7 +126,42 @@ impl Game {
                 self.level = crate::Level::Field;
                 Scene::Home
             }
-            Action::Help => Scene::Ask { text: t::CALL_SITTER, yes: true, on_yes: Action::CallSitter, back: Action::Lab },
+            Action::Help => {
+                let adult = self.pet.def.stage == 5;
+                Scene::Menu {
+                    items: vec![
+                        (t::TAMA_SITTER, Some(Action::Sitter)),
+                        (t::NEW_EGG, adult.then_some(Action::Release)),
+                        (t::BREED, adult.then_some(Action::Breed)),
+                    ],
+                    idx: 0,
+                    back: Some(Action::Lab),
+                }
+            }
+            Action::Sitter => Scene::Ask { text: t::CALL_SITTER, yes: true, on_yes: Action::CallSitter, back: Action::Help },
+            Action::Release => Scene::Ask { text: t::RELEASE, yes: true, on_yes: Action::ReleaseNow, back: Action::Help },
+            Action::ReleaseNow => {
+                self.pet.release_to_field(&self.data);
+                Scene::Message { text: t::RELEASED, then: Box::new(Scene::Home) }
+            }
+            Action::Breed => {
+                if self.pet.breeds_today >= crate::family::BREEDS_PER_DAY {
+                    return self.message(t::NO_MORE_TODAY, Action::Help);
+                }
+                let cands = self.pet.breed_candidates(&self.data);
+                if cands.is_empty() {
+                    return self.message(t::UNAVAILABLE, Action::Help);
+                }
+                Scene::Breed { cands, idx: 0 }
+            }
+            Action::BreedWith(id) => {
+                match self.pet.breed(&self.data, id) {
+                    Some(true) => Scene::Message { text: t::BRED, then: Box::new(Scene::Home) },
+                    Some(false) => Scene::Message { text: t::SEE_YOU_AGAIN, then: Box::new(Scene::Home) },
+                    None => self.message(t::NO_MORE_TODAY, Action::Help),
+                }
+            }
+            Action::Graves => Scene::Graves { idx: 0 },
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,
                 Err(ShopError::NotEnoughPoints) => self.message(t::NOT_ENOUGH_POINTS, Action::Lab),
@@ -242,6 +287,19 @@ impl Game {
         self.draw_number(self.pet.points, 108, 8, 1);
     }
 
+    /// One grave: the tama, cause of death (illness / hunger / old age) and age.
+    pub(super) fn draw_grave(&mut self, i: usize) {
+        self.draw_list(&[], 0, Some(t::CAUSE));
+        let Some(g) = self.pet.graves.get(i).copied() else {
+            self.draw_text(0xe7, 64, 70, true, 0);
+            return;
+        };
+        self.draw_character(g.ghost.id, Some(g.ghost.color), 64, 92);
+        let cause = if g.days >= 30 { t::CAUSES[2] } else if g.cause == 1 { t::CAUSES[0] } else { t::CAUSES[1] };
+        self.draw_text(cause, 64, 106, true, 0);
+        self.draw_number(g.days as u32, 64, 120, 0);
+    }
+
     /// One mission: description, progress / target, "CLEARED" when paid out.
     pub(super) fn draw_mission(&mut self, i: usize) {
         use crate::progress::{TARGETS, TEXT_FIRST};
@@ -292,6 +350,32 @@ mod tests {
     fn press(g: &mut Game, bits: u8) {
         g.frame(NOON, bits);
         g.frame(NOON, 0);
+    }
+
+    #[test]
+    fn breeding_through_the_help_menu() {
+        let mut g = game();
+        let mut adult = crate::pet::tests::def(4119, 5, 60, 30, 0);
+        adult.rank = 2;
+        g.data.characters.push(adult);
+        for i in 0..16u16 {
+            let mut c = crate::pet::tests::def(0x1016 + i, 5, 60, 30, 0);
+            c.rank = 2;
+            g.data.characters.push(c);
+        }
+        g.pet.def = adult;
+        g.pet.field = 1;
+        g.pet.status = crate::pet::status::LOVE;
+        g.scene = g.open(super::super::Action::Help);
+        press(&mut g, crate::input::A); // NEW EGG
+        press(&mut g, crate::input::A); // BREED
+        press(&mut g, B);
+        assert!(matches!(g.scene, super::Scene::Breed { .. }));
+        press(&mut g, B); // THIS TAMA?
+        press(&mut g, B); // YES
+        assert!(matches!(g.scene, super::Scene::Message { text: 0x77, .. }), "LOVE makes breeding certain");
+        assert_eq!((g.pet.def.id, g.pet.generation), (1000, 2));
+        assert_eq!(g.pet.grazing_in(1), 1);
     }
 
     #[test]

@@ -184,6 +184,10 @@ pub struct Data {
     pub weather_months: Vec<[u16; 6]>,
     #[serde(default)]
     pub weather_patterns: Vec<[u8; 5]>,
+    /// Egg hunt finds `[sprite, item, collection bit]`, index field*8 + kind*4 + 0..3;
+    /// entry 24 is the GOLDEN PEACH bonus (XIP 0x100a0600).
+    #[serde(default)]
+    pub hunt_finds: Vec<[u16; 3]>,
 }
 
 impl Data {

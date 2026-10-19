@@ -2,7 +2,10 @@
 
 pub mod data;
 pub(crate) mod evolve;
+pub mod family;
 pub mod home;
+pub mod hunt;
+pub mod minigame;
 pub mod motion;
 pub mod pet;
 pub mod progress;
@@ -255,6 +258,7 @@ impl Game {
             _ => self.draw_field_bg(),
         }
         if self.level == Level::Field {
+            self.draw_grazing();
             self.draw_poop();
         }
         let (ax, ay) = ANCHOR[self.level as usize];

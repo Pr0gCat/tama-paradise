@@ -111,6 +111,12 @@ pub(crate) enum Action {
     Missions,
     Fields,
     SwitchField(u8),
+    Release,
+    ReleaseNow,
+    Breed,
+    BreedWith(u16),
+    Graves,
+    Sitter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -154,6 +160,10 @@ pub(crate) enum Scene {
     Code { digits: [u8; 8], pos: usize },
     /// Mission list (lab menu INFORMATION).
     Missions { idx: usize },
+    /// Breeding candidates.
+    Breed { cands: Vec<u16>, idx: usize },
+    /// Grave records (lab menu COLLECTION).
+    Graves { idx: usize },
     FoodCategory { idx: usize },
     FoodList { cat: u8, items: Vec<u16>, idx: usize },
     Confirm { cat: u8, items: Vec<u16>, idx: usize, yes: bool },
@@ -225,6 +235,8 @@ impl Game {
                 | Scene::Ask { .. }
                 | Scene::Code { .. }
                 | Scene::Missions { .. }
+                | Scene::Breed { .. }
+                | Scene::Graves { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
             if pressed & C != 0 {
@@ -274,6 +286,32 @@ impl Game {
                 }
             }
             Scene::Code { digits, pos } => self.update_code(digits, pos, pressed),
+            Scene::Breed { cands, mut idx } => {
+                let n = cands.len();
+                if pressed & (A | UP) != 0 {
+                    idx = (idx + 1) % n;
+                }
+                if pressed & DOWN != 0 {
+                    idx = (idx + n - 1) % n;
+                }
+                if pressed & C != 0 {
+                    self.open(Action::Help)
+                } else if pressed & (B | PUSH) != 0 {
+                    Scene::Ask { text: 0xdb, yes: true, on_yes: Action::BreedWith(cands[idx]), back: Action::Breed }
+                } else {
+                    Scene::Breed { cands, idx }
+                }
+            }
+            Scene::Graves { mut idx } => {
+                let n = self.pet.graves.len().max(1);
+                if pressed & (A | UP) != 0 {
+                    idx = (idx + 1) % n;
+                }
+                if pressed & DOWN != 0 {
+                    idx = (idx + n - 1) % n;
+                }
+                if pressed & C != 0 { self.open(Action::Lab) } else { Scene::Graves { idx } }
+            }
             Scene::Missions { mut idx } => {
                 if pressed & (A | UP) != 0 {
                     idx = (idx + 1) % 22;
@@ -618,6 +656,34 @@ impl Game {
         }
     }
 
+    /// Draw a character (TamaID) standing at (x, y) in its large idle pose, with `color`.
+    pub(crate) fn draw_character(&mut self, id: u16, color: Option<u8>, x: i32, y: i32) {
+        self.draw_character_pose(id, color, 1, x, y);
+    }
+
+    pub(crate) fn draw_character_pose(&mut self, id: u16, color: Option<u8>, anim: u16, x: i32, y: i32) {
+        let Some(def) = self.data.character(id) else { return };
+        let Some(parts) = self.data.model(def.chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else { return };
+        let color = color.filter(|&c| c < 16).unwrap_or(def.color) as usize;
+        for part in parts {
+            if !matches!(part.kind, 0 | 1 | 15) {
+                continue;
+            }
+            let pal = (part.kind == 0 && def.stage > 1 && color < 16).then_some((206, color));
+            self.screen.blit(part.sprite, part.frame, x + part.x as i32, y + part.y as i32, part.alpha, part.flip, pal);
+        }
+    }
+
+    /// Grazing tamas walking around the field (small poses; up to 4).
+    pub(crate) fn draw_grazing(&mut self) {
+        const SPOTS: [(i32, i32); 4] = [(24, 72), (104, 76), (36, 112), (96, 116)];
+        let shown = self.pet.grazing_shown(self.pet.field);
+        let bob = (self.frame_count / 15 % 2) as u16;
+        for (g, &(x, y)) in shown.iter().zip(SPOTS.iter()) {
+            self.draw_character_pose(g.id, Some(g.color), 30 + bob, x, y);
+        }
+    }
+
     pub(crate) fn draw_poop(&mut self) {
         let old = self.pet.unchi.iter().filter(|&&a| a >= crate::pet::UNCHI_OLD).count();
         let frame = (self.frame_count / 15 % 2) as u16;
@@ -700,6 +766,15 @@ impl Game {
             }
             Scene::Missions { idx } => {
                 self.draw_mission(*idx);
+                true
+            }
+            Scene::Breed { cands, idx } => {
+                self.draw_list(&[], 0, Some(0x19));
+                self.draw_character(cands[*idx], None, 64, 112);
+                true
+            }
+            Scene::Graves { idx } => {
+                self.draw_grave(*idx);
                 true
             }
         };
