@@ -257,6 +257,8 @@ impl Game {
         let (text, how) = match outcome {
             social::Outcome::Play(n) => (0x73, n as usize),
             social::Outcome::Fight => (0x74, 4),
+            social::Outcome::Ate => (0x75, 5),
+            social::Outcome::Eaten => (0x76, 6),
             social::Outcome::Married => (0x77, 3),
         };
         // The friend's tama plays role 1 in the playdate animation.

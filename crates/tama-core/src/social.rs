@@ -43,14 +43,25 @@ pub struct Friend {
 pub enum Outcome {
     Play(u8),
     Fight,
+    /// This tama ate the friend's / was eaten by it (HOW PLAY 5 / 6).
+    Ate,
+    Eaten,
     Married,
 }
+
+/// Character flags (the table's "Gender" field, def +0x10, `FUN_1008b53c`): can eat others, can
+/// be eaten, cannot marry.
+pub const CAN_EAT: u8 = 1;
+pub const EDIBLE: u8 = 2;
+pub const NO_MARRY: u8 = 4;
 
 impl Outcome {
     fn code(self) -> u8 {
         match self {
             Outcome::Play(_) => 0,
             Outcome::Fight => 1,
+            Outcome::Ate => 2,
+            Outcome::Eaten => 3,
             Outcome::Married => 4,
         }
     }
@@ -141,13 +152,25 @@ impl Pet {
         }
         let them = data.character(other.tama)?;
         let mine = self.friend(other.device_uid).map_or(0, |f| f.friendship);
-        let recorded = if mine == 0 || other.friendship == 0 { 0 } else { mine.max(other.friendship) };
+        // Both sides' records count (either 0 → 0). A shared friend code is made for nobody in
+        // particular and carries 0, so then only our own record is known and counts alone.
+        let recorded = match (mine, other.friendship) {
+            (0, _) => 0,
+            (m, 0) => m,
+            (m, t) => m.max(t),
+        };
         let friendship = recorded.max(base_friendship(self.def.rank, them.rank));
-        // HOW PLAY: eating needs character flags the data does not carry yet, so it never happens.
+        // HOW PLAY, in the firmware's order: eat, be eaten, fight, play.
+        let (mine_f, theirs) = (self.def.gender, them.gender);
         let fight = (self.onaka < 3 || self.gokigen < 6) && (other.onaka < 3 || other.gokigen < 6);
-        let outcome = if fight {
+        let outcome = if mine_f & CAN_EAT != 0 && theirs & EDIBLE != 0 && self.onaka <= 5 {
+            Outcome::Ate
+        } else if mine_f & EDIBLE != 0 && theirs & CAN_EAT != 0 && other.onaka < 6 {
+            Outcome::Eaten
+        } else if fight {
             Outcome::Fight
-        } else if marry && self.def.stage == 5 && them.stage == 5 && recorded == 4 {
+        } else if marry && self.def.stage == 5 && them.stage == 5 && recorded == 4 && (mine_f | theirs) & NO_MARRY == 0
+        {
             Outcome::Married
         } else {
             Outcome::Play(friendship.saturating_sub(1))
@@ -159,6 +182,8 @@ impl Pet {
         self.remember_friend(other, grown, outcome.code());
         match outcome {
             Outcome::Fight if self.cond == Cond::Normal => self.raise(req::INJURY),
+            // Being eaten fills the UNCHI METER by 6 (`FUN_1006706c`).
+            Outcome::Eaten => self.unchi_meter = (self.unchi_meter + 6).min(crate::decor::TRAVEL_COST),
             Outcome::Married => self.marry(data, other),
             _ => {}
         }
@@ -309,6 +334,40 @@ mod tests {
         let cb = b.card(1, Some(1));
         assert_eq!(a.playdate(&d, &cb, true), Some(Outcome::Married));
         assert_eq!((a.def.id, a.looks, a.generation), (1000, Some(4122), 2));
+    }
+
+    #[test]
+    fn best_friends_can_marry_with_a_shared_friend_code() {
+        let d = data();
+        let (mut a, mut b) = (pet(&d, 4119, 1), pet(&d, 4122, 2));
+        for _ in 0..3 {
+            let (ca, cb) = (a.card(6, None), b.card(1, None));
+            a.playdate(&d, &cb, false);
+            b.playdate(&d, &ca, false);
+        }
+        assert_eq!(a.friend(b.device_uid).map(|f| f.friendship), Some(4));
+        assert_eq!(a.playdate(&d, &b.card(1, None), true), Some(Outcome::Married));
+    }
+
+    #[test]
+    fn an_eater_eats_an_edible_friend() {
+        let mut d = data();
+        for c in d.characters.iter_mut() {
+            match c.id {
+                4119 => c.gender = CAN_EAT,
+                4122 => c.gender = EDIBLE,
+                _ => {}
+            }
+        }
+        let (mut a, mut b) = (pet(&d, 4119, 1), pet(&d, 4122, 2));
+        a.def = d.character(4119).unwrap();
+        b.def = d.character(4122).unwrap();
+        a.onaka = 4;
+        b.onaka = 4;
+        assert_eq!(a.playdate(&d, &b.card(1, None), false), Some(Outcome::Ate));
+        let meter = b.unchi_meter;
+        assert_eq!(b.playdate(&d, &a.card(6, None), false), Some(Outcome::Eaten));
+        assert_eq!(b.unchi_meter, meter + 6);
     }
 
     #[test]

@@ -108,6 +108,12 @@ impl Pet {
     /// Chance (0–100+) that a breeding attempt with `partner` succeeds.
     pub fn breed_chance(&self, data: &Data, partner: u16) -> i32 {
         let Some(p) = data.character(partner) else { return 0 };
+        // An eater with an edible partner, or a tama that cannot marry, never breeds.
+        use crate::social::{CAN_EAT, EDIBLE, NO_MARRY};
+        let flags = self.def.gender | p.gender;
+        if flags & (CAN_EAT | EDIBLE) == CAN_EAT | EDIBLE || flags & NO_MARRY != 0 {
+            return 0;
+        }
         let mut chance = if self.def.rank == 5 {
             80
         } else {
@@ -248,5 +254,22 @@ mod tests {
         }
         assert_eq!(p.graves.len(), 5);
         assert_eq!(p.graves[0].days, 2);
+    }
+
+    #[test]
+    fn eaters_and_edible_partners_never_breed() {
+        let mut d = crate::evolve::tests::data();
+        let mut a = crate::pet::tests::def(4119, 5, 60, 30, 0);
+        a.gender = crate::social::CAN_EAT;
+        let mut b = crate::pet::tests::def(4122, 5, 60, 30, 0);
+        b.gender = crate::social::EDIBLE;
+        d.characters.extend([a, b]);
+        let mut p = Pet::new(a, 1);
+        p.status = crate::pet::status::LOVE;
+        assert_eq!(p.breed_chance(&d, 4122), 0);
+        b.gender = 0;
+        d.characters.retain(|c| c.id != 4122);
+        d.characters.push(b);
+        assert!(p.breed_chance(&d, 4122) > 100);
     }
 }
