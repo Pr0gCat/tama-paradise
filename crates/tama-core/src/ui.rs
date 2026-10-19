@@ -363,11 +363,17 @@ impl Game {
                 if pressed & C != 0 { self.open(back) } else { Scene::Graves { idx, back } }
             }
             Scene::Mini { mut session, lab } => {
-                if pressed & C != 0 && matches!(session.phase, crate::mini::Phase::Play) {
+                if pressed & C != 0 && session.can_quit() {
                     self.sfx(2, 100);
                     self.after_mini(None, lab)
                 } else {
                     match session.update(pressed, self.held, &self.data, &mut self.sounds) {
+                        Some(r) if session.event == Some(req::METEOR) => {
+                            // Back to HOME on the field layer (`labo05_tick` 0xdae).
+                            self.pet.finish_meteor(r > 0);
+                            self.level = Level::Field;
+                            Scene::Home
+                        }
                         Some(r) => self.after_mini(Some(r), lab),
                         None => Scene::Mini { session, lab },
                     }
@@ -485,6 +491,12 @@ impl Game {
             return;
         }
         let (r, period) = (r % 100, crate::pet::Pet::period(now));
+        if !sleeping && p.is_pending(req::METEOR) && period == 1 && r < 30 {
+            let game = crate::mini::lab05::Lab05::event(self.data.mini.lab05_event.clone());
+            let session = crate::mini::Session { event: Some(req::METEOR), ..crate::mini::Session::new(Box::new(game), None) };
+            self.scene = Scene::Mini { session: session.with_intro(crate::mini::lab05::EVENT_OPENING), lab: None };
+            return;
+        }
         let ev = if p.is_pending(req::EVE) && sleeping && hour > 18 {
             Some((req::EVE, script::EVE))
         } else if sleeping {

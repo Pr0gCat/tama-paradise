@@ -1,6 +1,6 @@
 //! Lab game 02: memory cards with a bomb, "MATCHING MEALS!" (09-minigames-lab-a §2.3).
 
-use super::{sprite, Hud, MiniGame};
+use super::{push_sprite, Hud, MiniGame};
 use crate::data::Data;
 use crate::input::{A, B, DOWN, PUSH, UP};
 use crate::motion::{Draw, Node};
@@ -238,16 +238,16 @@ impl MiniGame for Lab02 {
     }
 
     fn draws(&self, out: &mut Vec<Draw>) {
-        sprite(out, BACKGROUND, 0, 64, 64, 64);
+        push_sprite(out, BACKGROUND, 0, 64, 64, 64);
         for i in 0..15 {
             let (x, y) = card_xy(i);
             let id = if face_up(self.state[i]) { FACE + self.cards[i] as u16 } else { BACK };
-            sprite(out, id, 0, x, y, 64);
+            push_sprite(out, id, 0, x, y, 64);
         }
         self.diver.draws(0, 0, out);
         if self.frame > MEMORISE && !self.bomb {
             let (x, y) = card_xy(self.cursor);
-            sprite(out, CURSOR, 0, x, y, 64);
+            push_sprite(out, CURSOR, 0, x, y, 64);
         }
     }
 

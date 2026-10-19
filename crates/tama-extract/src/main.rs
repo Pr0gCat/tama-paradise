@@ -264,6 +264,28 @@ fn write_sprites(dump: &[u8], dir: &std::path::Path) -> (usize, usize) {
     (count - skipped, skipped)
 }
 
+/// Game 05 meteor tables (RW data, packed in encrypted PRAM at 0xe6a0 and unpacked to SRAM at boot,
+/// so not readable from the flash dump): 40 rows × 3 lanes of {u8 present, u8 speed}. One digit per
+/// lane: 0 = empty, else 1 + speed. SRAM 0x18000046/136/226 (EASY), 0x18000720/810/900 (NORMAL),
+/// 0x1800040a/4fa/5ea (HARD), 0x18000316 (meteor event). Decoded by docs/spec/tools/extract_minigames_b.py.
+const METEORS: [&str; 10] = [
+    "100000000001000000100000010000001000100001010100001010000100002020002000200020002200020200003030000300003000030300030000",
+    "001000000010000000100000000001000100010001100010100010001000020002200020200002020200000020300030003000030000300030003000",
+    "010000100000000010000000001000010001010100001010000100010001020200002200002020000002200020003000030300000030003000030000",
+    "010000100000001000010000000100001010000100001010100010000101020000200002020200000220000022000030300003000300003030300000",
+    "001000000010000100000001000010000100001100001010101000010100002000022000202000020200020002000003300030000300030003030000",
+    "100000010000000001000100010001010001000010100000011000010100000202000020200000022000200020000003030300030300003300030000",
+    "010000001100010001010001100010001000011000110000011000101000020200002020000200020002000022000300000030003030300030003000",
+    "001000010000100001100000010001010000100010101000010001000110000022000020200200002020002020303000030003300003030300030000",
+    "100000010000100000101000010001000110000011000010100001010001020200000202000220000202000020003030000300003030003330003000",
+    "100000000001000000100000010000001000100000001010100001010000202000020202000020000200020200003030030300300003033300030000",
+];
+
+fn meteor_rows(s: &str) -> Vec<[[u8; 2]; 3]> {
+    let cell = |c: u8| if c == b'0' { [0, 0] } else { [1, c - b'1'] };
+    s.as_bytes().chunks(3).map(|r| [cell(r[0]), cell(r[1]), cell(r[2])]).collect()
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let [_, dump_path, out_dir] = &args[..] else {
@@ -462,6 +484,16 @@ fn main() {
             lab04_prize_chr: words(0x1009_3320, 49),
             sin_q12: words(0x1009_a968, 1024).into_iter().map(|w| w as i16).collect(),
             tan_q12: (0..1025).map(|i| u32_at(&dump, xip(0x1009_cbd4) + i * 4) as i32).collect(),
+            lab05_layouts: METEORS[..9].iter().map(|s| meteor_rows(s)).collect(),
+            lab05_event: meteor_rows(METEORS[9]),
+            // Game 06 course pointers at 0x10092d70: 9 × {u32 ptr, u16 count, u16 pad}; objects {x, y, type}.
+            lab06_courses: (0..9)
+                .map(|i| {
+                    let e = xip(0x1009_2d70) + i * 8;
+                    let w = words(u32_at(&dump, e) as usize, u16_at(&dump, e + 4) as usize * 3);
+                    w.chunks(3).map(|o| [o[0] as i16, o[1] as i16, o[2] as i16]).collect()
+                })
+                .collect(),
         },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),
         weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),

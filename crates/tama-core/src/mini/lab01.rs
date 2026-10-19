@@ -2,7 +2,7 @@
 //!
 //! Heights are 16.16 fixed point measured upwards from the screen bottom, like the firmware.
 
-use super::{sprite, Hud, MiniGame};
+use super::{push_sprite, Hud, MiniGame};
 use crate::data::Data;
 use crate::input::{A, B, DOWN, UP};
 use crate::motion::{Draw, Node};
@@ -396,19 +396,19 @@ impl MiniGame for Lab01 {
     fn draws(&self, out: &mut Vec<Draw>) {
         // Curtain parallax at 1/4 speed (`FUN_10009c34`).
         let v = (self.scroll >> 2) % 256;
-        sprite(out, BACKGROUND, 0, 64, v + if v < 128 { 64 } else { -192 }, 64);
-        sprite(out, BACKGROUND, 0, 64, v - 64, 64);
+        push_sprite(out, BACKGROUND, 0, 64, v + if v < 128 { 64 } else { -192 }, 64);
+        push_sprite(out, BACKGROUND, 0, 64, v - 64, 64);
         let frame = if !self.air { 0 } else if self.time < 1 && self.falling { 2 } else { 1 };
-        sprite(out, PLAYER, frame, (self.px >> 16) + self.jitter, (96 * ONE - self.py) >> 16, 64);
+        push_sprite(out, PLAYER, frame, (self.px >> 16) + self.jitter, (96 * ONE - self.py) >> 16, 64);
         for p in self.plats.iter().flatten() {
             let frame = (p.stepped != 0) as u16;
-            sprite(out, PLAT_SPRITE[p.kind as usize], frame, (p.x + p.offset) >> 16, 128 - (p.y >> 16), (p.alpha >> 10) as u8);
+            push_sprite(out, PLAT_SPRITE[p.kind as usize], frame, (p.x + p.offset) >> 16, 128 - (p.y >> 16), (p.alpha >> 10) as u8);
         }
         // Height gauge (`FUN_100245ec`): marker from y 120 (start) to 8 (goal).
-        sprite(out, GAUGE, 0, 8, 64, 64);
+        push_sprite(out, GAUGE, 0, 8, 64, 64);
         let frac = ((self.best as i64) << 16) / GOAL as i64;
         let y = ((120 * ONE) as i64 + (((-112 * ONE) as i64 * frac) >> 16)) >> 16;
-        sprite(out, MARKER, 0, 8, y as i32, 64);
+        push_sprite(out, MARKER, 0, 8, y as i32, 64);
         if !self.countdown.done {
             self.countdown.draws(0, 0, out);
         }

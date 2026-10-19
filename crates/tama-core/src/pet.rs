@@ -33,6 +33,7 @@ pub mod req {
     pub const NAP: u8 = 0x1a;
     pub const REDU_CM: u8 = 0x1b;
     pub const NEWYEAR: u8 = 0x07;
+    pub const METEOR: u8 = 0x1e;
     pub const SHOOTINGSTAR: u8 = 0x1f;
     pub const UFO: u8 = 0x20;
     pub const SANTA: u8 = 0x21;
@@ -234,13 +235,15 @@ pub fn date(t: u64) -> (i64, u32, u32) {
     (yoe + era * 400 + (m <= 2) as i64, m, d)
 }
 
-/// Calendar events of the day (`FUN_10083984`). The meteor mini-game and birthdays are not
-/// implemented, so METEOR and BIRTHDAY are never raised.
+/// Calendar events of the day (`FUN_10083984`). Birthdays are not implemented, so BIRTHDAY is never raised.
 fn calendar_events(t: u64) -> Vec<u8> {
     let (_, m, d) = date(t);
     let mut ev = Vec::new();
     if (m, d) == (1, 1) {
         ev.push(req::NEWYEAR);
+    }
+    if d % 10 == 9 {
+        ev.push(req::METEOR);
     }
     if d % 7 == 0 {
         ev.push(req::SHOOTINGSTAR);
@@ -257,7 +260,7 @@ fn calendar_events(t: u64) -> Vec<u8> {
     ev
 }
 
-pub const EVENTS: [u8; 6] = [req::NEWYEAR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
+pub const EVENTS: [u8; 7] = [req::NEWYEAR, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
 
 fn no_color() -> u8 {
     NO_COLOR
@@ -578,6 +581,21 @@ impl Pet {
             _ => {}
         }
         self.mark_done(id);
+    }
+
+    /// End of the meteor event game (`labo05_tick` 0xdad): ±10 mood; a hit also injures the pet.
+    pub fn finish_meteor(&mut self, survived: bool) {
+        if survived {
+            self.add_gokigen(10);
+        } else {
+            self.add_gokigen(-10);
+            if self.cond == Cond::Normal {
+                self.raise(req::INJURY);
+            }
+            // ponytail: the original also removes one of each placed decoration (`FUN_10016900`);
+            // add it with decoration placement.
+        }
+        self.mark_done(req::METEOR);
     }
 
     /// Advance to wall-clock `now` (`care_time_update` 0x10012c90).
@@ -1237,6 +1255,19 @@ pub(crate) mod tests {
         assert_eq!(p.complete_effect(), Some(req::HAPPY));
         run(&mut p, 3600);
         assert_eq!(p.gokigen, 20);
+    }
+
+    #[test]
+    fn meteor_day_and_outcomes() {
+        let ninth = 20_806 * DAY + 12 * 3600; // 2026-12-19
+        assert_eq!(date(ninth).2, 19);
+        assert_eq!(calendar_events(ninth), vec![req::METEOR, req::SANTA]);
+        let mut p = Pet::new(KID(), 1);
+        p.gokigen = 15;
+        p.raise(req::METEOR);
+        p.finish_meteor(false);
+        assert_eq!((p.gokigen, p.cond), (5, Cond::Injury));
+        assert!(!p.is_pending(req::METEOR) && p.is_pending(req::INJURY));
     }
 
     #[test]

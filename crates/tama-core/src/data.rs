@@ -228,6 +228,7 @@ pub struct Destination {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MiniData {
     /// Game 00: `[level*3 + n]` boards of rows × 6 holes (non-zero = a baby wakes), 24 rows read.
+    #[serde(default)]
     pub lab00_boards: Vec<Vec<[i16; 6]>>,
     /// Game 01: `[level*3 + n]` maps as platforms `[x, height above the start line, type]` in
     /// spawn order, ending with the goal platform (64, 6400, 0).
@@ -253,6 +254,15 @@ pub struct MiniData {
     pub sin_q12: Vec<i16>,
     #[serde(default)]
     pub tan_q12: Vec<i32>,
+    /// Game 05: `[level*3 + n]` meteor tables of 40 rows × 3 lanes `[present, speed 0..2]`.
+    #[serde(default)]
+    pub lab05_layouts: Vec<Vec<[[u8; 2]; 3]>>,
+    /// Game 05 meteor event table (SRAM 0x18000316).
+    #[serde(default)]
+    pub lab05_event: Vec<[[u8; 2]; 3]>,
+    /// Game 06: `[level*3 + n]` courses of objects `[x distance, y, type]` (type 0 obstacle, 9 coin), sorted by x.
+    #[serde(default)]
+    pub lab06_courses: Vec<Vec<[i16; 3]>>,
 }
 
 impl Data {
