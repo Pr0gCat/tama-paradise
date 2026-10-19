@@ -26,6 +26,14 @@
   button.on { background: var(--btn-on); }
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
+  .row { display: flex; gap: 8px; }
+  dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px); }
+  dialog h2 { margin: 0 0 8px; font: 600 18px system-ui; }
+  dialog label { display: block; margin: 8px 0 4px; font: 14px system-ui; }
+  dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
+    font: 14px ui-monospace, monospace; background: #1c1c22; color: var(--fg); border: 1px solid #555; border-radius: 6px; }
+  dialog .check input { display: inline; width: auto; }
+  dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
 </style>
 <canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
 <div class="pad">
@@ -36,7 +44,26 @@
   <button data-k="0x02">B</button>
   <button data-k="0x04">C</button>
 </div>
-<button id="mute" class="small" aria-pressed="false">♪ sound on</button>
+<div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
+  <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
+<dialog id="friends">
+  <form method="dialog">
+    <h2>Friends</h2>
+    <label>Your friend code<input id="my-code" readonly></label>
+    <button type="button" id="copy-code" class="small">Copy</button>
+    <label>Friend's code<input id="their-code" autocomplete="off" spellcheck="false" placeholder="TP1-…"></label>
+    <label class="check"><input type="checkbox" id="marry"> Agree to marry (adults, best friends)</label>
+    <button type="button" id="play" class="small">Playdate</button>
+    <hr>
+    <label>Gift an item<select id="gift-item"></select></label>
+    <button type="button" id="gift" class="small">Make gift code</button>
+    <input id="gift-code" readonly>
+    <label>Receive a gift<input id="recv-code" autocomplete="off" spellcheck="false" placeholder="TG1-…"></label>
+    <button type="button" id="recv" class="small">Receive</button>
+    <p id="friends-msg" role="status"></p>
+    <button class="small">Close</button>
+  </form>
+</dialog>
 <pre id="s"></pre>
 <script type="module">
   import init, { Tama } from "./pkg/tama_web.js";
@@ -105,6 +132,28 @@
     swipeX = null;
   };
   c.onpointercancel = () => { swipeX = null; };
+  // Friends: exchange friend codes / gift codes as text (the original uses a link cable).
+  const $ = id => document.getElementById(id);
+  const dlg = $("friends"), msg = t => { $("friends-msg").textContent = t; };
+  $("friends-btn").onclick = () => {
+    $("my-code").value = game.friend_code();
+    $("gift-item").replaceChildren(...JSON.parse(game.inventory()).map(([id, n, name]) => new Option(`${name || id} ×${n}`, id)));
+    msg(""); dlg.showModal();
+  };
+  $("copy-code").onclick = () => navigator.clipboard?.writeText($("my-code").value).then(() => msg("Copied"), () => msg("Copy failed"));
+  $("play").onclick = () => {
+    try { game.playdate($("their-code").value, $("marry").checked); save(); dlg.close(); }
+    catch (e) { msg(e.message ?? String(e)); }
+  };
+  $("gift").onclick = () => {
+    const code = game.gift(Number($("gift-item").value));
+    $("gift-code").value = code; msg(code ? "Send this code to your friend" : "Nothing to give"); save();
+  };
+  $("recv").onclick = () => {
+    const id = game.receive_gift($("recv-code").value);
+    if (id) { save(); dlg.close(); } else msg("Invalid or already used code");
+  };
+
   // Sound: the original is a single-voice buzzer playing square-wave melodies (10% duty).
   const melodies = JSON.parse(data).melodies ?? [];
   let audio = null, voice = null;

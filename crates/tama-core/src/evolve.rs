@@ -244,6 +244,10 @@ impl Pet {
         fresh.adults_raised = self.adults_raised;
         fresh.breeds_today = self.breeds_today;
         fresh.seen_partners = std::mem::take(&mut self.seen_partners);
+        fresh.device_uid = self.device_uid;
+        fresh.friends = std::mem::take(&mut self.friends);
+        fresh.gifts_sent = self.gifts_sent;
+        fresh.gifts_received = std::mem::take(&mut self.gifts_received);
         *self = fresh;
     }
 }

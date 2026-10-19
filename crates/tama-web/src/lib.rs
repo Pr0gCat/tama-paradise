@@ -79,6 +79,30 @@ impl Tama {
         self.0.take_sounds().into_iter().map(|(id, vol)| (id as u32) << 8 | vol as u32).collect()
     }
 
+    pub fn friend_code(&self) -> String {
+        self.0.friend_code()
+    }
+
+    pub fn playdate(&mut self, code: &str, marry: bool) -> Result<(), JsError> {
+        self.0.playdate(code, marry).map_err(JsError::new)
+    }
+
+    /// Gift code, or empty if the item is not owned.
+    pub fn gift(&mut self, item: u16) -> String {
+        self.0.gift(item).unwrap_or_default()
+    }
+
+    /// Item id received, or 0 if the code is invalid or already used.
+    pub fn receive_gift(&mut self, code: &str) -> u16 {
+        self.0.receive_gift(code).unwrap_or(0)
+    }
+
+    /// Inventory as JSON `[[id, count, name], ...]`.
+    pub fn inventory(&self) -> String {
+        let items: Vec<String> = self.0.inventory().into_iter().map(|(id, n, name)| format!("[{id},{n},{name:?}]")).collect();
+        format!("[{}]", items.join(","))
+    }
+
     /// Copy of the RGBA framebuffer.
     pub fn framebuffer(&self) -> Vec<u8> {
         self.0.framebuffer().to_vec()

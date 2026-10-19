@@ -44,6 +44,11 @@ impl Pet {
         g.iter().rev().skip(1).take(GRAZING_SHOWN).copied().collect()
     }
 
+    pub(crate) fn release_to(&mut self, field: u8) {
+        self.add_grazing(field);
+        self.adults_raised[field as usize] = (self.adults_raised[field as usize] + 1).min(99);
+    }
+
     fn add_grazing(&mut self, field: u8) {
         let ghost = self.ghost();
         let g = &mut self.grazing[field as usize];

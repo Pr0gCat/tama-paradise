@@ -43,6 +43,13 @@ impl Game {
         }
         let save: Save = serde_json::from_value(v).map_err(LoadError::Json)?;
         let mut pet = save.pet;
+        // Saves from before friend codes have no ids yet.
+        if pet.device_uid == 0 {
+            pet.device_uid = (pet.rng_seed() ^ pet.last.unwrap_or(0) as u32).rotate_left(13) | 1;
+        }
+        if pet.chara_uid == 0 {
+            pet.chara_uid = pet.device_uid.rotate_left(7) ^ pet.def.id as u32;
+        }
         // Character numbers come from the data file, so data changes apply to existing saves.
         if let Some(def) = data.character(pet.def.id) {
             pet.def = def;

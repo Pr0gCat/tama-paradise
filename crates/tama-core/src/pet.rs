@@ -172,6 +172,17 @@ pub struct Pet {
     pub breeds_today: u8,
     #[serde(default)]
     pub seen_partners: Vec<u16>,
+    /// Social: this device's id, the current character's id, friends and gift bookkeeping.
+    #[serde(default)]
+    pub device_uid: u32,
+    #[serde(default)]
+    pub chara_uid: u32,
+    #[serde(default)]
+    pub friends: Vec<crate::social::Friend>,
+    #[serde(default)]
+    pub gifts_sent: u16,
+    #[serde(default)]
+    pub gifts_received: Vec<String>,
     /// Looks inherited from a breeding partner (drawn instead of the own character's eyes).
     #[serde(default)]
     pub looks: Option<u16>,
@@ -303,6 +314,11 @@ impl Pet {
             breeds_today: 0,
             seen_partners: Vec::new(),
             looks: None,
+            device_uid: seed.rotate_left(13) ^ 0x5a5a_1234,
+            chara_uid: seed.rotate_left(7) ^ 0x1357_9bdf,
+            friends: Vec::new(),
+            gifts_sent: 0,
+            gifts_received: Vec::new(),
             unchi_meter: 0,
             inventory: Vec::new(),
             no_wake_today: false,

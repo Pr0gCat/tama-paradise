@@ -12,6 +12,7 @@ pub mod progress;
 pub mod save;
 pub mod screen;
 pub mod shop;
+pub mod social;
 pub mod sprite;
 pub mod world;
 mod ui;
@@ -190,6 +191,66 @@ impl Game {
 
     pub fn framebuffer(&self) -> &[u8] {
         &self.screen.fb
+    }
+
+    /// This player's friend code for the current pet.
+    pub fn friend_code(&self) -> String {
+        self.pet.card(self.data.rom_type, None).encode()
+    }
+
+    /// Playdate with a friend's code; shows the result (PLAYED / FOUGHT / BRED) on screen.
+    /// `marry` = both players agreed to marry if it is possible.
+    pub fn playdate(&mut self, code: &str, marry: bool) -> Result<(), &'static str> {
+        let card = social::Card::decode(code).ok_or("bad friend code")?;
+        let outcome = self.pet.playdate(&self.data, &card, marry).ok_or("your tama cannot play now")?;
+        let text = match outcome {
+            social::Outcome::Play(_) => 0x73,
+            social::Outcome::Fight => 0x74,
+            social::Outcome::Married => 0x77,
+        };
+        self.scene = Scene::Message { text, then: Box::new(Scene::Home) };
+        Ok(())
+    }
+
+    /// Gift one of `item` as a code for a friend.
+    pub fn gift(&mut self, item: u16) -> Option<String> {
+        self.pet.gift(item)
+    }
+
+    /// Receive a friend's gift code.
+    pub fn receive_gift(&mut self, code: &str) -> Option<u16> {
+        let item = self.pet.receive_gift(&self.data, code)?;
+        self.scene = Scene::Message { text: 0xcd, then: Box::new(Scene::Home) };
+        Some(item)
+    }
+
+    /// Inventory as (item id, count, name string id), for platform UIs.
+    pub fn inventory(&self) -> Vec<(u16, u8, String)> {
+        self.pet
+            .inventory
+            .iter()
+            .map(|&(id, n)| {
+                let name = self.data.item(id).map(|i| self.plain_text(i.name)).unwrap_or_default();
+                (id, n, name)
+            })
+            .collect()
+    }
+
+    /// A string as plain ASCII (Latin glyphs only), for platform UIs.
+    pub fn plain_text(&self, id: u16) -> String {
+        let glyphs = self.data.strings.get(1).and_then(|t| t.get(id as usize)).cloned().unwrap_or_default();
+        glyphs
+            .iter()
+            .map(|&c| match c {
+                318..=343 => (b'A' + (c - 318) as u8) as char,
+                306..=315 => (b'0' + (c - 306) as u8) as char,
+                screen::NEWLINE => ' ',
+                _ => ' ',
+            })
+            .collect::<String>()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     /// Sounds to play since the last call, oldest first. The buzzer is single-voice, so a
