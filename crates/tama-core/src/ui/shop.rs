@@ -48,7 +48,7 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
 /// Games playable so far.
-const IMPLEMENTED: &[u8] = &[0];
+const IMPLEMENTED: &[u8] = &[0, 1, 2];
 
 impl Game {
     /// Run a menu action and return the scene it opens.
@@ -185,14 +185,16 @@ impl Game {
             Action::PlayLab(g, level) => {
                 let n = self.pet.mini_plays[g as usize];
                 self.pet.mini_plays[g as usize] = n.wrapping_add(1);
+                let (mini, level) = (&self.data.mini, level as usize);
                 let game: Box<dyn crate::mini::MiniGame> = match g {
+                    1 => Box::new(crate::mini::lab01::Lab01::new(mini.lab01_maps.get(level * 3 + n as usize % 3).cloned().unwrap_or_default(), level)),
+                    2 => Box::new(crate::mini::lab02::Lab02::new(mini.lab02_boards.get(level * 5 + n as usize % 5).copied().unwrap_or_default(), level)),
                     _ => {
-                        let boards = &self.data.mini.lab00_boards;
-                        let board = boards.get(level as usize * 3 + n as usize % 3).cloned().unwrap_or_default();
+                        let board = mini.lab00_boards.get(level * 3 + n as usize % 3).cloned().unwrap_or_default();
                         Box::new(crate::mini::lab00::Lab00::new(board))
                     }
                 };
-                Scene::Mini { session: crate::mini::Session::new(game, Some(level as usize)), lab: Some((g, level)) }
+                Scene::Mini { session: crate::mini::Session::new(game, Some(level)), lab: Some((g, level as u8)) }
             }
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,

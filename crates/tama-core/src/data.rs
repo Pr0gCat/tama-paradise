@@ -197,6 +197,13 @@ pub struct Data {
 pub struct MiniData {
     /// Game 00: `[level*3 + n]` boards of rows × 6 holes (non-zero = a baby wakes), 24 rows read.
     pub lab00_boards: Vec<Vec<[i16; 6]>>,
+    /// Game 01: `[level*3 + n]` maps as platforms `[x, height above the start line, type]` in
+    /// spawn order, ending with the goal platform (64, 6400, 0).
+    #[serde(default)]
+    pub lab01_maps: Vec<Vec<[i16; 3]>>,
+    /// Game 02: `[level*5 + n]` card types of the 15 cards (0–6 twice, 7 = bomb).
+    #[serde(default)]
+    pub lab02_boards: Vec<[u8; 15]>,
 }
 
 impl Data {

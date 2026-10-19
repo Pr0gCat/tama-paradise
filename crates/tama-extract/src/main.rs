@@ -388,6 +388,29 @@ fn main() {
                     b
                 })
                 .collect(),
+            // Game 01 maps (`FUN_10020a30`): 10 × {u16 segment, u16 style}. Segment table
+            // 0x1009b168 = 32 × {u32 n, u32 ptr → {i16 x, i16 y}[n]}, style table 0x10093574 =
+            // 22 × {u32 n, u32 ptr → u16 type[n]}; platform j of map entry i is at height
+            // y + 640 i with type style[j % n] (`FUN_10009d98`), then the goal at (64, 6400).
+            lab01_maps: [0x1009_1fec, 0x1009_2160, 0x1009_22d4, 0x1009_2448, 0x1009_25bc, 0x1009_2730, 0x1009_28a4, 0x1009_2a3c, 0x1009_2bd4]
+                .iter()
+                .map(|&m| {
+                    let list = |table: usize, i: u16| {
+                        let e = xip(table) + i as usize * 8;
+                        (u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize)
+                    };
+                    let mut p: Vec<[i16; 3]> = Vec::new();
+                    for (i, e) in words(m, 20).chunks(2).enumerate() {
+                        let ((n, seg), (sn, sty)) = (list(0x1009_b168, e[0]), list(0x1009_3574, e[1]));
+                        let (seg, sty) = (words(seg, n * 2), words(sty, sn));
+                        p.extend((0..n).map(|j| [seg[2 * j] as i16, seg[2 * j + 1] as i16 + 640 * i as i16, sty[j % sn] as i16]));
+                    }
+                    p.push([64, 6400, 0]);
+                    p
+                })
+                .collect(),
+            // Game 02 boards: 15 × 15 × u32 card type at 0x1009436c.
+            lab02_boards: (0..15).map(|b| std::array::from_fn(|i| u32_at(&dump, xip(0x1009_436c) + b * 60 + i * 4) as u8)).collect(),
         },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),
         weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),
