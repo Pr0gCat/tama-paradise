@@ -483,6 +483,7 @@ mod tests {
         let mut g = Game::new(d, 1);
         g.pet.def = g.data.character(2113).unwrap();
         g.pet.rank = 1;
+        g.pet.rank_seen = 1;
         g.pet.points = 500;
         g.pet.onaka = 6;
         g.pet.gokigen = 20;
@@ -587,5 +588,14 @@ mod tests {
         press(&mut g, crate::input::DOWN); // day 31 → clamped to 30 for April
         press(&mut g, B);
         assert_eq!(g.pet.birthday, Some((4, 30)));
+    }
+
+    #[test]
+    fn rank_up_shows_the_old_and_new_planet() {
+        let mut g = game();
+        g.pet.rank = 4;
+        g.frame(NOON, 0);
+        assert!(matches!(g.scene, super::Scene::Play(_)), "rank-up animation");
+        assert_eq!(g.planet_ranks, Some([1, 4]));
     }
 }

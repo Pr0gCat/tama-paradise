@@ -56,6 +56,7 @@ mod script {
     pub const EFFECTS: [u16; 5] = [0x622, 0x623, 0x624, 0x625, 0x626];
     pub const SHOOTINGSTAR: u16 = 0x6ac;
     pub const DODODO: u16 = 0x64a;
+    pub const RANK_UP: u16 = 0xc4;
     /// Birthday cake; role 1 = a grazing tama of this field.
     pub const BIRTHDAY: u16 = 0x6b2;
     pub const UFO: u16 = 0x6ae;
@@ -545,10 +546,12 @@ impl Game {
 
     /// Rank-up and mission-clear notices when the pet is back at HOME.
     pub(crate) fn check_notices(&mut self) {
-        if let Some(r) = self.pet.take_rank_up() {
-            self.sfx(1, 100);
-            let text = if r < 10 { 0x8e + r as u16 - 1 } else { 0x96 };
-            self.scene = Scene::Message { text, then: Box::new(Scene::Home) };
+        if let Some((old, r)) = self.pet.take_rank_up() {
+            // The planet hops from its old look to the new one (anim 0xc4), then CONGRATS.
+            let text = if r < 10 { 0x8e + r as u16 - 1 } else { 0x97 };
+            self.planet_ranks = Some([old, r]);
+            let then = Scene::Message { text, then: Box::new(Scene::Home) };
+            self.scene = self.play(&[script::RANK_UP], (0, OnPress::None), None, then);
         } else if !self.pet.claim_missions().is_empty() {
             self.sfx(1, 100);
             self.scene = Scene::Message { text: 0xa8, then: Box::new(Scene::Home) };

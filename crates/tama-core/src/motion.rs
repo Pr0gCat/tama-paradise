@@ -21,6 +21,8 @@ pub const PLANET: u16 = 2;
 /// The pet placeholder (chr 0 / 0x1f) with role B > 0 becomes `ROLE + B`: a partner the scene
 /// substitutes (travel companions, hunt team, visitors; 07-animation A2).
 pub const ROLE: u16 = 0x7f00;
+/// The planet placeholder with role B > 0 (`PLANET_ROLE + B`): the rank-up shows old and new looks.
+pub const PLANET_ROLE: u16 = 0x7e00;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Tween {
@@ -211,7 +213,11 @@ impl Node {
             0x1a if c == 4 => self.paused = true,
             0x1b => self.loop_pc = self.pc,
             0x1c => {
-                let chr = if matches!(a as u16, PET | PET_NO_FACE) && b > 0 { ROLE + b as u16 } else { a as u16 };
+                let chr = match a as u16 {
+                    PET | PET_NO_FACE if b > 0 => ROLE + b as u16,
+                    PLANET if b > 0 => PLANET_ROLE + b as u16,
+                    c => c,
+                };
                 self.look = Look::Chr { chr, anim: c as u16, eyes: d, mouth: KEEP };
             }
             0x1d | 0x1e | 0x24 => {

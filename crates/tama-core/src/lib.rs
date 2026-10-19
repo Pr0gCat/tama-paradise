@@ -81,6 +81,8 @@ pub struct Game {
     toy_key: Option<(u8, bool, [u16; 6])>,
     /// Characters standing in for script roles 1–3 in the current scene (ChrID), see `motion::ROLE`.
     pub(crate) roles: [Option<u16>; 4],
+    /// Planet ranks shown for planet roles 0 and 1 (rank-up: old, new).
+    pub(crate) planet_ranks: Option<[u8; 2]>,
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
     visitor: Option<(u16, Node)>,
     visitor_day: Option<u64>,
@@ -128,6 +130,7 @@ impl Game {
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
+            planet_ranks: None,
             connect: None,
             visitor: None,
             visitor_day: None,
@@ -173,6 +176,7 @@ impl Game {
         }
         if matches!(self.scene, Scene::Home) {
             self.roles = [None; 4];
+            self.planet_ranks = None;
             self.check_notices();
         }
         if matches!(self.scene, Scene::Home) && self.level == Level::Field {
@@ -319,7 +323,11 @@ impl Game {
             // 0 = the pet, 1 = the pet inside the cell (medicine), 0xbd–0xdc = pet slots.
             motion::PET | motion::PET_IN_CELL | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
             motion::PET_NO_FACE => (self.pet.def.chr_id, true, false),
-            motion::PLANET => (self.planet_chr(), false, true),
+            motion::PLANET => (self.planet_chr_at(self.planet_ranks.map_or(self.pet.rank, |r| r[0])), false, true),
+            c if (motion::PLANET_ROLE..motion::ROLE).contains(&c) => {
+                let rank = self.planet_ranks.map_or(self.pet.rank, |r| r[((c - motion::PLANET_ROLE) as usize).min(1)]);
+                (self.planet_chr_at(rank), false, true)
+            }
             c if c > motion::ROLE => match self.roles.get((c - motion::ROLE) as usize).copied().flatten() {
                 Some(chr) => (chr, false, true),
                 None => (self.pet.def.chr_id, true, true),
@@ -344,7 +352,7 @@ impl Game {
                 PART_MOUTH if face => if mouth == KEEP { part.frame } else { mouth as u16 },
                 PART_DIRT if dirty => part.frame,
                 // Planet outfits: the worn item's sprite (item +4) replaces the placeholder.
-                4 | 6 | 8 if chr == motion::PLANET => {
+                4 | 6 | 8 if chr == motion::PLANET || (motion::PLANET_ROLE..motion::ROLE).contains(&chr) => {
                     let worn = self.pet.equip[(part.kind / 2 - 2) as usize];
                     let Some(item) = self.data.item(worn) else { continue };
                     let x = if d.flip { -part.x } else { part.x } as i32;

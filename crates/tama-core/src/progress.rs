@@ -70,10 +70,11 @@ impl Pet {
     }
 
     /// Rank-up not shown yet (`DAT_18000c6c` high nibble < low nibble).
-    pub fn take_rank_up(&mut self) -> Option<u8> {
+    /// A rank-up not shown yet: (rank last shown, new rank).
+    pub fn take_rank_up(&mut self) -> Option<(u8, u8)> {
         (self.rank_seen < self.rank).then(|| {
-            self.rank_seen = self.rank;
-            self.rank
+            let old = std::mem::replace(&mut self.rank_seen, self.rank);
+            (old, self.rank)
         })
     }
 }
@@ -110,7 +111,7 @@ mod tests {
     fn rank_up_is_shown_once() {
         let mut p = Pet::new(def(2113, 3, 45, 20, 0), 1);
         p.rank_up();
-        assert_eq!(p.take_rank_up(), Some(1));
+        assert_eq!(p.take_rank_up(), Some((0, 1)));
         assert_eq!(p.take_rank_up(), None);
     }
 }

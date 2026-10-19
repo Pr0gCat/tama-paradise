@@ -50,9 +50,9 @@ impl Game {
         (p.0 as i32, p.1 as i32)
     }
 
-    pub(crate) fn planet_chr(&self) -> u16 {
+    pub(crate) fn planet_chr_at(&self, rank: u8) -> u16 {
         let class = crate::decor::romtype_class(self.data.rom_type);
-        self.data.decor.planet_chr.get(class).map_or(0, |r| r[(self.pet.rank as usize).min(10)])
+        self.data.decor.planet_chr.get(class).map_or(0, |r| r[(rank as usize).min(10)])
     }
 
     /// Field camera objects: the pet, then the toys placed in this area.
