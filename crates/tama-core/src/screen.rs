@@ -16,11 +16,13 @@ pub struct Screen {
     pub wanted: BTreeSet<u16>,
     /// Added to every blit position (camera scroll).
     pub off: (i32, i32),
+    /// Scale about the screen centre applied to every blit (1.0 = none).
+    pub zoom: f32,
 }
 
 impl Default for Screen {
     fn default() -> Self {
-        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new(), off: (0, 0) }
+        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new(), off: (0, 0), zoom: 1.0 }
     }
 }
 
@@ -52,12 +54,14 @@ impl Screen {
         let f = (frame % s.frames.max(1)) as usize * (w * h) as usize;
         let pal = palette.and_then(|(pid, set)| self.sprites.get(&pid).map(|p| (p, set)));
         let a = alpha.min(64) as u32;
-        for y in 0..h {
-            for x in 0..w {
-                let (px, py) = (cx - w / 2 + x, cy - h / 2 + y);
-                if !(0..WIDTH as i32).contains(&px) || !(0..HEIGHT as i32).contains(&py) {
-                    continue;
-                }
+        // Zoom scales positions and sizes about the screen centre (HOME zoom between layers).
+        let k = self.zoom;
+        let (dw, dh) = ((w as f32 * k).round() as i32, (h as f32 * k).round() as i32);
+        let (x0, y0) = (64 + ((cx - 64) as f32 * k).round() as i32 - dw / 2, 64 + ((cy - 64) as f32 * k).round() as i32 - dh / 2);
+        for py in y0.max(0)..(y0 + dh).min(HEIGHT as i32) {
+            let y = (((py - y0) as f32 / k) as i32).min(h - 1);
+            for px in x0.max(0)..(x0 + dw).min(WIDTH as i32) {
+                let x = (((px - x0) as f32 / k) as i32).min(w - 1);
                 let sx = if flip { w - 1 - x } else { x };
                 let idx = s.pixels[f + (y * w + sx) as usize];
                 if s.transparent && idx == s.key {

@@ -30,6 +30,9 @@ use sprite::Sprite;
 /// Sprite with the 16 pet body colour palettes; set n = colour n (game-spec §8).
 const COLOR_PALETTES: u16 = 206;
 /// HOME anchors (character's bottom centre) for field, pet and cell zoom.
+/// World point the camera centres on in the pet layer, so the field pet lands where the
+/// close-up pet stands.
+const PET_CAM: (i32, i32) = (64, 78);
 const ANCHOR: [(i32, i32); 4] = [(64, 96), (64, 100), (64, 100), (64, 96)];
 
 /// Frame step, 20 fps like the original (game-spec §2). Pet simulation runs on wall-clock seconds.
@@ -76,6 +79,8 @@ pub struct Game {
     /// Outside toys on the field: (slot, looping show animation), rebuilt when the layout changes.
     toy_nodes: Vec<(usize, Node)>,
     toy_key: Option<(u8, bool, [u16; 6])>,
+    /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
+    zoom: f32,
 }
 
 impl Game {
@@ -114,6 +119,7 @@ impl Game {
             cam: ui::PET_FOCUS,
             toy_nodes: Vec::new(),
             toy_key: None,
+            zoom: ui::zoom_stop(Level::Pet),
         };
         g.render();
         g
@@ -143,6 +149,12 @@ impl Game {
             self.scene = self.open(ui::Action::Lab);
         }
         self.update_scene(pressed);
+        // HOME zoom (`zoom_update` 0x1000ed48): close a quarter of the gap per frame.
+        let target = ui::zoom_stop(self.level);
+        self.zoom += (target - self.zoom) / 4.0;
+        if (target - self.zoom).abs() <= 0.125 {
+            self.zoom = target;
+        }
         if matches!(self.scene, Scene::Home) && now / 60 != self.event_minute {
             self.event_minute = now / 60;
             let r = self.rand();
@@ -337,20 +349,43 @@ impl Game {
         if self.render_scene() {
             return;
         }
+        // Mid-zoom, draw the layer nearest the zoom value, scaled by the remaining distance.
+        let real = self.level;
+        let shown = [Level::Space, Level::Field, Level::Pet, Level::Cell]
+            .into_iter()
+            .min_by(|a, b| (ui::zoom_stop(*a) - self.zoom).abs().total_cmp(&(ui::zoom_stop(*b) - self.zoom).abs()))
+            .unwrap_or(real);
+        self.level = shown;
+        self.screen.zoom = 4f32.powf((self.zoom - ui::zoom_stop(shown)) / 16.0);
+        self.render_home();
+        self.level = real;
+        self.screen.zoom = 1.0;
+    }
+
+    fn render_home(&mut self) {
         match self.level {
             Level::Space => return self.draw_space(),
             Level::Cell => self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [250, 220, 230]),
             _ => {
-                if self.level == Level::Field {
-                    self.screen.off = (ui::PET_FOCUS.0 - self.cam.0, ui::PET_FOCUS.1 - self.cam.1);
-                }
+                // The world layer scales with the real zoom (1× field, 2× pet); the camera moves
+                // from the field focus to the pet as it zooms in (`home_camera_update` 0x100793fc).
+                let t = (self.zoom / 8.0).clamp(0.0, 1.0);
+                let lerp = |a: i32, b: i32| a + ((b - a) as f32 * t).round() as i32;
+                let c = (lerp(self.cam.0, PET_CAM.0), lerp(self.cam.1, PET_CAM.1));
+                self.screen.off = (64 - c.0, 64 - c.1);
+                self.screen.zoom = 4f32.powf(self.zoom / 16.0);
                 self.draw_field_bg();
+                if self.level == Level::Field {
+                    self.draw_toys();
+                    self.draw_grazing();
+                    self.draw_poop();
+                }
+                // The pet keeps its size; only the world around it zooms.
+                self.screen.zoom = 1.0;
+                if self.level == Level::Pet {
+                    self.screen.off = (0, 0);
+                }
             }
-        }
-        if self.level == Level::Field {
-            self.draw_toys();
-            self.draw_grazing();
-            self.draw_poop();
         }
         let (ax, ay) = ANCHOR[self.level as usize];
         let mut draws = Vec::new();

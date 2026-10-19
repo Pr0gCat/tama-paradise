@@ -97,6 +97,16 @@ pub enum Level {
     Space,
 }
 
+/// Zoom stop of each HOME layer (08-care-ui §2.2.1: scale 0.5 planet, 1 field, 2 pet, 4 cell).
+pub(crate) fn zoom_stop(l: Level) -> f32 {
+    match l {
+        Level::Space => -8.0,
+        Level::Field => 0.0,
+        Level::Pet => 8.0,
+        Level::Cell => 16.0,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Action {
     Feed,
