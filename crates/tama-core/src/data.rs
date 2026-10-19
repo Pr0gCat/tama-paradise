@@ -40,6 +40,11 @@ pub struct Item {
     pub eat_sprite: u16,
     #[serde(default)]
     pub icon_sprite: u16,
+    /// Outside toys: idle display animation (item +8) and play animation (+0xa).
+    #[serde(default)]
+    pub show_anim: u16,
+    #[serde(default)]
+    pub play_anim: u16,
     /// Drink (item +0x14 bit0): uses the drinking animations.
     #[serde(default)]
     pub drink: bool,
@@ -190,6 +195,33 @@ pub struct Data {
     pub hunt_finds: Vec<[u16; 3]>,
     #[serde(default)]
     pub mini: MiniData,
+    #[serde(default)]
+    pub decor: DecorData,
+}
+
+/// Outside toys, planet and travel (docs/spec/10-decor-planet.md).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DecorData {
+    /// HOME field anchors `[field][area][role]` = (x, y, z) in world coordinates:
+    /// roles 0–5 toy slots, 6 pet, 7 egg, 8 visitor (XIP 0x100933ae).
+    pub home_pos: Vec<[[(i16, i16, i16); 9]; 2]>,
+    /// Planet ChrID by `[romtype class][rank 0..10]` (0x10094786 / 0x100947b2 / 0x1009479c).
+    pub planet_chr: Vec<[u16; 11]>,
+    /// Matching outfit sets: hat, glasses, accessory (0 = any), visitor A, visitor B (0x100947c8).
+    pub equip_sets: Vec<[u16; 5]>,
+    /// Travel destinations: (item, rank needed, animation, souvenirs A/B, local NPC ChrIDs).
+    pub travel: Vec<Destination>,
+    /// Planet-level goal text per rank (0x100a138e).
+    pub rank_goals: Vec<u16>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Destination {
+    pub item: u16,
+    pub rank: u8,
+    pub anim: u16,
+    pub souvenirs: [u16; 2],
+    pub npcs: [u16; 2],
 }
 
 /// Fixed mini-game layouts (docs/spec/09-minigames-*.md).

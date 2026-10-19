@@ -16,6 +16,8 @@ const ARGS: [(u16, usize); 6] = [(15, 0), (14, 1), (13, 2), (11, 3), (10, 4), (9
 pub const PET: u16 = 0;
 pub const PET_NO_FACE: u16 = 0x1f;
 pub const PET_IN_CELL: u16 = 1;
+/// The planet (HOME_SPACE character, wearing the planet outfits).
+pub const PLANET: u16 = 2;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Tween {

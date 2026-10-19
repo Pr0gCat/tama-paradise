@@ -88,7 +88,7 @@ impl Pet {
     }
 
     pub fn sell(&mut self, item: &Item) -> Result<(), ShopError> {
-        if self.count(item.id) == 0 {
+        if self.free(item.id) == 0 {
             return Err(ShopError::NotOwned);
         }
         if item.sell == 0xffff || item.flags & 8 != 0 {

@@ -302,6 +302,8 @@ fn main() {
             name: r[1],
             eat_sprite: r[2],
             icon_sprite: r[3],
+            show_anim: r[4],
+            play_anim: r[5],
             drink: r[10] & 1 != 0,
             kind: r[11] as u8,
             buy: r[12],
@@ -329,10 +331,9 @@ fn main() {
         adults: std::array::from_fn(|f| std::array::from_fn(|b| std::array::from_fn(|q| adult[f * 16 + b * 4 + q]))),
     };
 
-    let mut chr_ids: Vec<u16> = characters.iter().map(|c| c.chr_id).collect();
-    chr_ids.sort_unstable();
-    chr_ids.dedup();
-    let models = models(&dump, chr_ids.into_iter());
+    // Every model in table 18: pets, NPCs and the planet (ChrID 2, 11–14, 23–28).
+    let model_count = (table_start(&dump, 19) - table_start(&dump, 18)) / 0xd8;
+    let models = models(&dump, 0..model_count as u16);
     let home = words(0x1009_dbd8, 96);
     let home_motions = home.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     let data = Data {
@@ -373,6 +374,44 @@ fn main() {
             .collect(),
         recipes: words(0x1009_1fbc, 24).chunks(2).map(|c| (c[0], c[1])).collect(),
         weather_months: words(0x1009_1b5c, 72).chunks(6).map(|c| std::array::from_fn(|i| c[i])).collect(),
+        decor: {
+            let ui = ui_elems(&dump);
+            let home = words(0x1009_33ae, 3 * 42);
+            let pos = |e: u16, z: u16| -> (i16, i16, i16) {
+                let u = ui.get(e as usize).copied().unwrap_or_default();
+                (u.x, u.y, z as i16)
+            };
+            tama_core::data::DecorData {
+                home_pos: (0..3)
+                    .map(|f| {
+                        let t = &home[f * 42..];
+                        std::array::from_fn(|a| std::array::from_fn(|r| pos(t[6 + a * 18 + r * 2], t[6 + a * 18 + r * 2 + 1])))
+                    })
+                    .collect(),
+                planet_chr: [0x1009_4786, 0x1009_47b2, 0x1009_479c].iter().map(|&a| words(a, 11).try_into().unwrap()).collect(),
+                equip_sets: words(0x1009_47c8, 35).chunks(5).map(|c| c.try_into().unwrap()).collect(),
+                // Order and ranks from `travel_dest_list` 0x1006f4f0, animations 0x866.., NPCs 0x10091634;
+                // souvenirs live in RW data 0x180006e6 (packed in encrypted PRAM), so they are constants.
+                travel: {
+                    let npcs = words(0x1009_1634, 14);
+                    let dests: [(u16, u8, u16, [u16; 2]); 7] = [
+                        (9901, 3, 0x866, [8001, 8002]),
+                        (9902, 3, 0x867, [8003, 8004]),
+                        (9903, 4, 0x868, [8005, 8006]),
+                        (9910, 5, 0x86f, [8101, 8102]),
+                        (9908, 6, 0x86d, [8085, 8086]),
+                        (9909, 7, 0x86e, [8099, 8100]),
+                        (9907, 7, 0x86c, [8013, 8014]),
+                    ];
+                    dests
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &(item, rank, anim, souvenirs))| tama_core::data::Destination { item, rank, anim, souvenirs, npcs: [npcs[i * 2], npcs[i * 2 + 1]] })
+                        .collect()
+                },
+                rank_goals: words(0x100a_138e, 10),
+            }
+        },
         mini: tama_core::data::MiniData {
             // Game 00 board pointers live in RW data (packed in encrypted PRAM at 0xe6a0);
             // the boards themselves are in XIP. Rows per level at 0x1009de92 (31, 26, 21);

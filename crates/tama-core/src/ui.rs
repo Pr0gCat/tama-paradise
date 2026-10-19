@@ -7,7 +7,10 @@ use crate::motion::Node;
 use crate::pet::{req, Cond};
 use crate::Game;
 
+mod decor;
 mod shop;
+
+pub(crate) use decor::PET_FOCUS;
 
 /// String ids (English table; same ids in every language).
 mod text {
@@ -90,6 +93,8 @@ pub enum Level {
     Field,
     Pet,
     Cell,
+    /// Planet level (HOME_SPACE), below the field.
+    Space,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,6 +125,19 @@ pub(crate) enum Action {
     MiniGames,
     LabGame(u8),
     PlayLab(u8, u8),
+    Setsubi,
+    ToyList,
+    /// SETSUBI cursor; toy 0 = REMOVE, field 0xff = start on the current field.
+    SetsubiAt { toy: u16, field: u8, area: u8, slot: u8 },
+    PlaceToy { toy: u16, field: u8, area: u8, slot: u8 },
+    RemoveToy { field: u8, area: u8, slot: u8 },
+    SpaceMenu,
+    Stars,
+    Deco,
+    Wear(u16),
+    Travel,
+    GoTravel(u8),
+    PlanetLv,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,6 +145,9 @@ pub(crate) enum CardKind {
     Buy(u8),
     Sell,
     Cook,
+    Toy,
+    Wear,
+    Travel,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,7 +187,11 @@ pub(crate) enum Scene {
     /// Breeding candidates.
     Breed { cands: Vec<u16>, idx: usize },
     /// Grave records (lab menu COLLECTION).
-    Graves { idx: usize },
+    Graves { idx: usize, back: Action },
+    /// SETSUBI: choosing a slot for `toy` (0 = choosing a toy to put away).
+    Setsubi { toy: u16, field: u8, area: u8, idx: usize },
+    /// Page 0: rank; page 1: the next goal.
+    PlanetLv { page: u8 },
     /// Points earned, then `then` (lab game result screen).
     Points { points: u32, then: Box<Scene> },
     /// A mini-game: lab game index and difficulty (None for play-together games).
@@ -244,6 +269,8 @@ impl Game {
                 | Scene::Missions { .. }
                 | Scene::Breed { .. }
                 | Scene::Graves { .. }
+                | Scene::Setsubi { .. }
+                | Scene::PlanetLv { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
             if pressed & C != 0 {
@@ -256,6 +283,7 @@ impl Game {
         }
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
         self.scene = match scene {
+            Scene::Home if self.level == Level::Space => self.update_space_input(pressed),
             Scene::Home => self.update_home_input(pressed),
             Scene::Menu { items, mut idx, back } => {
                 let n = items.len();
@@ -312,7 +340,19 @@ impl Game {
                     Scene::Breed { cands, idx }
                 }
             }
-            Scene::Graves { mut idx } => {
+            Scene::Setsubi { toy, field, area, idx } => self.update_setsubi(toy, field, area, idx, pressed),
+            Scene::PlanetLv { page } => {
+                if pressed & C != 0 && page == 1 {
+                    Scene::PlanetLv { page: 0 }
+                } else if pressed & (B | PUSH) != 0 && page == 0 && self.pet.rank < 10 {
+                    Scene::PlanetLv { page: 1 }
+                } else if pressed_any(pressed) {
+                    self.open(Action::SpaceMenu)
+                } else {
+                    Scene::PlanetLv { page }
+                }
+            }
+            Scene::Graves { mut idx, back } => {
                 let n = self.pet.graves.len().max(1);
                 if pressed & (A | UP) != 0 {
                     idx = (idx + 1) % n;
@@ -320,7 +360,7 @@ impl Game {
                 if pressed & DOWN != 0 {
                     idx = (idx + n - 1) % n;
                 }
-                if pressed & C != 0 { self.open(Action::Lab) } else { Scene::Graves { idx } }
+                if pressed & C != 0 { self.open(back) } else { Scene::Graves { idx, back } }
             }
             Scene::Mini { mut session, lab } => {
                 if pressed & C != 0 && matches!(session.phase, crate::mini::Phase::Play) {
@@ -478,7 +518,7 @@ impl Game {
     fn field_menu(&self) -> Scene {
         Scene::Menu {
             items: vec![
-                (text::OUTSIDE_TOY, None),
+                (text::OUTSIDE_TOY, (self.pet.rank >= 2).then_some(Action::Setsubi)),
                 (text::EGG_HUNT, None),
                 (text::CLEAN_POOP, Some(Action::CleanPoop)),
                 (text::FIELDS, (self.pet.rank >= 4).then_some(Action::Fields)),
@@ -503,6 +543,10 @@ impl Game {
         if pressed & DOWN != 0 {
             self.level = match self.level {
                 Level::Cell => Level::Pet,
+                Level::Field if self.pet.def.stage > 1 => {
+                    self.sfx(0x2b, 100);
+                    Level::Space
+                }
                 _ => Level::Field,
             };
         }
@@ -510,9 +554,8 @@ impl Game {
             return Scene::Home;
         }
         // C on the field: go to the field's expansion area and back (HOME_FIELD2).
-        if self.level == Level::Field && pressed & C != 0 && self.pet.areas & 1 << self.pet.field != 0 {
-            self.pet.in_area2 = !self.pet.in_area2;
-            self.sfx(9, 100);
+        if self.level == Level::Field && pressed & C != 0 {
+            self.field_c();
             return Scene::Home;
         }
         let p = &self.pet;
@@ -553,7 +596,7 @@ impl Game {
                 self.sfx(1, 100);
                 self.field_menu()
             }
-            Level::Cell => Scene::Home,
+            Level::Cell | Level::Space => Scene::Home,
         }
     }
 
@@ -654,11 +697,14 @@ impl Game {
 
     /// Field background sprite for the current field and time of day (`field_bg_create` 0x10015d90).
     pub(crate) fn field_bg(&self) -> Option<u16> {
+        self.field_bg_at(self.pet.field, self.pet.in_area2)
+    }
+
+    pub(crate) fn field_bg_at(&self, field: u8, area2: bool) -> Option<u16> {
         let now = self.pet.last.unwrap_or(12 * 3600);
         let period = crate::pet::Pet::period(now) as usize;
         let weather = self.pet.weather_now(&self.data, now) as usize;
-        let variant = self.pet.in_area2 as usize;
-        let id = self.data.field_bg.get(self.pet.field as usize)?[variant][1 + period * 3 + weather];
+        let id = self.data.field_bg.get(field as usize)?[area2 as usize][1 + period * 3 + weather];
         let e = self.ui_elem(id);
         (e.kind == UI_SPRITE).then_some(e.p[3] as u16)
     }
@@ -799,7 +845,15 @@ impl Game {
                 self.draw_character(cands[*idx], None, 64, 112);
                 true
             }
-            Scene::Graves { idx } => {
+            Scene::Setsubi { toy, field, area, idx } => {
+                self.draw_setsubi(*toy, *field, *area, *idx);
+                true
+            }
+            Scene::PlanetLv { page } => {
+                self.draw_planet_lv(*page);
+                true
+            }
+            Scene::Graves { idx, .. } => {
                 self.draw_grave(*idx);
                 true
             }

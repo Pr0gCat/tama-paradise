@@ -167,7 +167,7 @@ impl Game {
                     None => self.message(t::NO_MORE_TODAY, Action::Help),
                 }
             }
-            Action::Graves => Scene::Graves { idx: 0 },
+            Action::Graves => Scene::Graves { idx: 0, back: Action::Lab },
             Action::MiniGames => Scene::Menu {
                 items: LAB_GAMES
                     .iter()
@@ -194,6 +194,18 @@ impl Game {
                 };
                 Scene::Mini { session: crate::mini::Session::new(game, Some(level as usize)), lab: Some((g, level)) }
             }
+            Action::Setsubi
+            | Action::ToyList
+            | Action::SetsubiAt { .. }
+            | Action::PlaceToy { .. }
+            | Action::RemoveToy { .. }
+            | Action::SpaceMenu
+            | Action::Stars
+            | Action::Deco
+            | Action::Wear(_)
+            | Action::Travel
+            | Action::GoTravel(_)
+            | Action::PlanetLv => self.open_decor(a),
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,
                 Err(ShopError::NotEnoughPoints) => self.message(t::NOT_ENOUGH_POINTS, Action::Lab),
@@ -219,7 +231,7 @@ impl Game {
         }
     }
 
-    fn message(&mut self, text: u16, then: Action) -> Scene {
+    pub(super) fn message(&mut self, text: u16, then: Action) -> Scene {
         let then = self.open(then);
         Scene::Message { text, then: Box::new(then) }
     }
@@ -247,6 +259,8 @@ impl Game {
         }
         let back = match kind {
             CardKind::Buy(_) => Action::BuyMenu,
+            CardKind::Toy => Action::Setsubi,
+            CardKind::Wear | CardKind::Travel => Action::SpaceMenu,
             _ => Action::Shop,
         };
         if pressed & C != 0 {
@@ -256,6 +270,9 @@ impl Game {
             return Scene::Card { kind, items, idx };
         }
         let Some(item) = items.get(idx).and_then(|&id| self.data.item(id)) else { return self.open(back) };
+        if matches!(kind, CardKind::Toy | CardKind::Wear | CardKind::Travel) {
+            return self.pick_decor_card(kind, &items, idx);
+        }
         let now = self.pet.last.unwrap_or(0);
         let stay = |g: &mut Game| match kind {
             CardKind::Sell => g.open(Action::Sell),
@@ -271,6 +288,7 @@ impl Game {
                 Ok(()) => (t::SALE_MADE, true),
                 Err(_) => (t::UNAVAILABLE, false),
             },
+            CardKind::Toy | CardKind::Wear | CardKind::Travel => unreachable!(),
             CardKind::Cook => match self.pet.cook(&self.data, item.id) {
                 Ok(()) => {
                     // Cooking serves the dish at once, like feeding.
@@ -324,6 +342,14 @@ impl Game {
                 self.draw_number(price, 64, 115, 1);
             }
             CardKind::Sell => self.draw_number(item.sell as u32, 64, 115, 1),
+            // How many are free to place; a mark on the outfit being worn.
+            CardKind::Toy => self.draw_number(self.pet.free(item.id) as u32, 64, 115, 1),
+            CardKind::Wear => {
+                if self.pet.equip.contains(&item.id) {
+                    self.draw_text(0xa5, 64, 115, true, 1);
+                }
+            }
+            CardKind::Travel => self.draw_number(self.pet.unchi_meter as u32, 64, 115, 1),
             CardKind::Cook => {
                 let material = self.data.recipes.iter().find(|r| r.0 == item.id).map_or(0, |r| r.1);
                 if let Some(m) = self.data.item(material) {

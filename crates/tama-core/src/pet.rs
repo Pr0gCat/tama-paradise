@@ -186,6 +186,14 @@ pub struct Pet {
     /// Looks inherited from a breeding partner (drawn instead of the own character's eyes).
     #[serde(default)]
     pub looks: Option<u16>,
+    /// Outside toys `[field][area][slot]` (0 = empty), planet outfits (hat, glasses, accessory),
+    /// and which souvenir each destination gives next.
+    #[serde(default)]
+    pub toys: [[[u16; 6]; 2]; 3],
+    #[serde(default)]
+    pub equip: [u16; 3],
+    #[serde(default)]
+    pub travel_toggle: u8,
     /// Times each lab game was played (picks its fixed layouts in turn).
     #[serde(default)]
     pub mini_plays: [u8; 7],
@@ -312,6 +320,9 @@ impl Pet {
             in_area2: false,
             hunt_used: [0; 3],
             mini_plays: [0; 7],
+            toys: [[[0; 6]; 2]; 3],
+            equip: [0; 3],
+            travel_toggle: 0,
             grazing: Default::default(),
             graves: Vec::new(),
             adults_raised: [0; 3],

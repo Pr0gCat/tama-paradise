@@ -14,11 +14,13 @@ pub struct Screen {
     pub fb: Vec<u8>,
     /// Sprites a draw asked for that are not loaded yet (the platform fetches them).
     pub wanted: BTreeSet<u16>,
+    /// Added to every blit position (camera scroll).
+    pub off: (i32, i32),
 }
 
 impl Default for Screen {
     fn default() -> Self {
-        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new() }
+        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new(), off: (0, 0) }
     }
 }
 
@@ -36,6 +38,7 @@ impl Screen {
     /// `palette` = (sprite, set) whose palette replaces the sprite's own set 0.
     /// Returns false if the sprite is not loaded yet.
     pub fn blit(&mut self, id: u16, frame: u16, cx: i32, cy: i32, alpha: u8, flip: bool, palette: Option<(u16, usize)>) -> bool {
+        let (cx, cy) = (cx + self.off.0, cy + self.off.1);
         let Some(s) = self.sprites.get(&id) else {
             self.wanted.insert(id);
             return false;

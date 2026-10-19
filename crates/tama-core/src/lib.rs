@@ -1,6 +1,7 @@
 //! Pure game logic: button input + wall-clock time in, framebuffer out.
 
 pub mod data;
+pub mod decor;
 pub(crate) mod evolve;
 pub mod family;
 pub mod home;
@@ -29,7 +30,7 @@ use sprite::Sprite;
 /// Sprite with the 16 pet body colour palettes; set n = colour n (game-spec §8).
 const COLOR_PALETTES: u16 = 206;
 /// HOME anchors (character's bottom centre) for field, pet and cell zoom.
-const ANCHOR: [(i32, i32); 3] = [(64, 96), (64, 100), (64, 100)];
+const ANCHOR: [(i32, i32); 4] = [(64, 96), (64, 100), (64, 100), (64, 96)];
 
 /// Frame step, 20 fps like the original (game-spec §2). Pet simulation runs on wall-clock seconds.
 pub const TICK_MS: u32 = 50;
@@ -69,6 +70,12 @@ pub struct Game {
     event_minute: u64,
     /// Frames the dial button has been held (long press opens the lab menu).
     push_frames: u16,
+    /// Field camera: focused object (0 = pet, then placed toys) and current centre in world space.
+    focus: usize,
+    cam: (i32, i32),
+    /// Outside toys on the field: (slot, looping show animation), rebuilt when the layout changes.
+    toy_nodes: Vec<(usize, Node)>,
+    toy_key: Option<(u8, bool, [u16; 6])>,
 }
 
 impl Game {
@@ -103,6 +110,10 @@ impl Game {
             sounds: Vec::new(),
             event_minute: 0,
             push_frames: 0,
+            focus: 0,
+            cam: ui::PET_FOCUS,
+            toy_nodes: Vec::new(),
+            toy_key: None,
         };
         g.render();
         g
@@ -140,7 +151,10 @@ impl Game {
         if matches!(self.scene, Scene::Home) {
             self.check_notices();
         }
-        if matches!(self.scene, Scene::Home) {
+        if matches!(self.scene, Scene::Home) && self.level == Level::Field {
+            self.update_toys();
+        }
+        if matches!(self.scene, Scene::Home) && self.level != Level::Space {
             self.update_home(now);
             self.home.tick(&self.data.motions);
             self.home.take_sounds(&mut self.sounds);
@@ -270,6 +284,7 @@ impl Game {
             // 0 = the pet, 1 = the pet inside the cell (medicine), 0xbd–0xdc = pet slots.
             motion::PET | motion::PET_IN_CELL | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
             motion::PET_NO_FACE => (self.pet.def.chr_id, true, false),
+            motion::PLANET => (self.planet_chr(), false, true),
             c => (c, false, true),
         }
     }
@@ -289,7 +304,15 @@ impl Game {
                 PART_EYES if face => if eyes == KEEP { part.frame } else { eyes as u16 },
                 PART_MOUTH if face => if mouth == KEEP { part.frame } else { mouth as u16 },
                 PART_DIRT if dirty => part.frame,
-                // 0x10 is never drawn; 4/6/8 are worn items (not implemented).
+                // Planet outfits: the worn item's sprite (item +4) replaces the placeholder.
+                4 | 6 | 8 if chr == motion::PLANET => {
+                    let worn = self.pet.equip[(part.kind / 2 - 2) as usize];
+                    let Some(item) = self.data.item(worn) else { continue };
+                    let x = if d.flip { -part.x } else { part.x } as i32;
+                    drawn |= self.screen.blit(item.eat_sprite, part.frame, d.x + x, d.y + part.y as i32, d.alpha, part.flip ^ d.flip, None);
+                    continue;
+                }
+                // 0x10 is never drawn.
                 _ => continue,
             };
             let x = if d.flip { -part.x } else { part.x } as i32;
@@ -315,17 +338,31 @@ impl Game {
             return;
         }
         match self.level {
+            Level::Space => return self.draw_space(),
             Level::Cell => self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [250, 220, 230]),
-            _ => self.draw_field_bg(),
+            _ => {
+                if self.level == Level::Field {
+                    self.screen.off = (ui::PET_FOCUS.0 - self.cam.0, ui::PET_FOCUS.1 - self.cam.1);
+                }
+                self.draw_field_bg();
+            }
         }
         if self.level == Level::Field {
+            self.draw_toys();
             self.draw_grazing();
             self.draw_poop();
         }
         let (ax, ay) = ANCHOR[self.level as usize];
         let mut draws = Vec::new();
         self.home.draws(ax, ay, &mut draws);
-        for d in &draws {
+        self.draw_all(&draws);
+        self.screen.off = (0, 0);
+        self.draws = draws;
+    }
+
+    /// Draw motion output: characters and sprites.
+    pub(crate) fn draw_all(&mut self, draws: &[Draw]) {
+        for d in draws {
             match d.look {
                 Look::Chr { chr, anim, eyes, mouth } => {
                     self.draw_chr(d, chr, anim, eyes, mouth);
@@ -336,7 +373,6 @@ impl Game {
                 Look::None => {}
             }
         }
-        self.draws = draws;
     }
 }
 
