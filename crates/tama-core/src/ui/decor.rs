@@ -220,8 +220,7 @@ impl Game {
             }
             Action::SpaceMenu => Scene::Menu {
                 items: vec![
-                    // CONNECTION lives in the page's Friends panel (friend codes / QR).
-                    (t::CONNECTION, None),
+                    (t::CONNECTION, Some(Action::Connect)),
                     (t::TAMA_STARS, (!self.pet.graves.is_empty()).then_some(Action::Stars)),
                     (t::DECO_PLANET, (!self.worn_items().is_empty()).then_some(Action::Deco)),
                     (t::TRAVEL, Some(Action::Travel)),

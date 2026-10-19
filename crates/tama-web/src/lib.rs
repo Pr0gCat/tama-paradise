@@ -87,6 +87,11 @@ impl Tama {
         self.0.take_sounds().into_iter().map(|(id, vol)| (id as u32) << 8 | vol as u32).collect()
     }
 
+    /// In-game CONNECTION request: "", "playdate", "receive" or "gift:<code>".
+    pub fn take_connect(&mut self) -> String {
+        self.0.take_connect().unwrap_or_default()
+    }
+
     pub fn friend_code(&self) -> String {
         self.0.friend_code()
     }

@@ -171,6 +171,20 @@
     if (id) { save(); dlg.close(); } else msg("Invalid or already used code");
   };
 
+  // The game's own CONNECTION menu (planet level) opens this panel for the chosen entry.
+  function connect(req) {
+    $("friends-btn").click();
+    if (req.startsWith("gift:")) {
+      const code = req.slice(5);
+      $("gift-code").value = code; drawQr($("gift-qr"), link("gift", code)); save();
+      msg("Send this gift code or QR to your friend");
+    } else if (req === "playdate") {
+      $("their-code").focus(); msg("Show your code to your friend and enter theirs, then press Playdate");
+    } else {
+      $("recv-code").focus(); msg("Enter a gift code from your friend");
+    }
+  }
+
   // Opened from a scanned QR: fill in the code and show the panel (the link is then cleaned up).
   for (const [kind, field] of [["friend", "their-code"], ["gift", "recv-code"]]) {
     const code = params.get(kind);
@@ -246,6 +260,8 @@
       for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
       document.getElementById("s").textContent = game.status();
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
+      const req = game.take_connect();
+      if (req) connect(req);
       const sounds = game.take_sounds();
       if (sounds.length) { const s = sounds[sounds.length - 1]; playMelody(s >> 8, s & 0xff); }
     }

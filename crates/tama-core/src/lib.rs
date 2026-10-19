@@ -84,6 +84,8 @@ pub struct Game {
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
     visitor: Option<(u16, Node)>,
     visitor_day: Option<u64>,
+    /// A request for the platform's connection panel ("playdate", "receive", "gift:<code>").
+    connect: Option<String>,
     /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
     zoom: f32,
 }
@@ -126,6 +128,7 @@ impl Game {
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
+            connect: None,
             visitor: None,
             visitor_day: None,
         };
@@ -228,6 +231,12 @@ impl Game {
         &self.screen.fb
     }
 
+    /// A connection request from the game's CONNECTION menu, for the platform to show its
+    /// friend-code panel: "playdate", "receive", or "gift:<code>" with a code to hand over.
+    pub fn take_connect(&mut self) -> Option<String> {
+        self.connect.take()
+    }
+
     /// This player's friend code for the current pet.
     pub fn friend_code(&self) -> String {
         self.pet.card(self.data.rom_type, None).encode()
@@ -238,12 +247,16 @@ impl Game {
     pub fn playdate(&mut self, code: &str, marry: bool) -> Result<(), &'static str> {
         let card = social::Card::decode(code).ok_or("bad friend code")?;
         let outcome = self.pet.playdate(&self.data, &card, marry).ok_or("your tama cannot play now")?;
-        let text = match outcome {
-            social::Outcome::Play(_) => 0x73,
-            social::Outcome::Fight => 0x74,
-            social::Outcome::Married => 0x77,
+        let (text, how) = match outcome {
+            social::Outcome::Play(n) => (0x73, n as usize),
+            social::Outcome::Fight => (0x74, 4),
+            social::Outcome::Married => (0x77, 3),
         };
-        self.scene = Scene::Message { text, then: Box::new(Scene::Home) };
+        // The friend's tama plays role 1 in the playdate animation.
+        self.roles[1] = self.data.character(card.tama).map(|c| c.chr_id);
+        let then = Scene::Message { text, then: Box::new(Scene::Home) };
+        let anim = ui::PLAYDATE_ANIM[how.min(6)];
+        self.scene = self.play(&[anim], (0, ui::OnPress::None), None, then);
         Ok(())
     }
 

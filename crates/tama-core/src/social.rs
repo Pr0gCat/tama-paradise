@@ -183,7 +183,8 @@ impl Pet {
 
     /// Gift code for one item (`FUN_100899c0`): removes it from the inventory.
     pub fn gift(&mut self, item: u16) -> Option<String> {
-        if self.count(item) == 0 {
+        // Placed toys and worn outfits cannot be given away.
+        if self.free(item) == 0 {
             return None;
         }
         self.give(item, -1);

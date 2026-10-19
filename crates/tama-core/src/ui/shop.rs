@@ -228,6 +228,9 @@ impl Game {
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
+            Action::Connect | Action::ConnectPlaydate | Action::ConnectGifts | Action::GiftItem(_) | Action::Planets => {
+                self.open_connect(a)
+            }
             Action::Together => {
                 if self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t)) {
                     return Scene::Message { text: 0x69, then: Box::new(Scene::Home) };
@@ -315,6 +318,7 @@ impl Game {
         let back = match kind {
             CardKind::Buy(_) => Action::BuyMenu,
             CardKind::Toy => Action::Setsubi,
+            CardKind::Gift => Action::Connect,
             CardKind::Wear | CardKind::Travel => Action::SpaceMenu,
             _ => Action::Shop,
         };
@@ -327,6 +331,9 @@ impl Game {
         let Some(item) = items.get(idx).and_then(|&id| self.data.item(id)) else { return self.open(back) };
         if matches!(kind, CardKind::Toy | CardKind::Wear | CardKind::Travel) {
             return self.pick_decor_card(kind, &items, idx);
+        }
+        if kind == CardKind::Gift {
+            return self.pick_gift(&items, idx);
         }
         let now = self.pet.last.unwrap_or(0);
         let stay = |g: &mut Game| match kind {
@@ -343,7 +350,7 @@ impl Game {
                 Ok(()) => (t::SALE_MADE, true),
                 Err(_) => (t::UNAVAILABLE, false),
             },
-            CardKind::Toy | CardKind::Wear | CardKind::Travel => unreachable!(),
+            CardKind::Toy | CardKind::Wear | CardKind::Travel | CardKind::Gift => unreachable!(),
             CardKind::Cook => match self.pet.cook(&self.data, item.id) {
                 Ok(()) => {
                     // Cooking serves the dish at once, like feeding.
@@ -405,6 +412,7 @@ impl Game {
                 }
             }
             CardKind::Travel => self.draw_number(self.pet.unchi_meter as u32, 64, 115, 1),
+            CardKind::Gift => self.draw_number(self.pet.free(item.id) as u32, 64, 115, 1),
             CardKind::Cook => {
                 let material = self.data.recipes.iter().find(|r| r.0 == item.id).map_or(0, |r| r.1);
                 if let Some(m) = self.data.item(material) {

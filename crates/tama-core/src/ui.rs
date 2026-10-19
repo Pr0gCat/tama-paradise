@@ -7,10 +7,12 @@ use crate::motion::Node;
 use crate::pet::{req, Cond};
 use crate::Game;
 
+mod connect;
 mod decor;
 mod hunt;
 mod shop;
 
+pub(crate) use connect::PLAYDATE_ANIM;
 pub(crate) use decor::PET_FOCUS;
 
 /// String ids (English table; same ids in every language).
@@ -156,6 +158,12 @@ pub(crate) enum Action {
     Hunt,
     HuntKind(u8),
     HuntGo { kind: u8, team: [u8; 3] },
+    /// Planet menu CONNECTION and its entries.
+    Connect,
+    ConnectPlaydate,
+    ConnectGifts,
+    GiftItem(u16),
+    Planets,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,6 +174,7 @@ pub(crate) enum CardKind {
     Toy,
     Wear,
     Travel,
+    Gift,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,6 +220,8 @@ pub(crate) enum Scene {
     /// Page 0: rank; page 1: the next goal.
     PlanetLv { page: u8 },
     HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
+    /// CONNECTION → PLANETS: the friend list.
+    Friends { idx: usize },
     /// Opened eggs; `peach` = the golden-peach page after a great result.
     HuntEggs { items: Vec<u16>, t: u16, peach: bool },
     /// Points earned, then `then` (lab game result screen).
@@ -291,6 +302,7 @@ impl Game {
                 | Scene::Breed { .. }
                 | Scene::Graves { .. }
                 | Scene::Setsubi { .. }
+                | Scene::Friends { .. }
                 | Scene::PlanetLv { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
@@ -360,6 +372,16 @@ impl Game {
                 } else {
                     Scene::Breed { cands, idx }
                 }
+            }
+            Scene::Friends { mut idx } => {
+                let n = self.pet.friends.len().max(1);
+                if pressed & (A | UP) != 0 {
+                    idx = (idx + 1) % n;
+                }
+                if pressed & DOWN != 0 {
+                    idx = (idx + n - 1) % n;
+                }
+                if pressed & C != 0 { self.open(Action::Connect) } else { Scene::Friends { idx } }
             }
             Scene::HuntTeam { kind, idx, picked } => self.update_hunt_team(kind, idx, picked, pressed),
             Scene::HuntEggs { items, t, peach } => self.update_hunt_eggs(items, t, peach, pressed),
@@ -882,6 +904,10 @@ impl Game {
             }
             Scene::Setsubi { toy, field, area, idx } => {
                 self.draw_setsubi(*toy, *field, *area, *idx);
+                true
+            }
+            Scene::Friends { idx } => {
+                self.draw_friend(*idx);
                 true
             }
             Scene::HuntTeam { idx, picked, .. } => {
