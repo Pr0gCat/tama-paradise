@@ -76,7 +76,7 @@ Sprite pack：u32 偏移表（數量 = 第一個偏移/4 = **2284**），偏移�
 | 12 | u8×2 | 每幀 cell 寬數、高數（幀 = iw×ih 個 cell 拼成） | |
 | 14 | u8 | palette_bpp（恆 0x11） | |
 | 15 | u8 | num_palette_sets | 1–20 |
-| 16 | u16 | 透明色 index | 恆 0 |
+| 16 | u16 | 透明色 index | 2283 個為 0；sprite 37 為 1 |
 | 18 | u16 | palette_offset | 24 |
 | 20 | u16 | pixel_data_offset | |
 | 22 | u16 | padding | |
@@ -125,10 +125,11 @@ Sprite pack：u32 偏移表（數量 = 第一個偏移/4 = **2284**），偏移�
 | --- | --- | --- | --- |
 | C1 | 每角色 6 張連續 sprite：+0 body 64×64×20 幀、+1 eyes 64×32×20、+2 mouth 64×32×18、+3 小 body 32×32×24、+4 小 eyes 32×16×14、+5 小 mouth 32×16×14（2bpp，1 palette） | sprites 268–273（圖片目視確認） | [確認] |
 | C2 | Paramix `figuren` 的編號 = body sprite index（207、268、274…1066，步距 6，共 135 = `tamaid` 的 135 個角色） | zip 檔名 vs sprite header | [確認] |
-| C3 | sprite 206 = 64×64 4bpp、**16 組 palette** → 寵物 16 色（`g_tama_color` 0–15）的調色盤來源 | sprite header | [推測] |
+| C3 | sprite 206 = 64×64 4bpp、**16 組 palette** → 寵物 16 色（`g_tama_color` 0–15）的調色盤來源。驗證：2113 body（sprite 304）自帶調色盤 = 206 第 14 組，其預設色 Option = 14；1001 body（268）= 第 7 組，Option = 7。蛋（207）用自己的調色盤 | sprite header、`tama-extract` | [確認] |
 | C4 | 角色繪製 `FUN_100075c4`：`FUN_10022f00(chr)` 取 data 表 18 的 0xd8-byte 角色模型記錄 → `FUN_10023d64(rec, anim)` 取動畫 → 逐部件（預設 5 個，部件型別表 `{0,1,0xf,0x10,0x11}`）用 `FUN_10023af4` 解 keyframe → 以 16.16 仿射矩陣（平移 `FUN_10024bc0`、縮放 `FUN_10024b38`、旋轉 `FUN_10024a78`）組合 → `FUN_100322e8` 建 sprite instance | `FUN_100075c4` | [確認] |
 | C5 | 部件型別 1（eyes）可由 `inst[5]`（≠0x7fff）指定**另一角色**的 eyes sprite（配對/基因）；型別 4/6/8 = 裝備道具 `inst[8..10]`（`FUN_10022ff0(item)+4` 的 sprite）；型別 0 = body，palette 用 `inst[2]` | `FUN_100075c4` switch | [推測]（欄位語意） |
-| C6 | Keyframe（data 表 15，以表 16 的 u32 半字偏移索引）：`u16 flags, u16 a, u16 b` + 依旗標選填：bit13→[6]、bit12→[7]、bit11→[4]、bit10→[3]（預設 0x1000 = 縮放 1.0, 4.12）、bit9→[5]（預設 0x40 = alpha 不透明）、bit8→[8]、bit7→[9]、bit6→[10]、bit5→[0] | `FUN_10023af4` | [確認]（各欄位語意 [推測]：[0]=sprite、[1]/[2]=x/y、[3]=scale、[4]=rot、[5]=alpha） |
+| C6 | Keyframe（data 表 15，以表 16 的 u32 半字偏移索引）：`u16 flags, u16 [1]=x, u16 [2]=y` + 依旗標選填（`x * 0x20000000 < 0` 測的是 bit2）：bit2→[6] 幀、bit3→[7]、bit4→[4] 旋轉、bit5→[3] 縮放（預設 0x1000 = 1.0）、bit6→[5] alpha（預設 0x40 = 不透明）、bit7→[8]、bit8→[9] 翻轉、bit9→[10] 部件型別、bit10→[0] sprite | `FUN_10023af4`；`tama-extract` 解出的姿勢與畫面一致 | [確認] |
+| C7 | 角色模型（data 表 18）每個 ChrID 一筆 0xd8 B = 54 個動畫 × `{i16 第一個 keyframe, i16 部件數}`。anim 0 空；**anim 1 = idle**（2113：body 304 (0,−32)、eyes 305 (1,−16)、mouth 306 (0,−16)、型別 17 sprite 221 α51 灰塵效果）；anim 2 = idle 交替幀（body 幀 1、mouth 幀 4）。座標 = sprite 中心相對角色底部中心 | `FUN_10022f00`、`FUN_10023d54`、`FUN_100075c4` | [確認]（型別 16/17 的顯示條件 [未知]） |
 
 ---
 

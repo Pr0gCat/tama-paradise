@@ -45,6 +45,22 @@
   const press = b => { game.press(b); save(); };
   document.querySelectorAll("button").forEach(el => el.onclick = () => press(+el.dataset.b));
   addEventListener("keydown", e => e.key in keys && press(keys[e.key]));
+  // Sprites are fetched on demand; the core asks for what the current screen needs.
+  const loading = new Set();
+  async function loadSprite(id) {
+    loading.add(id);
+    try {
+      const res = await fetch(`sprites/${id}.tsp.gz`);
+      if (!res.ok) throw new Error(res.status);
+      const raw = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+      if (!game.add_sprite(id, new Uint8Array(raw))) throw new Error("bad sprite");
+    } catch (e) {
+      console.warn(`sprite ${id}:`, e);  // stays in `loading`, so it is not retried every frame
+      return;
+    }
+    loading.delete(id);
+  }
+
   let last = performance.now(), acc = 0;
   function frame(now) {
     acc += now - last; last = now;
@@ -53,6 +69,7 @@
     if (n) {
       game.advance_to(t0 + (now - wall0) / 1000 * speed);
       document.getElementById("s").textContent = game.status();
+      for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
     }
     ctx.putImageData(new ImageData(new Uint8ClampedArray(game.framebuffer()), w, h), 0, 0);
     requestAnimationFrame(frame);

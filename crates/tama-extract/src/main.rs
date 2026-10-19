@@ -1,7 +1,10 @@
-//! Extract game data from a Tamagotchi Paradise flash dump into data/game.json.
+//! Extract game data and sprites from a Tamagotchi Paradise flash dump.
 //!
-//! Usage: tama-extract <dump.bin> <out.json>
-use tama_core::data::{CharDef, Data, Evolution, Item};
+//! Usage: tama-extract <dump.bin> <data_dir>
+//! Writes <data_dir>/game.json and <data_dir>/sprites/<index>.tsp.gz (format: tama_core::sprite).
+use std::io::Write;
+use tama_core::data::{CharDef, Data, Evolution, Item, Model, Part};
+use tama_core::sprite::Sprite;
 
 const ASSET_ARC: usize = 0x111000;
 const XIP_FLASH: usize = 0x11000;
@@ -22,8 +25,7 @@ fn xip(addr: usize) -> usize {
 
 /// Records of `n` u16 words from data-pack table `t` (ARC2 entry 0, 23 u16-unit offsets).
 fn table(dump: &[u8], t: usize, n: usize) -> Vec<Vec<u16>> {
-    assert_eq!(&dump[ASSET_ARC..ASSET_ARC + 4], b"ARC2", "asset archive not found");
-    let pack = ASSET_ARC + u32_at(dump, ASSET_ARC + 0x10 + 4) as usize;
+    let pack = arc_entry(dump, 0).0;
     let start = pack + u32_at(dump, pack + t * 4) as usize * 2;
     let end = pack + u32_at(dump, pack + (t + 1) * 4) as usize * 2;
     dump[start..end]
@@ -32,13 +34,164 @@ fn table(dump: &[u8], t: usize, n: usize) -> Vec<Vec<u16>> {
         .collect()
 }
 
+/// Start of data-pack table `t` (u16-unit offsets at the pack start).
+fn table_start(dump: &[u8], t: usize) -> usize {
+    let pack = arc_entry(dump, 0).0;
+    pack + u32_at(dump, pack + t * 4) as usize * 2
+}
+
+/// Keyframe `idx` (`FUN_10023af4` 0x10023af4): table 16 holds u32 u16-unit offsets into table 15.
+/// Layout: u16 flags, x, y, then optional fields chosen by flag bits.
+fn keyframe(dump: &[u8], idx: usize) -> Part {
+    let at = table_start(dump, 15) + u32_at(dump, table_start(dump, 16) + idx * 4) as usize * 2;
+    let flags = u16_at(dump, at);
+    let mut k = [0u16; 11];
+    k[1] = u16_at(dump, at + 2);
+    k[2] = u16_at(dump, at + 4);
+    k[3] = 0x1000;
+    k[5] = 0x40;
+    let mut p = at + 6;
+    for (bit, slot) in [(2, 6), (3, 7), (4, 4), (5, 3), (6, 5), (7, 8), (8, 9), (9, 10), (10, 0)] {
+        if flags >> bit & 1 != 0 {
+            k[slot] = u16_at(dump, p);
+            p += 2;
+        }
+    }
+    Part { sprite: k[0], frame: k[6], x: k[1] as i16, y: k[2] as i16, kind: k[10], alpha: k[5] as u8 }
+}
+
+/// Character models (table 18, 0xd8 bytes = 54 × {i16 first keyframe, i16 part count}).
+fn models(dump: &[u8], chr_ids: impl Iterator<Item = u16>) -> Vec<Model> {
+    let t18 = table_start(dump, 18);
+    let pose = |chr: u16, anim: usize| -> Vec<Part> {
+        let rec = t18 + chr as usize * 0xd8 + anim * 4;
+        let (first, count) = (u16_at(dump, rec) as i16, u16_at(dump, rec + 2) as i16);
+        (0..count.max(0)).map(|i| keyframe(dump, (first + i) as usize)).collect()
+    };
+    chr_ids
+        .map(|chr| Model { chr_id: chr, idle: [pose(chr, 1), pose(chr, 2)] })
+        .filter(|m| !m.idle[0].is_empty())
+        .collect()
+}
+
+/// ARC2 entry `i` of the root asset archive: (start, len) in the dump.
+fn arc_entry(dump: &[u8], i: usize) -> (usize, usize) {
+    assert_eq!(&dump[ASSET_ARC..ASSET_ARC + 4], b"ARC2", "asset archive not found");
+    let e = ASSET_ARC + 0x10 + i * 16;
+    (ASSET_ARC + u32_at(dump, e + 4) as usize, u32_at(dump, e + 12) as usize)
+}
+
+/// Bytewise RLE (GMMan sprites.md): 0 ends; bit7 set = that many literals; else repeat next byte.
+fn rle(src: &[u8]) -> Vec<u8> {
+    let (mut out, mut i) = (Vec::new(), 0);
+    while i < src.len() {
+        let c = src[i] as usize;
+        i += 1;
+        if c == 0 {
+            break;
+        }
+        if c & 0x80 != 0 {
+            let n = (c & 0x7f).min(src.len() - i);
+            out.extend_from_slice(&src[i..i + n]);
+            i += n;
+        } else if i < src.len() {
+            out.extend(std::iter::repeat(src[i]).take(c));
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Decode one original sprite record (24-byte header, see docs/spec/04-assets.md §2.3).
+/// Returns None for formats this dump never uses (1/16/24 bpp, wordwise RLE).
+fn decode_sprite(rec: &[u8]) -> Option<Sprite> {
+    let flags = rec[4];
+    let bits = match rec[5] {
+        1 => 2,
+        2 => 4,
+        3 => 8,
+        _ => return None,
+    };
+    if flags & 0x40 != 0 {
+        return None;
+    }
+    let n = u16_at(rec, 6) as usize;
+    let (sw, sh, iw, ih) = (rec[8] as usize, rec[9] as usize, rec[12] as usize, rec[13] as usize);
+    let (sets, poff, doff) = (rec[15] as usize, u16_at(rec, 18) as usize, u16_at(rec, 20) as usize);
+    let colors = 1usize << bits;
+    let palettes = (0..sets).map(|s| (0..colors).map(|i| u16_at(rec, poff + (s * colors + i) * 2)).collect()).collect();
+
+    let per = sw * sh * bits / 8;
+    let cell = |k: usize| -> Vec<u8> {
+        let mut d = if flags & 0x20 != 0 {
+            let o = u32_at(rec, doff + 8 * k) as usize;
+            let len = u32_at(rec, doff + 8 * k + 4) as usize;
+            let start = doff + (o & 0x7fff_ffff);
+            let raw: Vec<u8> = rec[start..start + len].to_vec();
+            let raw = if flags & 0x80 != 0 { raw.iter().map(|b| b ^ 0x53).collect() } else { raw };
+            if o & 0x8000_0000 != 0 { raw } else { rle(&raw) }
+        } else {
+            let raw = rec[doff + k * per..doff + (k + 1) * per].to_vec();
+            if flags & 0x80 != 0 { raw.iter().map(|b| b ^ 0x53).collect() } else { raw }
+        };
+        d.resize(per.max(d.len()), 0);
+        d
+    };
+
+    let (w, h) = (sw * iw, sh * ih);
+    let frames = n / (iw * ih);
+    let mut pixels = vec![0u8; frames * w * h];
+    for k in 0..frames * iw * ih {
+        let d = cell(k);
+        let (f, c) = (k / (iw * ih), k % (iw * ih));
+        let (cy, cx) = (c / iw, c % iw);
+        for y in 0..sh {
+            for x in 0..sw {
+                let bi = (y * sw + x) * bits;
+                let idx = (d[bi >> 3] >> (bi & 7)) & ((1 << bits) - 1) as u8;
+                pixels[f * w * h + (cy * sh + y) * w + cx * sw + x] = idx;
+            }
+        }
+    }
+    Some(Sprite {
+        w: w as u16,
+        h: h as u16,
+        frames: frames as u16,
+        bits: bits as u8,
+        transparent: flags & 4 != 0,
+        key: u16_at(rec, 16) as u8,
+        palettes,
+        pixels,
+    })
+}
+
+fn write_sprites(dump: &[u8], dir: &std::path::Path) -> (usize, usize) {
+    std::fs::create_dir_all(dir).expect("create sprites dir");
+    let (pack, len) = arc_entry(dump, 1);
+    let pack = &dump[pack..pack + len];
+    let count = u32_at(pack, 0) as usize / 4;
+    let mut skipped = 0;
+    for i in 0..count {
+        let rec = &pack[u32_at(pack, i * 4) as usize..];
+        let Some(s) = decode_sprite(rec) else {
+            skipped += 1;
+            continue;
+        };
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::best());
+        gz.write_all(&s.to_bytes()).unwrap();
+        std::fs::write(dir.join(format!("{i}.tsp.gz")), gz.finish().unwrap()).expect("write sprite");
+    }
+    (count - skipped, skipped)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let [_, dump_path, out_path] = &args[..] else {
-        eprintln!("usage: tama-extract <dump.bin> <out.json>");
+    let [_, dump_path, out_dir] = &args[..] else {
+        eprintln!("usage: tama-extract <dump.bin> <data_dir>");
         std::process::exit(2);
     };
     let dump = std::fs::read(dump_path).expect("read dump");
+    let out_dir = std::path::Path::new(out_dir);
 
     let characters: Vec<CharDef> = table(&dump, 11, 15)
         .into_iter()
@@ -92,10 +245,22 @@ fn main() {
         adults: std::array::from_fn(|f| std::array::from_fn(|b| std::array::from_fn(|q| adult[f * 16 + b * 4 + q]))),
     };
 
-    let data = Data { rom_type: u32_at(&dump, VERSION_INFO) as u8, characters, items, evolution };
+    let mut chr_ids: Vec<u16> = characters.iter().map(|c| c.chr_id).collect();
+    chr_ids.sort_unstable();
+    chr_ids.dedup();
+    let models = models(&dump, chr_ids.into_iter());
+    let data = Data { rom_type: u32_at(&dump, VERSION_INFO) as u8, characters, items, evolution, models };
     for id in data.evolution.kids.iter().chain(data.evolution.teens.iter().flatten()) {
         assert!(data.character(*id).is_some(), "evolution target {id} missing");
     }
-    std::fs::write(out_path, serde_json::to_string_pretty(&data).unwrap()).expect("write");
-    println!("{} characters, {} items, rom_type {}", data.characters.len(), data.items.len(), data.rom_type);
+    std::fs::write(out_dir.join("game.json"), serde_json::to_string_pretty(&data).unwrap()).expect("write");
+    println!(
+        "{} characters, {} models, {} items, rom_type {}",
+        data.characters.len(),
+        data.models.len(),
+        data.items.len(),
+        data.rom_type
+    );
+    let (ok, skipped) = write_sprites(&dump, &out_dir.join("sprites"));
+    println!("{ok} sprites written, {skipped} skipped (unsupported format)");
 }

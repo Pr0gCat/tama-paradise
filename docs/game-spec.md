@@ -388,7 +388,7 @@
 - 格式同 GMMan `sprites.md`。本版全部 XOR 0x53 加密、bytewise RLE、2/4/8 bpp 調色盤。
 - `extract_sprites.py` 從原始 dump 解出的 2284 張與 Paramix 匯出逐像素一致。
 - 繪圖由 PRAM 軟體 blitter 完成：相機偏移、16.16 縮放、alpha 0–0x40、水平與垂直翻轉、調色盤混色特效。
-- **角色由部件組成**：每個角色 6 張 sprite（大小各一組：身體、眼睛、嘴巴），依動畫 keyframe 疊合（`chara_draw_parts` 0x100075c4）。顏色來自 16 組調色盤（sprite 206，[推測]）。
+- **角色由部件組成**：每個角色 6 張 sprite（大小各一組：身體、眼睛、嘴巴），依動畫 keyframe 疊合（`chara_draw_parts` 0x100075c4）。角色模型（資料表 18）每個 ChrID 有 54 個動畫，anim 1 是 idle 姿勢；keyframe 格式見 04-assets C6/C7。身體顏色來自 sprite 206 的 16 組調色盤（第 n 組 = 顏色 n）[確認]。
 
 ### 文字 [確認]
 
@@ -510,7 +510,7 @@
 | # | 問題 | 影響 | 怎麼查 |
 | --- | --- | --- | --- |
 | 1 | 實際幀率（推定 20 fps） | 動畫與輸入手感 | 示波器量 TP6（TE 腳），或 monitor 讀 ms 計數 |
-| 2 | 角色部件動畫 keyframe 與角色模型表的完整格式 | 角色繪製 | `chara_draw_parts` 0x100075c4 與資料表 |
+| 2 | 角色動畫：54 個動畫編號各自的用途（睡覺、吃飯、開心…）、動畫如何隨時間換幀、部件型別 16/17 的顯示條件（idle 姿勢已解出） | 角色動作 | `chara_draw_parts` 0x100075c4 的呼叫者 |
 | 3 | cond = 1 的意義（19:00 結束並 gokigen −5） | 小 | 找設定 cond=1 的呼叫者 |
 | 4 | 玩家如何回應 EVOL_SUPPORT | 嬰兒期進化 | `req_done` case 0x13 的呼叫場景 |
 | 5 | 第二 ID 60000 系列、Gender 欄位的用途 | 外觀、配對 | 搜尋讀取 0x18000cfe 與 def+0x10 的程式 |

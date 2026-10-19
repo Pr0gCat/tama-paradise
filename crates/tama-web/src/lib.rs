@@ -69,6 +69,16 @@ impl Tama {
         )
     }
 
+    /// Sprite indexes to fetch (`sprites/<id>.tsp.gz`) and pass to `add_sprite`.
+    pub fn missing_sprites(&self) -> Vec<u16> {
+        self.0.missing_sprites()
+    }
+
+    /// `bytes` = decompressed .tsp file.
+    pub fn add_sprite(&mut self, id: u16, bytes: &[u8]) -> bool {
+        self.0.add_sprite(id, bytes)
+    }
+
     /// Copy of the RGBA framebuffer.
     pub fn framebuffer(&self) -> Vec<u8> {
         self.0.framebuffer().to_vec()

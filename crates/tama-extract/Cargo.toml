@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 tama-core = { path = "../tama-core" }
 serde_json = "1"
+flate2 = "1"

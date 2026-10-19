@@ -71,6 +71,32 @@ pub struct Evolution {
     pub failed: u16,
 }
 
+/// One sprite of a character pose (keyframe, data table 15; see game-spec §8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Part {
+    pub sprite: u16,
+    pub frame: u16,
+    /// Sprite centre relative to the character anchor (bottom centre), pixels.
+    pub x: i16,
+    pub y: i16,
+    /// 0 body, 1 eyes, 15 mouth, 17 shadow, …
+    pub kind: u16,
+    /// 0–64, 64 = opaque.
+    pub alpha: u8,
+}
+
+pub const PART_BODY: u16 = 0;
+pub const PART_EYES: u16 = 1;
+pub const PART_MOUTH: u16 = 15;
+
+/// Character model (data table 18): poses by animation number, only those the game uses.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Model {
+    pub chr_id: u16,
+    /// Idle (anim 1) and idle alternate (anim 2).
+    pub idle: [Vec<Part>; 2],
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Data {
     /// Device edition (flash 0xd29000): 1–6. Glacier = 6.
@@ -78,6 +104,8 @@ pub struct Data {
     pub characters: Vec<CharDef>,
     pub items: Vec<Item>,
     pub evolution: Evolution,
+    #[serde(default)]
+    pub models: Vec<Model>,
 }
 
 impl Data {
@@ -87,6 +115,10 @@ impl Data {
 
     pub fn character(&self, id: u16) -> Option<CharDef> {
         self.characters.iter().find(|c| c.id == id).copied()
+    }
+
+    pub fn model(&self, chr_id: u16) -> Option<&Model> {
+        self.models.iter().find(|m| m.chr_id == chr_id)
     }
 
     pub fn item(&self, id: u16) -> Option<Item> {
