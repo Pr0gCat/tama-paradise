@@ -196,7 +196,8 @@ impl Game {
             n.tick(&self.data.motions);
             n.take_sounds(&mut self.sounds);
         }
-        if nodes.last().is_some_and(|(n, _, _)| n.is_finished()) {
+        // The new grave's script signals the end (the planet beside it loops forever).
+        if nodes.get(2).is_some_and(|(n, _, _)| n.is_finished()) {
             return Scene::Home;
         }
         Scene::Graveyard { nodes }
