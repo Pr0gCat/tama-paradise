@@ -33,6 +33,13 @@ impl Game {
         self.screen.text(&self.data.fonts, &glyphs, x, y, true, palette);
     }
 
+    /// A number whose right edge is at `right` (balances that must stay on screen).
+    pub(crate) fn draw_number_right(&mut self, n: u32, right: i32, y: i32, palette: usize) {
+        let glyphs: Vec<u16> = n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect();
+        let w = crate::screen::Screen::text_width(&self.data.fonts, &glyphs);
+        self.screen.text(&self.data.fonts, &glyphs, right - w, y, false, palette);
+    }
+
     /// Field background sprite for the current field and time of day (`field_bg_create` 0x10015d90).
     pub(crate) fn field_bg(&self) -> Option<u16> {
         self.field_bg_at(self.pet.field, self.pet.in_area2)

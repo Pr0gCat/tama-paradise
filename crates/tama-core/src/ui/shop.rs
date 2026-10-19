@@ -554,7 +554,7 @@ impl Game {
             }
         }
         // Points balance, top right.
-        self.draw_number(self.pet.points, 108, 8, 1);
+        self.draw_number_right(self.pet.points, 124, 8, 1);
     }
 
     /// One grave: the tama, cause of death (illness / hunger / old age) and age.
