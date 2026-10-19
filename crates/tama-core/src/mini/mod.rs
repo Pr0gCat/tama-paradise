@@ -132,6 +132,8 @@ pub mod lab03;
 pub mod lab04;
 pub mod lab05;
 pub mod lab06;
+pub mod together01;
+pub mod together04;
 
 use crate::data::{Data, MiniData};
 use crate::motion::{Draw, Node};
@@ -170,6 +172,14 @@ pub trait MiniGame {
     fn uses_c(&self) -> bool {
         false
     }
+    /// Play-together games draw the current field background at 2× under everything (C2).
+    fn field_bg(&self) -> bool {
+        false
+    }
+    /// Where the result script plays (its UI element), (64,64) by default.
+    fn result_at(&self) -> (i32, i32) {
+        (64, 64)
+    }
 }
 
 pub enum Phase {
@@ -193,6 +203,11 @@ pub struct Session {
 impl Session {
     pub fn new(game: Box<dyn MiniGame>, level: Option<usize>) -> Self {
         Session { game, phase: Phase::Ready(Node::new(READY_GO)), level, event: None }
+    }
+
+    /// A play-together game: no READY/GO, the game plays its own opening (09-minigames-together).
+    pub fn together(game: Box<dyn MiniGame>) -> Self {
+        Session { phase: Phase::Play, ..Session::new(game, None) }
     }
 
     /// Play `script` (at (64,64)) before READY/GO.
@@ -237,7 +252,10 @@ impl Session {
             }
             Phase::Play => {
                 if let Some(r) = self.game.update(pressed, held, data, sounds) {
-                    self.phase = Phase::Result(Node::new(self.game.result_script(r)), r);
+                    let mut node = Node::new(self.game.result_script(r));
+                    let (x, y) = self.game.result_at();
+                    node.place(x - 64, y - 64);
+                    self.phase = Phase::Result(node, r);
                 }
                 None
             }

@@ -884,6 +884,11 @@ impl Game {
             }
             Scene::Mini { session, .. } => {
                 self.screen.rect(0, 0, 128, 128, [0, 0, 0]);
+                if let Some(bg) = self.field_bg().filter(|_| session.game.field_bg()) {
+                    self.screen.zoom = 2.0;
+                    self.screen.blit(bg, 0, 64, 64, 64, false, None);
+                    self.screen.zoom = 1.0;
+                }
                 let mut draws = Vec::new();
                 session.draws(&mut draws);
                 self.draw_list_of(&draws, None);
