@@ -8,6 +8,7 @@ use crate::pet::{req, Cond};
 use crate::Game;
 
 mod decor;
+mod hunt;
 mod shop;
 
 pub(crate) use decor::PET_FOCUS;
@@ -151,6 +152,10 @@ pub(crate) enum Action {
     /// Pet menu PLAY: the play-together menu, and one of its games (by game number).
     Together,
     PlayTogether(u8),
+    /// EGG HUNT: place menu, team picker for a place, and setting off with three members.
+    Hunt,
+    HuntKind(u8),
+    HuntGo { kind: u8, team: [u8; 3] },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -205,6 +210,9 @@ pub(crate) enum Scene {
     Setsubi { toy: u16, field: u8, area: u8, idx: usize },
     /// Page 0: rank; page 1: the next goal.
     PlanetLv { page: u8 },
+    HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
+    /// Opened eggs; `peach` = the golden-peach page after a great result.
+    HuntEggs { items: Vec<u16>, t: u16, peach: bool },
     /// Points earned, then `then` (lab game result screen).
     Points { points: u32, then: Box<Scene> },
     /// A mini-game: lab game index and difficulty (None for play-together games).
@@ -353,6 +361,8 @@ impl Game {
                     Scene::Breed { cands, idx }
                 }
             }
+            Scene::HuntTeam { kind, idx, picked } => self.update_hunt_team(kind, idx, picked, pressed),
+            Scene::HuntEggs { items, t, peach } => self.update_hunt_eggs(items, t, peach, pressed),
             Scene::Setsubi { toy, field, area, idx } => self.update_setsubi(toy, field, area, idx, pressed),
             Scene::PlanetLv { page } => {
                 if pressed & C != 0 && page == 1 {
@@ -544,7 +554,7 @@ impl Game {
         Scene::Menu {
             items: vec![
                 (text::OUTSIDE_TOY, (self.pet.rank >= 2).then_some(Action::Setsubi)),
-                (text::EGG_HUNT, None),
+                (text::EGG_HUNT, Some(Action::Hunt)),
                 (text::CLEAN_POOP, Some(Action::CleanPoop)),
                 (text::FIELDS, (self.pet.rank >= 4).then_some(Action::Fields)),
             ],
@@ -872,6 +882,14 @@ impl Game {
             }
             Scene::Setsubi { toy, field, area, idx } => {
                 self.draw_setsubi(*toy, *field, *area, *idx);
+                true
+            }
+            Scene::HuntTeam { idx, picked, .. } => {
+                self.draw_hunt_team(*idx, picked);
+                true
+            }
+            Scene::HuntEggs { items, t, peach } => {
+                self.draw_hunt_eggs(items, *t, *peach);
                 true
             }
             Scene::PlanetLv { page } => {

@@ -225,17 +225,30 @@ impl Game {
                     Scene::Card { kind: CardKind::Travel, items, idx: 0 }
                 }
             }
-            Action::GoTravel(d) => match self.pet.travel(&self.data, d as usize) {
-                Some(souvenir) => {
-                    let anim = self.data.decor.travel[d as usize].anim;
-                    let name = self.data.item(souvenir).map_or(0, |i| i.name);
-                    let then = Scene::Message { text: name, then: Box::new(Scene::Home) };
-                    self.play(&[anim], (0, super::OnPress::None), None, then)
+            Action::GoTravel(d) => {
+                // Roles: 1/2 = the field's first two grazing tamas, 3 = the local NPC (0x1006f810).
+                let toggle = (self.pet.travel_toggle >> d & 1) as usize;
+                let grazing = &self.pet.grazing[self.pet.field as usize];
+                for (r, g) in grazing.iter().take(2).enumerate() {
+                    self.roles[1 + r] = self.data.character(g.id).map(|c| c.chr_id);
                 }
-                None => self.open(Action::Travel),
-            },
+                self.roles[3] = self.data.decor.travel.get(d as usize).map(|t| t.npcs[toggle]);
+                self.go_travel(d)
+            }
             Action::PlanetLv => Scene::PlanetLv { page: 0 },
             _ => Scene::Home,
+        }
+    }
+
+    fn go_travel(&mut self, d: u8) -> Scene {
+        match self.pet.travel(&self.data, d as usize) {
+            Some(souvenir) => {
+                let anim = self.data.decor.travel[d as usize].anim;
+                let name = self.data.item(souvenir).map_or(0, |i| i.name);
+                let then = Scene::Message { text: name, then: Box::new(Scene::Home) };
+                self.play(&[anim], (0, super::OnPress::None), None, then)
+            }
+            None => self.open(Action::Travel),
         }
     }
 
@@ -420,7 +433,7 @@ mod tests {
             Item { id: 9901, kind: 9, ..Default::default() },
         ];
         d.decor.home_pos = vec![[[(10, 20, 100); 9]; 2]; 3];
-        d.decor.travel = vec![Destination { item: 9901, rank: 3, anim: 0, souvenirs: [8001, 8002], npcs: [0, 0] }];
+        d.decor.travel = vec![Destination { item: 9901, rank: 3, anim: 0, souvenirs: [8001, 8002], npcs: [167, 168] }];
         let mut g = Game::new(d, 1);
         g.pet.def = g.data.character(2113).unwrap();
         g.pet.rank = 3;
@@ -477,6 +490,8 @@ mod tests {
         press(&mut g, B); // GO TO THIS PLANET?
         press(&mut g, B); // YES
         assert_eq!((g.pet.unchi_meter, g.pet.count(8001)), (0, 1));
+        assert_eq!(g.roles[3], Some(167), "the local NPC stands in for role 3");
+        assert_eq!(g.resolve_chr(crate::motion::ROLE + 3).0, 167);
         g.scene = g.open(Action::Deco);
         press(&mut g, B); // CREPE HAT: IS THIS OKAY?
         press(&mut g, B);

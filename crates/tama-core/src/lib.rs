@@ -79,6 +79,8 @@ pub struct Game {
     /// Outside toys on the field: (slot, looping show animation), rebuilt when the layout changes.
     toy_nodes: Vec<(usize, Node)>,
     toy_key: Option<(u8, bool, [u16; 6])>,
+    /// Characters standing in for script roles 1–3 in the current scene (ChrID), see `motion::ROLE`.
+    pub(crate) roles: [Option<u16>; 4],
     /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
     zoom: f32,
 }
@@ -120,6 +122,7 @@ impl Game {
             toy_nodes: Vec::new(),
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
+            roles: [None; 4],
         };
         g.render();
         g
@@ -161,6 +164,7 @@ impl Game {
             self.check_events(now, r);
         }
         if matches!(self.scene, Scene::Home) {
+            self.roles = [None; 4];
             self.check_notices();
         }
         if matches!(self.scene, Scene::Home) && self.level == Level::Field {
@@ -291,12 +295,17 @@ impl Game {
     }
 
     /// Script character id → (ChrID to draw, is the player's pet, face shown).
-    fn resolve_chr(&self, chr: u16) -> (u16, bool, bool) {
+    pub(crate) fn resolve_chr(&self, chr: u16) -> (u16, bool, bool) {
         match chr {
+            motion::PET if self.roles[0].is_some() => (self.roles[0].unwrap_or(0), false, true),
             // 0 = the pet, 1 = the pet inside the cell (medicine), 0xbd–0xdc = pet slots.
             motion::PET | motion::PET_IN_CELL | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
             motion::PET_NO_FACE => (self.pet.def.chr_id, true, false),
             motion::PLANET => (self.planet_chr(), false, true),
+            c if c > motion::ROLE => match self.roles.get((c - motion::ROLE) as usize).copied().flatten() {
+                Some(chr) => (chr, false, true),
+                None => (self.pet.def.chr_id, true, true),
+            },
             c => (c, false, true),
         }
     }

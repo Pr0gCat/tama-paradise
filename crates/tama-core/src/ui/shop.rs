@@ -227,6 +227,7 @@ impl Game {
             | Action::Travel
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
+            Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
             Action::Together => {
                 if self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t)) {
                     return Scene::Message { text: 0x69, then: Box::new(Scene::Home) };

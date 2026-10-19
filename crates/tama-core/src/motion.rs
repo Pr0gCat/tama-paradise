@@ -18,6 +18,9 @@ pub const PET_NO_FACE: u16 = 0x1f;
 pub const PET_IN_CELL: u16 = 1;
 /// The planet (HOME_SPACE character, wearing the planet outfits).
 pub const PLANET: u16 = 2;
+/// The pet placeholder (chr 0 / 0x1f) with role B > 0 becomes `ROLE + B`: a partner the scene
+/// substitutes (travel companions, hunt team, visitors; 07-animation A2).
+pub const ROLE: u16 = 0x7f00;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Tween {
@@ -207,7 +210,10 @@ impl Node {
             0x1a if c == -1 => self.finished = true,
             0x1a if c == 4 => self.paused = true,
             0x1b => self.loop_pc = self.pc,
-            0x1c => self.look = Look::Chr { chr: a as u16, anim: c as u16, eyes: d, mouth: KEEP },
+            0x1c => {
+                let chr = if matches!(a as u16, PET | PET_NO_FACE) && b > 0 { ROLE + b as u16 } else { a as u16 };
+                self.look = Look::Chr { chr, anim: c as u16, eyes: d, mouth: KEEP };
+            }
             0x1d | 0x1e | 0x24 => {
                 if let Look::Chr { anim, eyes, mouth, .. } = &mut self.look {
                     match op {
