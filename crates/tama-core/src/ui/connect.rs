@@ -194,5 +194,14 @@ mod tests {
         let Scene::Points { points, .. } = g.after_arcade(0, 1) else { panic!("points") };
         assert_eq!((points, g.pet.points - pts), (100, 100));
         assert_eq!(g.pet.mission_progress(crate::progress::m::LINKS), 1);
+        // The CPU's friend record: HOCKEY +1, SHOOTING with result >= 1 +2, capped at 4, result 5.
+        let f = crate::social::Friend { device_uid: 7, chara_uid: 8, tama: 4022, color: 0, friendship: 1, result: 0 };
+        g.pet.friends.push(f);
+        g.after_arcade(0, 1);
+        assert_eq!((g.pet.friends[0].friendship, g.pet.friends[0].result), (2, 5));
+        g.after_arcade(1, 0);
+        assert_eq!(g.pet.friends[0].friendship, 3);
+        g.after_arcade(1, 2);
+        assert_eq!(g.pet.friends[0].friendship, 4);
     }
 }

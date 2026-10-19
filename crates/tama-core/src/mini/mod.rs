@@ -32,8 +32,15 @@ impl Pet {
         pts
     }
 
-    /// Arcade result (`FUN_100883e0`): points, and one more link for mission 11, win or lose.
+    /// Arcade result (`FUN_100883e0`): points, one more link for mission 11 win or lose, and the
+    /// friend's record (the most recent friend, whom the CPU plays): friendship + `FUN_1006cb9c`
+    /// (HOCKEY 1; SHOOTING 2 for result ≥ 1, else 1) kept in 1..4, last result 5.
     pub fn arcade_reward(&mut self, game: usize, result: usize) -> u32 {
+        if let Some(f) = self.friends.last_mut() {
+            let gain = if game == 1 && result != 0 { 2 } else { 1 };
+            f.friendship = (f.friendship + gain).clamp(1, 4);
+            f.result = 5;
+        }
         let pts = ARCADE_POINTS[game.min(1)][result.min(2)];
         self.earn(pts);
         self.count_mission(m::LINKS, 1);

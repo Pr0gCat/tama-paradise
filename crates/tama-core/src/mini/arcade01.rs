@@ -71,30 +71,50 @@ pub(super) fn rand(s: &mut u32) -> u32 {
     *s
 }
 
-/// In-game result panel (`FUN_10002cec`): dim overlay, banner, scores and the pet's reaction.
+/// In-game result panel (`FUN_10002cec`, update callback `FUN_1006b5d0`): dim overlay, banner,
+/// scores and the pet's reaction. The whole panel fades in (0.15 s, linear), then the content
+/// slides in from one screen to the left (0.25 s, ease-in, sound 53); 40 frames later any key
+/// closes it, or 5 s without input.
 pub(super) struct Panel {
     pub sprite: u16,
     pub pet: Node,
     pub t: u16,
 }
 
+const PANEL_FADE: u16 = 3;
+const PANEL_SLIDE: u16 = 5;
+/// The slide starts, then the panel ignores keys for 40 frames (`FUN_1006b6fc` countdown).
+const PANEL_LOCK: u16 = PANEL_FADE + 1 + 40;
+/// `idle_exceeds(5)`: 5 s with no input after the lock.
+const PANEL_IDLE: u16 = 100;
+
 impl Panel {
     pub fn new(sprite: u16, pet: u16) -> Self {
         Panel { sprite, pet: Node::new(pet), t: 0 }
     }
 
-    /// Done on A/B/PUSH after 1 s, or by itself after 5 s.
-    // ponytail: the panel slides in from x −192 in the original (callback not decoded); shown in place.
-    pub fn update(&mut self, pressed: u8, data: &Data) -> bool {
+    /// True once closed: any of A/B/C/PUSH (key mask 0xf) after the lock, or idle for 5 s.
+    pub fn update(&mut self, pressed: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> bool {
         self.pet.tick(&data.motions);
+        if self.t == PANEL_FADE {
+            sounds.push((0x35, 100));
+        }
         self.t += 1;
-        self.t >= 100 || self.t >= 20 && pressed & (A | B | PUSH) != 0
+        self.t > PANEL_LOCK && (pressed & (A | B | C | PUSH) != 0 || self.t > PANEL_LOCK + PANEL_IDLE)
+    }
+
+    /// Content x offset: −128 → 0 with 1 − cos(t·90°) once the fade is done.
+    pub fn dx(&self) -> i32 {
+        let k = self.t.saturating_sub(PANEL_FADE).min(PANEL_SLIDE) as f32 / PANEL_SLIDE as f32;
+        (-128.0 * (k * std::f32::consts::FRAC_PI_2).cos()).round() as i32
     }
 
     pub fn draws(&self, out: &mut Vec<Draw>) {
-        out.push(Draw { alpha: 32, ..sprite(0x8cc, 0, 64, 64) });
-        out.push(sprite(self.sprite, 0, 64, 64));
-        self.pet.draws(64, 94, out);
+        let fade = (self.t.min(PANEL_FADE) * 32 / PANEL_FADE) as u8;
+        out.push(Draw { alpha: fade, ..sprite(0x8cc, 0, 64, 64) });
+        let dx = self.dx();
+        out.push(sprite(self.sprite, 0, 64 + dx, 64));
+        self.pet.draws(64 + dx, 94, out);
     }
 }
 
@@ -462,7 +482,7 @@ impl MiniGame for Arcade01 {
                 }
             }
             St::Panel(p) => {
-                if p.update(pressed, data) {
+                if p.update(pressed, data, sounds) {
                     return Some(self.result());
                 }
             }
@@ -520,7 +540,7 @@ impl MiniGame for Arcade01 {
     fn hud(&self) -> Vec<Hud> {
         match self.st {
             St::Intro => Vec::new(),
-            St::Panel(_) => vec![Hud::Number { n: self.score[0] as u32, x: 42, y: 48 }, Hud::Number { n: self.score[1] as u32, x: 86, y: 48 }],
+            St::Panel(ref p) => vec![Hud::Number { n: self.score[0] as u32, x: 42 + p.dx(), y: 48 }, Hud::Number { n: self.score[1] as u32, x: 86 + p.dx(), y: 48 }],
             _ => {
                 let mut h = vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.shown as u32, x: 14, y: 11 }];
                 let s = (self.t as u32).div_ceil(20);
@@ -632,6 +652,29 @@ mod tests {
             g.update(0, 0, &d, &mut Vec::new());
         }
         assert!(g.ball.on && g.ball.pos.1 < 0.0, "served on the friend's side");
+    }
+
+    #[test]
+    fn panel_fades_slides_and_waits_before_closing() {
+        let d = crate::evolve::tests::data();
+        let mut p = Panel::new(PANEL[0], PANEL_PET[0]);
+        let mut snd = Vec::new();
+        assert_eq!(p.dx(), -128);
+        let mut closed_at = None;
+        for f in 1..=60 {
+            if p.update(C, &d, &mut snd) {
+                closed_at = Some(f);
+                break;
+            }
+            if f == PANEL_FADE + PANEL_SLIDE {
+                assert_eq!(p.dx(), 0, "slid in");
+            }
+        }
+        assert_eq!(snd, vec![(0x35, 100)]);
+        assert_eq!(closed_at, Some(PANEL_LOCK + 1), "keys ignored for 40 frames");
+        let mut p = Panel::new(PANEL[0], PANEL_PET[0]);
+        let n = (1..400).find(|_| p.update(0, &d, &mut snd)).unwrap();
+        assert_eq!(n, PANEL_LOCK + PANEL_IDLE + 1, "closes by itself after 5 s idle");
     }
 
     #[test]

@@ -12,12 +12,18 @@
 - 每 frame（20 fps）跟對方交換一個封包（`FUN_10060be8` 送、`FUN_10060a88` 收，最多等 100 ms）。**時間單位是 frame，不是 100 ms**：剩餘秒數顯示 = ceil(ticks / 20)（`FUN_1008fb7c`、`FUN_100664f8`），所以 2400 ticks = 120 秒、1200 ticks = 60 秒 **[確認]**（05-content 的「100 ms」推測要更正）。剩 9 秒以下才顯示倒數（sprite 0x80f (120,11) + 數字）。
 - 開場流程（兩個遊戲相同）：scene 1000 連線對話框（`FUN_100088b4`）→ 2000 開場動畫（HOCKEY host anim 0xb4b／guest 0xb4c；SHOOTING host 0xb66／guest 0xb67），role 1 = 對方的 tama → 1000 操作說明 demo（「HOW TO PLAY」字串 0x32d，elem 0x5b1–0x5b5，至少 40 frames，按鍵或 5 秒）→ 3000 遊戲：setup → 3-2-1 倒數（`FUN_10002a24`：60 ticks，sprite 0x8c8 frame = 秒−1，每秒音效 1）→ 遊戲 → 結果面板 → 4000 最後一次交換（失敗 → 字串 110「CONNECTION FAILED」、**沒有點數**）→ scene 0x84 **[確認]**。
 - 入口條件（`FUN_1008cffc` case 4）：成長階段 < 3 → 字串 0x6b（107「STILL CAN'T…」）；`tama_stat_test(0x10)`（髒）→ 先處理 EM_REQ_OTEIRE（state 2000）。免費 **[確認]**。
-- 結果（scene 0x84，`FUN_100883e0`）：播 ARCADE_RESULT 動畫（表 0x10095750，見 §2.6／§3.6）→ mission 11 計數器 `0x18000cbc` +1（上限 100，輸贏都算）→ 更新朋友紀錄（friendship 1..4 夾住，`FUN_10017588`）→ `points_add(DAT_18001c90)` 並顯示點數 **[確認]**。結果碼另存一份到 `DAT_18001ca8`，韌體內沒有任何讀取 **[確認：只有寫入]**。
+- 結果（scene 0x84，`FUN_100883e0`）：播 ARCADE_RESULT 動畫（表 0x10095750，見 §2.6／§3.6）→ mission 11 計數器 `0x18000cbc` +1（上限 100，輸贏都算）→ 更新朋友紀錄（§1.1，`FUN_10017588`）→ `points_add(DAT_18001c90)` 並顯示點數 **[確認]**。結果碼另存一份到 `DAT_18001ca8`，韌體內沒有任何讀取 **[確認：只有寫入]**。
 
 | 遊戲 | 選單字串 | 時間 | 結果碼 → 點數（`FUN_1008709c`／`FUN_1008805c`） |
 |---|---|---|---|
 | 01 HOCKEY（0x335 = 821） | 2400 frames | 0 贏 / 1 輸 / 2 平 → 500 / 100 / 250（`FUN_1007afb8` 比較兩邊進球數） |
 | 02 SHOOTING（0x336 = 822） | 1200 frames | 分數 ≤10 → 0、11–50 → 1、≥51 → 2 → 100 / 250 / 500（`FUN_1007b00c`） |
+
+### 1.1 朋友紀錄（friendship）[確認]
+
+- 連線對話框（`FUN_100088b4` → callback `FUN_1006e2d8` → `FUN_1006e36c`）交換後，雙方用 `FUN_100173c4` 查自己存的 friendship：任一方是 0（沒見過）→ 本局 friendship = 0；否則雙方都取較大值。存在 link 結構 +0x2c（對方 planet/uid 在 +0x24/+0x28）。
+- scene 0x84 state 1000（`FUN_100883e0`）：friendship = clamp(本局 + `FUN_1006cb9c`, 1, 4)，last result = 5，用 `FUN_10017588` 新增／更新朋友（滿了就不記）。log：「FRIENDSHIP: %d RESULT: %d」。
+- `FUN_1006cb9c`（arcade 專用，**不是** playdate 的 `FUN_1006cb04`）：本局 friendship 為 0 → +0（第一次見面記成 1）；HOCKEY → +1（輸贏都一樣）；SHOOTING → 結果碼 ≠ 0（分數 ≥ 11）+2，否則 +1。
 
 ---
 
@@ -63,7 +69,21 @@
 
 ### 2.5 結果面板與結果動畫 [確認]
 
-- 面板 `FUN_10002cec`（RW 0x18000000 表 game 0）：elem 0x5b6（sprite 0x8cc 半透明遮罩），依結果 0/1/2：sprite 0x8d0 / 0x8d2 / 0x8d1、寵物 anim 0xb2f（開心）/ 0xb31（難過）/ 0xb30（普通）於 (64,94)，兩邊分數於 (42,48)（自己）、(86,48)（對方）。面板從 x −192 滑進來 **[推測：callback 0x1006b5d1 未解]**。
+- 面板 `FUN_10002cec`（RW 0x18000000 表 game 0）：elem 0x5b6（sprite 0x8cc 半透明遮罩），依結果 0/1/2：sprite 0x8d0 / 0x8d2 / 0x8d1、寵物 anim 0xb2f（開心）/ 0xb31（難過）/ 0xb30（普通）於 (64,94)，兩邊分數於 (42,48)（自己）、(86,48)（對方）。滑入與關閉見 §2.5.1。
+#### 2.5.1 面板的動作（兩個遊戲共用）[確認]
+
+`FUN_10002cec` 建立面板物件（elem 0x5b6），內容放在子群組（`FUN_1006f290`，座標相對於面板中心，群組 x = −64 時內容在原位），群組 x 先設成 −192 = **往左一整個畫面（−128 px）**；面板不透明度（物件 +0x9e，會乘到子物件）先設 0。每 frame 的 callback `FUN_1006b5d0`（事件 8）：
+
+| 步驟 | 內容 |
+|---|---|
+| 0 | 整個面板不透明度 0 → 1，0.15 s，線性（tween 曲線 1） |
+| 1 | 淡入結束 → 內容 x 由 −128 滑到 0，0.25 s，曲線 2（1 − cos(t·90°)，先慢後快）；音效 0x35（53） |
+| 2 | 設 40 frames 倒數（`FUN_1006b6fc`：倒數未到 0 或畫面淡出中就不往下走），約 2 s 不接受按鍵 |
+| 3 | `idle_reset`（`FUN_10025c6c`／`FUN_10025cb4(1)`）：閒置計時歸零 |
+| 4 | 按下任何鍵（`g_key_down & 0xf` = A/B/C/PUSH）或閒置超過 5 s（`FUN_1000278c(5)`）→ 設「看完了」旗標（+8 bit0），遊戲等雙方都看完 |
+
+- 其他 callback：`FUN_1006b598`（事件 9）讓寵物動畫跟著面板時間走；`FUN_1006b534`（事件 5 = 動畫結束）把寵物換成 anim 0xbd 並持續播放 **[推測：0xbd 的內容未看]**。
+
 - guest 的結果碼會用 `FUN_10002f68` 把 0↔1 對調後才選面板。
 - scene 0x84 動畫（表 0x10095750，`[game][host?0:1][result]`）：HOCKEY host 0xb27（贏）/ 0xb28（輸）/ 0xb29（平），guest 0xb2a/0xb2b/0xb2c；自己的 tama（chr 佔位 0）和朋友（role 1）並排做反應。
 
@@ -78,7 +98,7 @@
 | 背景 | elem 0x5eb/0x606 = sprite 0x8df（顯微鏡畫面），下方桌面 elem 0x5ec/0x607 = sprite 0x8e0 於 (64,128)（guest 左右翻轉） | `FUN_10028348` |
 | 洞 | 18 個：0–8 = host 畫面 elem 0x5f1–0x5f9（x 24/64/104 × y 16/48/80），9–17 = guest 畫面（同位置，host 座標 y 取負） | `FUN_10063abc` |
 | 準心 | elem 0x5ee = sprite 0x8e1（alpha 57）初始 (64,48)；x 夾 16..112，y 夾 −80..80（跨兩個畫面） | `FUN_100319e4`、`FUN_10031a2c` |
-| 病菌 | sprite 0x8e2，3 種（`kind`）；frame 2 = 被打中後 | `FUN_10063c74` |
+| 病菌 | sprite 0x8e2，elem 0x5f1 複製到每個洞；**palette = 種類 0/1/2**（sprite +10，`FUN_10063abc`）；frame（sprite +8）= 0 冒出中、**1 被打中（抖動 0.6 s）**、2 抖完開始淡出（同時在原地播 elem 0x5f0） | `FUN_10063abc`、`FUN_10063ce4`、`FUN_10063eb0` |
 | 操縱桿 | 底座 elem 0x600 = sprite 0x8e5 (91,116)；桿頭 sprite 0x8e4 依輸入方向在 x 86/91/96（RW 0x18000a08），被鎖住時 frame 1；寵物 anim 0xb68 坐在桿上（elem 0x5fa），結束時 anim 0xb69（elem 0x5fb） | `FUN_1001eb90`、`FUN_1001ee44` |
 | 分數 | 框 sprite 0x8e3 (31,113) + 數字 elem 0x602 (40,114) | `FUN_1002c38c` |
 
@@ -115,16 +135,15 @@ RW 0x18000000 表 game 1：結果 0 → sprite 0x8cf + anim 0xb31；1 → 0x8ce 
 |---|---|---|
 | 入口 | CONNECTION 第 4 項 MINI GAMES（原作是第 5 項，DOWNLOAD 未實作）→ HOCKEY / SHOOTING；階段 < 3 → 0x6b | 不檢查「髒」的 EM_REQ_OTEIRE 分支 |
 | 開場 | anim 0xb4b / 0xb66、3-2-1 倒數 | 省略連線對話框和 HOW TO PLAY demo；開場不能跳過 |
-| 朋友 | role 1 = `pet.friends` 最後一位的 tama；沒有朋友時用 Mametchi（4022） | 朋友紀錄、friendship 不變（沒有真的連線）；朋友的顏色不套用 |
+| 朋友 | role 1 = `pet.friends` 最後一位的 tama；沒有朋友時用 Mametchi（4022）。結束時照 §1.1 更新這位朋友：HOCKEY +1、SHOOTING 結果 ≥ 1 +2（否則 +1），上限 4，last result 5 | 假設對方也記得我們（離線看不到對方的紀錄），所以本局 friendship = 我們的紀錄（1..4，不會是 0）；沒有朋友時不新增紀錄（Mametchi 沒有 uid）；朋友的顏色不套用 |
 | HOCKEY | 板子、球、角落、球門、計時、進球動畫、結果碼與點數都照 §2 | 對方板子 = CPU：球朝它來且在 y < 60 時，每 4 frames 重新瞄準球的 x（±8 px 誤差），最快 4 px/frame（玩家 6）；球在前方 40 px、左右 20 px 內時蓄力 1 frame 後衝刺。畫面只顯示自己那一半（跟原作一樣，對方那一半在另一台機器上）。減速以線性 tween 表示 |
 | SHOOTING | 出現表、病菌種類、命中、鎖定時間、計時、結果碼與點數都照 §3 | **玩家控制 X（A/C/dial）、CPU 夥伴控制 Y**，雙方都能開火：CPU 選離準心最近的可打病菌，把 Y 移過去，對準後 5 frames 開火。準心在朋友那一半（y < 0）時畫面切到朋友的畫面（host 座標 y + 128，好像兩台機器頭對頭擺）。出現表用亂數選（原作是輪流計數器）；病菌的縮放用淡入淡出代替 |
-| 結果 | 面板 → scene 0x84 動畫（role 1 = 朋友）→ 點數 + mission 11（`m::LINKS`）→ 回到 arcade 選單 | 面板 1 秒後可按 A/B/PUSH 關閉，5 秒自動關閉（原作的關閉條件在未解的 callback 裡） |
+| 結果 | 面板照 §2.5.1（淡入 3 frames、滑入 5 frames + 音效 53、44 frames 後任何鍵或再 100 frames 自動關閉）→ scene 0x84 動畫（role 1 = 朋友）→ 點數 + mission 11（`m::LINKS`）+ 朋友紀錄 → 回到 arcade 選單 | 只有自己一台，所以不等對方看完；分數數字（HUD）跟著滑但不跟著淡入（淡入時內容還在畫面外，看不出差別） |
 
 選 SHOOTING 的分工的理由：原作的趣味在於「一個人管 X、一個人管 Y」的合作；CPU 管 Y 而且會自己開火時，玩家只要對準 X 就能配合，也看得到 CPU 在朋友畫面上找的目標（畫面跟著準心切換）。玩家一人操作兩軸雖然也可行（dial 管 Y），但會讓「朋友」在遊戲中完全沒有作用。
 
 ### 待確認
 
-- 面板 callback（0x1006b5d1 / 0x1006b535 / 0x1006b599）：滑入動畫和關閉條件。
 - guest 在 HOCKEY 的點數：`FUN_1008709c` 只有 host 計算 `DAT_18001c8c`，guest 的值應該來自封包，對調規則未確認。
-- 病菌 sprite 的 frame 0/1 與 palette 的對應（重製用 palette = kind、frame 0 / 被打中 2）**[推測]**。
-- `FUN_1006cb9c`：結果畫面 friendship 增量（1–2？）。
+- 面板結束時寵物換成的 anim 0xbd（`FUN_1006b534`）沒有實作，重製的寵物動畫照原 anim 繼續。
+- 步驟 1 的「淡入結束」用 frame 時鐘比較 16.16 秒；0.15 s 是 3 或 4 frames 取決於時鐘的捨入，重製用 3。
