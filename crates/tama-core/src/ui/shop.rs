@@ -48,7 +48,7 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
 /// Games playable so far.
-const IMPLEMENTED: &[u8] = &[0];
+const IMPLEMENTED: &[u8] = &[0, 5, 6];
 
 impl Game {
     /// Run a menu action and return the scene it opens.
@@ -183,16 +183,30 @@ impl Game {
                 back: Some(Action::MiniGames),
             },
             Action::PlayLab(g, level) => {
+                // Layout = plays % 3. Game 05 only moves on after a finished game (state 3004), the others at start.
                 let n = self.pet.mini_plays[g as usize];
-                self.pet.mini_plays[g as usize] = n.wrapping_add(1);
-                let game: Box<dyn crate::mini::MiniGame> = match g {
+                if g != 5 {
+                    self.pet.mini_plays[g as usize] = n.wrapping_add(1);
+                }
+                let at = level as usize * 3 + n as usize % 3;
+                let mini = &self.data.mini;
+                let session = match g {
+                    5 => {
+                        let rows = mini.lab05_layouts.get(at).cloned().unwrap_or_default();
+                        let game = crate::mini::lab05::Lab05::new(rows, level as usize);
+                        crate::mini::Session::new(Box::new(game), Some(level as usize)).with_intro(crate::mini::lab05::OPENING)
+                    }
+                    6 => {
+                        let course = mini.lab06_courses.get(at).cloned().unwrap_or_default();
+                        let game = crate::mini::lab06::Lab06::new(course);
+                        crate::mini::Session::new(Box::new(game), Some(level as usize)).with_intro(crate::mini::lab06::OPENING)
+                    }
                     _ => {
-                        let boards = &self.data.mini.lab00_boards;
-                        let board = boards.get(level as usize * 3 + n as usize % 3).cloned().unwrap_or_default();
-                        Box::new(crate::mini::lab00::Lab00::new(board))
+                        let board = mini.lab00_boards.get(at).cloned().unwrap_or_default();
+                        crate::mini::Session::new(Box::new(crate::mini::lab00::Lab00::new(board)), Some(level as usize))
                     }
                 };
-                Scene::Mini { session: crate::mini::Session::new(game, Some(level as usize)), lab: Some((g, level)) }
+                Scene::Mini { session, lab: Some((g, level)) }
             }
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,
@@ -205,7 +219,10 @@ impl Game {
     /// After a mini-game: lab games pay points (`FUN_100228c4`), then back to the game menu.
     pub(crate) fn after_mini(&mut self, result: Option<u8>, lab: Option<(u8, u8)>) -> Scene {
         match (result, lab) {
-            (Some(r), Some((_, level))) => {
+            (Some(r), Some((g, level))) => {
+                if g == 5 {
+                    self.pet.mini_plays[5] = self.pet.mini_plays[5].wrapping_add(1);
+                }
                 let pts = self.pet.lab_reward(level as usize, r as usize);
                 let then = self.open(Action::MiniGames);
                 Scene::Points { points: pts, then: Box::new(then) }
@@ -442,5 +459,42 @@ mod tests {
         press(&mut g, B); // buy
         assert_eq!((g.pet.points, g.pet.count(5010)), (400, 1));
         assert!(matches!(g.scene, super::Scene::Message { .. }));
+    }
+
+    #[test]
+    fn meteor_event_starts_at_midday_and_rewards_survival() {
+        use crate::pet::req::METEOR;
+        let mut g = game();
+        g.pet.gokigen = 5;
+        g.pet.raise(METEOR);
+        g.scene = super::super::Scene::Home;
+        g.check_events(NOON, 30);
+        assert!(matches!(g.scene, super::super::Scene::Home), "30% roll");
+        g.check_events(NOON - 3 * 3600, 0);
+        assert!(matches!(g.scene, super::super::Scene::Home), "10–15 h only");
+        g.check_events(NOON, 29);
+        let super::super::Scene::Mini { session, .. } = &g.scene else { panic!("event game") };
+        assert!(session.event == Some(METEOR) && !session.can_quit());
+        press(&mut g, crate::input::C); // lane 2, not quit
+        assert!(matches!(g.scene, super::super::Scene::Mini { .. }));
+        for _ in 0..1200 {
+            g.frame(NOON, 0); // empty test table: nothing falls, the pet survives
+        }
+        assert!(matches!(g.scene, super::super::Scene::Home));
+        assert_eq!(g.pet.gokigen, 15);
+        assert!(!g.pet.is_pending(METEOR));
+        assert_eq!(g.level, crate::Level::Field);
+    }
+
+    #[test]
+    fn game_05_layout_moves_on_only_after_a_finished_game() {
+        let mut g = game();
+        g.scene = g.open(super::super::Action::PlayLab(5, 0));
+        press(&mut g, crate::input::C); // quit during the opening
+        assert_eq!(g.pet.mini_plays[5], 0);
+        g.scene = g.open(super::super::Action::PlayLab(6, 0));
+        assert_eq!(g.pet.mini_plays[6], 1, "game 06 moves on at start");
+        assert!(matches!(g.after_mini(Some(1), Some((5, 0))), super::super::Scene::Points { .. }));
+        assert_eq!(g.pet.mini_plays[5], 1);
     }
 }
