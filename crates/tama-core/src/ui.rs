@@ -169,6 +169,7 @@ pub(crate) enum Action {
     /// Lab menu SETTINGS and its birthday editor.
     Settings,
     EditBirthday,
+    EditPlanetName,
     ConnectPlaydate,
     ConnectGifts,
     GiftItem(u16),
@@ -226,11 +227,16 @@ pub(crate) enum Scene {
     Graves { idx: usize, back: Action },
     /// SETSUBI: choosing a slot for `toy` (0 = choosing a toy to put away).
     Setsubi { toy: u16, field: u8, area: u8, idx: usize },
+    /// TAMA STARS (`lookstars_state` 0x10057e54): page 0 the stars with a cursor, 1 the ghost,
+    /// 2 its profile. `node` is the cursor (page 0) or the ghost animation (page 1).
+    Stars { idx: usize, page: u8, node: Node },
     /// End credits (`FUN_10058a0c`): any key or the end of the script goes on to `then`.
     Credits { node: Node, then: Box<Scene> },
     /// Page 0: rank; page 1: the next goal.
     PlanetLv { page: u8 },
     HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
+    /// EDIT PLANET NAME: 8 letters, `pos` = the one being chosen.
+    PlanetName { chars: [u16; 8], pos: usize },
     /// EDIT BIRTHDAY: month and day, `pos` 0 = month.
     Birthday { m: u8, d: u8, pos: u8 },
     /// CONNECTION → PLANETS: the friend list.
@@ -317,6 +323,8 @@ impl Game {
                 | Scene::Setsubi { .. }
                 | Scene::Friends { .. }
                 | Scene::Birthday { .. }
+                | Scene::Stars { .. }
+                | Scene::PlanetName { .. }
                 | Scene::PlanetLv { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
@@ -385,6 +393,31 @@ impl Game {
                     Scene::Ask { text: 0xdb, yes: true, on_yes: Action::BreedWith(cands[idx]), back: Action::Breed }
                 } else {
                     Scene::Breed { cands, idx }
+                }
+            }
+            Scene::PlanetName { mut chars, mut pos } => {
+                // Letters cycle through space, A–Z and 0–9 (font glyphs 305, 318–343, 306–315).
+                let set: Vec<u16> = std::iter::once(crate::screen::SPACE).chain(318..=343).chain(306..=315).collect();
+                let at = set.iter().position(|&c| c == chars[pos]).unwrap_or(0);
+                if pressed & (A | UP) != 0 {
+                    chars[pos] = set[(at + 1) % set.len()];
+                }
+                if pressed & DOWN != 0 {
+                    chars[pos] = set[(at + set.len() - 1) % set.len()];
+                }
+                if pressed & C != 0 {
+                    if pos == 0 { self.open(Action::Settings) } else { Scene::PlanetName { chars, pos: pos - 1 } }
+                } else if pressed & (B | PUSH) != 0 {
+                    pos += 1;
+                    if pos == chars.len() {
+                        let len = chars.iter().rposition(|&c| c != crate::screen::SPACE).map_or(0, |i| i + 1);
+                        self.pet.planet_name = chars[..len].to_vec();
+                        self.open(Action::Settings)
+                    } else {
+                        Scene::PlanetName { chars, pos }
+                    }
+                } else {
+                    Scene::PlanetName { chars, pos }
                 }
             }
             Scene::Birthday { mut m, mut d, pos } => {
@@ -513,6 +546,7 @@ impl Game {
                 }
             }
             Scene::Play(p) => self.update_play(p, pressed),
+            Scene::Stars { idx, page, node } => self.update_stars(idx, page, node, pressed),
             Scene::Credits { mut node, then } => {
                 node.tick(&self.data.motions);
                 node.take_sounds(&mut self.sounds);
@@ -919,6 +953,10 @@ impl Game {
                 self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(if *wake { text::WAKE_UP } else { text::TIME_TO_SLEEP }));
                 true
             }
+            Scene::Stars { idx, page, node } => {
+                self.draw_stars(*idx, *page, node);
+                true
+            }
             Scene::Credits { node, .. } => {
                 let mut draws = Vec::new();
                 node.draws(64, 64, &mut draws);
@@ -979,6 +1017,17 @@ impl Game {
             }
             Scene::Friends { idx } => {
                 self.draw_friend(*idx);
+                true
+            }
+            Scene::PlanetName { chars, pos } => {
+                self.draw_list(&[], 0, Some(0x0c));
+                for (i, &c) in chars.iter().enumerate() {
+                    let x = 18 + i as i32 * 13;
+                    self.screen.text(&self.data.fonts, &[c], x, 86, true, 1);
+                    if i == *pos {
+                        self.screen.rect(x - 5, 96, 10, 2, [40, 40, 120]);
+                    }
+                }
                 true
             }
             Scene::Birthday { m, d, pos } => {

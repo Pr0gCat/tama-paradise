@@ -228,7 +228,18 @@ impl Game {
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
-            Action::Settings => Scene::Menu { items: vec![(0x0b, Some(Action::EditBirthday))], idx: 0, back: Some(Action::Lab) },
+            Action::Settings => Scene::Menu {
+                items: vec![(0x0b, Some(Action::EditBirthday)), (0x0c, Some(Action::EditPlanetName))],
+                idx: 0,
+                back: Some(Action::Lab),
+            },
+            Action::EditPlanetName => {
+                let mut chars = [crate::screen::SPACE; 8];
+                for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {
+                    *c = g;
+                }
+                Scene::PlanetName { chars, pos: 0 }
+            }
             Action::EditBirthday => {
                 let (m, d) = self.pet.birthday.unwrap_or((1, 1));
                 Scene::Birthday { m, d, pos: 0 }
@@ -615,5 +626,19 @@ mod tests {
         g.frame(NOON, 0);
         press(&mut g, B);
         assert!(matches!(g.scene, super::Scene::Home));
+    }
+
+    #[test]
+    fn name_the_planet_in_settings() {
+        let mut g = game();
+        g.scene = g.open(super::super::Action::EditPlanetName);
+        press(&mut g, crate::input::A); // A
+        press(&mut g, B);
+        press(&mut g, crate::input::A);
+        press(&mut g, crate::input::A); // B
+        for _ in 0..7 {
+            press(&mut g, B);
+        }
+        assert_eq!(g.pet.planet_name, vec![318, 319]);
     }
 }

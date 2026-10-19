@@ -36,6 +36,12 @@ const STAR_DOTS: u16 = 0x451;
 const DEAD_STAR: u16 = 0x453;
 const STAR_POS: [(i32, i32); 5] = [(30, 28), (58, 56), (92, 26), (22, 68), (44, 104)];
 const PLANET_POS: (i32, i32) = (90, 92);
+/// TAMA STARS: star cursor (UI element 0x2cc), ghost page background (0x13f) and ghost
+/// animations for a young / old (> 29 years) tama.
+const STAR_CURSOR: u16 = 193;
+const GHOST_BG: u16 = 109;
+const GHOST: u16 = 0xa9;
+const GHOST_OLD: u16 = 0xaa;
 const REMOVE_ORDER: [usize; 6] = [0, 4, 1, 2, 5, 3];
 /// DECO PLANET sparkle (anim 199).
 const SPARKLE: u16 = 0xc7;
@@ -229,7 +235,7 @@ impl Game {
                 idx: 0,
                 back: None,
             },
-            Action::Stars => Scene::Graves { idx: 0, back: Action::SpaceMenu },
+            Action::Stars => self.stars_page(0, 0),
             Action::Deco => {
                 if self.pet.rank < 3 {
                     return self.message(t::FROM_LEVEL_3, Action::SpaceMenu);
@@ -403,6 +409,13 @@ impl Game {
 
     /// HOME_SPACE (`space_view_build` 0x10088850): starfield, dead tamas' stars, the planet.
     pub(crate) fn draw_space(&mut self) {
+        self.draw_starfield();
+        let bob = (self.frame_count / 20 % 2) as i32;
+        self.draw_planet(PLANET_POS.0, PLANET_POS.1 + bob);
+    }
+
+    /// Starfield with the dead tamas' stars (shared by HOME_SPACE and TAMA STARS).
+    fn draw_starfield(&mut self) {
         let pal = (self.frame_count / 10 % 4) as usize;
         self.screen.blit(STARFIELD, 0, 64, 64, 64, false, Some((STARFIELD, pal)));
         self.screen.blit(STAR_DOTS, 0, 64, 64, 64, false, Some((STAR_DOTS, pal)));
@@ -410,8 +423,74 @@ impl Game {
         for (days, &(x, y)) in graves.into_iter().zip(STAR_POS.iter()) {
             self.screen.blit(DEAD_STAR, (days > 29) as u16, x, y, 64, false, None);
         }
-        let bob = (self.frame_count / 20 % 2) as i32;
-        self.draw_planet(PLANET_POS.0, PLANET_POS.1 + bob);
+    }
+
+    /// Graves shown as stars: the newest five, star k = `graves[len − 1 − k]`.
+    fn star_grave(&self, k: usize) -> Option<crate::family::Grave> {
+        self.pet.graves.iter().rev().nth(k).copied()
+    }
+
+    fn stars_page(&mut self, idx: usize, page: u8) -> Scene {
+        let node = match (page, self.star_grave(idx)) {
+            (1, Some(g)) => {
+                // The ghost stands in for the pet placeholder (role 0).
+                self.roles[0] = self.data.character(g.ghost.id).map(|c| c.chr_id);
+                Node::new(if g.days > 29 { GHOST_OLD } else { GHOST })
+            }
+            _ => Node::new(STAR_CURSOR),
+        };
+        Scene::Stars { idx, page, node }
+    }
+
+    pub(super) fn update_stars(&mut self, idx: usize, page: u8, mut node: Node, pressed: u8) -> Scene {
+        node.tick(&self.data.motions);
+        let n = self.pet.graves.len().min(STAR_POS.len()).max(1);
+        match page {
+            0 => {
+                if pressed & C != 0 {
+                    return self.open(Action::SpaceMenu);
+                }
+                if pressed & (B | PUSH) != 0 {
+                    self.sfx(40, 100);
+                    return self.stars_page(idx, 1);
+                }
+                let step = if pressed & (A | UP) != 0 { 1 } else if pressed & DOWN != 0 { n - 1 } else { 0 };
+                if step != 0 && n > 1 {
+                    return Scene::Stars { idx: (idx + step) % n, page, node };
+                }
+            }
+            _ => {
+                if pressed & C != 0 {
+                    return self.stars_page(idx, 0);
+                }
+                if pressed & A != 0 {
+                    return self.stars_page(idx, if page == 1 { 2 } else { 1 });
+                }
+            }
+        }
+        Scene::Stars { idx, page, node }
+    }
+
+    pub(super) fn draw_stars(&mut self, idx: usize, page: u8, node: &Node) {
+        match page {
+            0 => {
+                self.draw_starfield();
+                let (x, y) = STAR_POS[idx % STAR_POS.len()];
+                let mut draws = Vec::new();
+                node.draws(x, y, &mut draws);
+                self.draw_all(&draws);
+            }
+            1 => {
+                self.screen.blit(GHOST_BG, 0, 64, 64, 64, false, None);
+                let mut draws = Vec::new();
+                node.draws(64, 96, &mut draws);
+                self.draw_all(&draws);
+            }
+            _ => {
+                let i = self.pet.graves.len().saturating_sub(1 + idx);
+                self.draw_grave(i);
+            }
+        }
     }
 
     /// PLANET LV. (`scene_tamaspace_rank`): page 0 the rank, page 1 the next goal.
@@ -554,5 +633,25 @@ mod tests {
             }
         }
         assert!((3..=20).contains(&seen), "about one day in three: {seen}");
+    }
+
+    #[test]
+    fn tama_stars_pages() {
+        let mut g = game();
+        for days in [10, 40] {
+            let ghost = crate::family::Ghost { id: 2113, color: 0, generation: 1 };
+            g.pet.graves.push(crate::family::Grave { ghost, cause: 3, days });
+        }
+        g.scene = g.open(Action::Stars);
+        press(&mut g, A); // the older grave's star
+        assert!(matches!(g.scene, Scene::Stars { idx: 1, page: 0, .. }));
+        press(&mut g, B);
+        assert!(matches!(g.scene, Scene::Stars { idx: 1, page: 1, .. }));
+        assert!(g.roles[0].is_some(), "the ghost plays the pet's part");
+        press(&mut g, A);
+        assert!(matches!(g.scene, Scene::Stars { page: 2, .. }));
+        press(&mut g, C);
+        press(&mut g, C);
+        assert!(matches!(g.scene, Scene::Menu { .. }), "back to the planet menu");
     }
 }
