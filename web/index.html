@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tama Paradise</title>
+<style>
+  body { margin: 0; background: #222; display: grid; place-items: center; height: 100vh; gap: 12px; }
+  canvas { width: min(90vw, 512px); image-rendering: pixelated; }
+  button { font-size: 20px; width: 64px; }
+</style>
+<canvas id="c"></canvas>
+<div><button data-b="0">A</button> <button data-b="1">B</button> <button data-b="2">C</button></div>
+<script type="module">
+  import init, { Tama } from "./pkg/tama_web.js";
+  await init();
+  const game = new Tama();
+  const w = Tama.width(), h = Tama.height(), tickMs = Tama.tick_ms();
+  const c = document.getElementById("c");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  const keys = { a: 0, s: 1, d: 2 };
+  document.querySelectorAll("button").forEach(el => el.onclick = () => game.press(+el.dataset.b));
+  addEventListener("keydown", e => e.key in keys && game.press(keys[e.key]));
+  let last = performance.now(), acc = 0;
+  function frame(now) {
+    acc += now - last; last = now;
+    const n = Math.floor(acc / tickMs);
+    acc -= n * tickMs;
+    if (n) game.step(n);
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(game.framebuffer()), w, h), 0, 0);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>

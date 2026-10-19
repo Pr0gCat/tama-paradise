@@ -1,0 +1,12 @@
+/target
+/web/pkg
+/dumps
+/re/ghidra
+/re/*.log
+/re/sonix-decrypt/target
+# Firmware-derived, regenerable from dumps (see docs/re-notes.md)
+/re/decomp-all
+/re/decomp
+/re/index.tsv
+/re/strings.txt
+/re/external-calls.txt
