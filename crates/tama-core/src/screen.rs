@@ -100,7 +100,7 @@ impl Screen {
             let mut x = if center { cx - Self::text_width(fonts, line) / 2 } else { cx };
             for &c in line {
                 if c == SPACE {
-                    x += advance(fonts.get(1).unwrap_or(&fonts[0]), c);
+                    x += fonts.get(1).or(fonts.first()).map_or(0, |f| advance(f, c));
                     continue;
                 }
                 let Some((f, sprite)) = glyph(fonts, c) else { continue };

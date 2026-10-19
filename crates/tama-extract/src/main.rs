@@ -508,6 +508,12 @@ fn main() {
             together01_commands: words(0x100a_10c2, 60).chunks(20).map(|s| std::array::from_fn(|i| [s[2 * i] as u8, s[2 * i + 1] as u8])).collect(),
             together04_cards: words(0x1009_1ece, 30).chunks(3).map(|c| std::array::from_fn(|i| c[i] as u8)).collect(),
             together04_pet_slot: words(0x1009_1f94, 5).into_iter().map(|w| w as u8).collect(),
+            together00_answers: words(0x100a_113a, 18).into_iter().map(|w| w as u8).collect(),
+            together02_layouts: words(0x1009_a710, 300).chunks(60).map(|s| s.chunks(3).map(|e| [e[0] as u8, e[1] as u8, e[2] as u8]).collect()).collect(),
+            together02_swaps: words(0x1009_a6fe, 9).chunks(3).map(|c| [c[0] as u8, c[1] as u8, c[2] as u8]).collect(),
+            together03_maps: (0..3)
+                .map(|m| (0..14).map(|r| String::from_utf8_lossy(&dump[xip(0x1009_c5b0) + m * 0xa8 + r * 12..][..12]).into_owned()).collect())
+                .collect(),
         },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),
         weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),

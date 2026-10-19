@@ -26,21 +26,21 @@ const PX: i32 = 0x10000;
 
 /// A `FUN_10066b34` tween of a 16.16 value over the scene clock.
 #[derive(Clone, Copy, Debug, Default)]
-struct Tween {
-    from: i32,
-    to: i32,
-    start: i32,
-    dur: i32,
-    curve: u8,
+pub(super) struct Tween {
+    pub(super) from: i32,
+    pub(super) to: i32,
+    pub(super) start: i32,
+    pub(super) dur: i32,
+    pub(super) curve: u8,
 }
 
 impl Tween {
-    fn at(px: i32) -> Self {
+    pub(super) fn at(px: i32) -> Self {
         Tween { from: px * PX, to: px * PX, ..Default::default() }
     }
 
     /// `FUN_1008ebec`.
-    fn value(&self, m: &MiniData, clock: i32) -> i32 {
+    pub(super) fn value(&self, m: &MiniData, clock: i32) -> i32 {
         if self.dur == 0 {
             return self.to;
         }

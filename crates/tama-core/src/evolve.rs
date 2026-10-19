@@ -248,6 +248,7 @@ impl Pet {
         fresh.mini_plays = self.mini_plays;
         fresh.together_plays = self.together_plays;
         fresh.birthday = self.birthday;
+        fresh.planet_name = self.planet_name.clone();
         fresh.toys = self.toys;
         fresh.equip = self.equip;
         fresh.travel_toggle = self.travel_toggle;

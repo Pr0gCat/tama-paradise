@@ -48,9 +48,10 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
 /// Play-together menu (09-minigames-together §2.1): title and game number.
-const TOGETHER_GAMES: [(u16, u8); 4] = [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7)];
+/// ARROW, 3 UFOS and WALKING (games 0, 2, 3) are reachable here although the original menu has no entry.
+const TOGETHER_GAMES: [(u16, u8); 7] = [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7), (0x329, 0), (0x32b, 2), (0x32c, 3)];
 /// Play-together games playable so far.
-const TOGETHER_IMPLEMENTED: &[u8] = &[4, 1, 6, 7];
+const TOGETHER_IMPLEMENTED: &[u8] = &[4, 1, 6, 7, 0, 2, 3];
 /// Games playable so far.
 const IMPLEMENTED: &[u8] = &[0, 1, 2, 3, 4, 5, 6];
 
@@ -228,7 +229,18 @@ impl Game {
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
             Action::Hunt | Action::HuntKind(_) | Action::HuntGo { .. } => self.open_hunt(a),
-            Action::Settings => Scene::Menu { items: vec![(0x0b, Some(Action::EditBirthday))], idx: 0, back: Some(Action::Lab) },
+            Action::Settings => Scene::Menu {
+                items: vec![(0x0b, Some(Action::EditBirthday)), (0x0c, Some(Action::EditPlanetName))],
+                idx: 0,
+                back: Some(Action::Lab),
+            },
+            Action::EditPlanetName => {
+                let mut chars = [crate::screen::SPACE; 8];
+                for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {
+                    *c = g;
+                }
+                Scene::PlanetName { chars, pos: 0 }
+            }
             Action::EditBirthday => {
                 let (m, d) = self.pet.birthday.unwrap_or((1, 1));
                 Scene::Birthday { m, d, pos: 0 }
@@ -266,6 +278,21 @@ impl Game {
                     6 => Box::new(crate::mini::together06::Together06::new()),
                     7 => Box::new(crate::mini::together07::Together07::new(
                         mini.together07_maps.get(n % 3).cloned().unwrap_or_default(),
+                        self.pet.field,
+                    )),
+                    // Game 00 keeps an answer index, not a play count: saved as if all 5 rounds are played.
+                    // ponytail: the firmware saves the index reached when the game exits, so quitting early differs.
+                    0 => {
+                        self.pet.together_plays[0] = ((n % 18 + 5) % 18) as u8;
+                        Box::new(crate::mini::together00::Together00::new(mini.together00_answers.clone(), n % 18))
+                    }
+                    2 => Box::new(crate::mini::together02::Together02::new(
+                        mini.together02_layouts.get(n % 5).cloned().unwrap_or_default(),
+                        mini.together02_swaps.get(n % 3).copied().unwrap_or([10, 16, 20]),
+                    )),
+                    // ponytail: the firmware shares this counter with game 01 (C10); each game counts its own plays here.
+                    3 => Box::new(crate::mini::together03::Together03::new(
+                        mini.together03_maps.get(n % 3).cloned().unwrap_or_default(),
                         self.pet.field,
                     )),
                     _ => return self.open(Action::Together),
@@ -621,5 +648,19 @@ mod tests {
         g.frame(NOON, 0);
         press(&mut g, B);
         assert!(matches!(g.scene, super::Scene::Home));
+    }
+
+    #[test]
+    fn name_the_planet_in_settings() {
+        let mut g = game();
+        g.scene = g.open(super::super::Action::EditPlanetName);
+        press(&mut g, crate::input::A); // A
+        press(&mut g, B);
+        press(&mut g, crate::input::A);
+        press(&mut g, crate::input::A); // B
+        for _ in 0..7 {
+            press(&mut g, B);
+        }
+        assert_eq!(g.pet.planet_name, vec![318, 319]);
     }
 }

@@ -207,6 +207,9 @@ pub struct Pet {
     /// The player's birthday (month, day), set in SETTINGS (`DAT_18000c6a`).
     #[serde(default)]
     pub birthday: Option<(u8, u8)>,
+    /// Planet name as font glyph codes (`0x18000c58`, up to 8), set in SETTINGS.
+    #[serde(default)]
+    pub planet_name: Vec<u16>,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -334,6 +337,7 @@ impl Pet {
             mini_plays: [0; 7],
             together_plays: [0; 8],
             birthday: None,
+            planet_name: Vec::new(),
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,
