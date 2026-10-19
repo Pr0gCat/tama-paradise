@@ -942,12 +942,12 @@ impl Game {
         }
     }
 
-    /// Number in the 16×16 digit font (sprite 19: frames 0–9), 10 px apart, centred on (x, y).
+    /// Number in the 16×16 digit font (sprite 19: frame 0 blank, digit d = frame d + 1), 10 px apart, centred on (x, y).
     pub(crate) fn draw_digits(&mut self, n: u32, x: i32, y: i32) {
         let s = n.to_string();
         let w = s.len() as i32 * 10;
         for (i, b) in s.bytes().enumerate() {
-            self.screen.blit(19, (b - b'0') as u16, x - w / 2 + 5 + i as i32 * 10, y, 64, false, None);
+            self.screen.blit(19, (b - b'0') as u16 + 1, x - w / 2 + 5 + i as i32 * 10, y, 64, false, None);
         }
     }
 
