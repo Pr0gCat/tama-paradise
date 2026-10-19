@@ -367,7 +367,7 @@ impl Game {
                     self.sfx(2, 100);
                     self.after_mini(None, lab)
                 } else {
-                    match session.update(pressed, &self.data, &mut self.sounds) {
+                    match session.update(pressed, self.held, &self.data, &mut self.sounds) {
                         Some(r) => self.after_mini(Some(r), lab),
                         None => Scene::Mini { session, lab },
                     }

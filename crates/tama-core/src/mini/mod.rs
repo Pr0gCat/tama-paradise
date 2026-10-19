@@ -57,6 +57,8 @@ mod tests {
 }
 
 pub mod lab00;
+pub mod lab01;
+pub mod lab02;
 
 use crate::data::Data;
 use crate::motion::{Draw, Node};
@@ -72,10 +74,16 @@ pub enum Hud {
     Number { n: u32, x: i32, y: i32 },
 }
 
+/// A plain sprite draw (UI-element sprites placed by game code).
+pub(crate) fn sprite(out: &mut Vec<Draw>, id: u16, frame: u16, x: i32, y: i32, alpha: u8) {
+    out.push(Draw { look: crate::motion::Look::Sprite { id, frame }, x, y, flip: false, alpha, palette: 0 });
+}
+
 /// One mini-game. The session runs READY/GO, then `update` each frame until it returns a result.
 pub trait MiniGame {
-    /// One 20 fps frame. Returns the result (0–3) when the game is over.
-    fn update(&mut self, pressed: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8>;
+    /// One 20 fps frame (`pressed` = press edges and dial pulses, `held` = buttons down).
+    /// Returns the result (0–3) when the game is over.
+    fn update(&mut self, pressed: u8, held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8>;
     fn draws(&self, out: &mut Vec<Draw>);
     fn hud(&self) -> Vec<Hud>;
     /// Script shown after the game for a result.
@@ -102,7 +110,7 @@ impl Session {
     }
 
     /// Returns the result once the result animation has finished.
-    pub fn update(&mut self, pressed: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
+    pub fn update(&mut self, pressed: u8, held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         match &mut self.phase {
             Phase::Ready(node) => {
                 node.tick(&data.motions);
@@ -113,7 +121,7 @@ impl Session {
                 None
             }
             Phase::Play => {
-                if let Some(r) = self.game.update(pressed, data, sounds) {
+                if let Some(r) = self.game.update(pressed, held, data, sounds) {
                     self.phase = Phase::Result(Node::new(self.game.result_script(r)), r);
                 }
                 None
