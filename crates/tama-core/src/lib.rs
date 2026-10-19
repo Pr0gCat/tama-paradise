@@ -88,6 +88,8 @@ pub struct Game {
     visitor_day: Option<u64>,
     /// A request for the platform's connection panel ("playdate", "receive", "gift:<code>").
     connect: Option<String>,
+    /// Calls already announced with the call melody (bit per request id).
+    calls_heard: u64,
     /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
     zoom: f32,
 }
@@ -130,6 +132,7 @@ impl Game {
             toy_key: None,
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
+            calls_heard: 0,
             planet_ranks: None,
             connect: None,
             visitor: None,
@@ -147,6 +150,7 @@ impl Game {
         self.held = held;
         self.frame_count = self.frame_count.wrapping_add(1);
         self.pet.advance_to(now);
+        self.call_alarm();
         if self.pet.weather_day != now / 86_400 {
             self.pet.weather_day = now / 86_400;
             self.pet.roll_weather(&self.data, now);
@@ -191,6 +195,18 @@ impl Game {
             self.home.take_sounds(&mut self.sounds);
         }
         self.render();
+    }
+
+    /// The call melody when the pet starts calling (`FUN_1001abd0`, flag set by `FUN_10019b48` for
+    /// HOMETRG, ONAKA, GOKIGEN, COLD, EVOL_SUPPORT and DODODO).
+    fn call_alarm(&mut self) {
+        use pet::req;
+        let calls = [req::HOMETRG, req::ONAKA, req::GOKIGEN, req::COLD, req::EVOL_SUPPORT, req::DODODO];
+        let pending = calls.iter().filter(|&&r| self.pet.is_pending(r)).fold(0u64, |m, &r| m | 1 << r);
+        if pending & !self.calls_heard != 0 {
+            self.sfx(ui::SND_CALL, 100);
+        }
+        self.calls_heard = pending;
     }
 
     pub(crate) fn rand(&mut self) -> u32 {
@@ -498,5 +514,19 @@ mod tests {
             (g.framebuffer().to_vec(), g.pet.def.id, g.pet.onaka, g.pet.osewamiss, g.pet.cold)
         };
         assert_eq!(run(), run());
+    }
+
+    #[test]
+    fn a_new_call_plays_the_call_melody_once() {
+        let mut g = Game::new(evolve::tests::data(), 3);
+        g.pet.def = g.data.character(2113).unwrap();
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        g.take_sounds();
+        g.pet.raise(pet::req::ONAKA);
+        g.frame(t, 0);
+        assert!(g.take_sounds().contains(&(ui::SND_CALL, 100)));
+        g.frame(t, 0);
+        assert!(!g.take_sounds().contains(&(ui::SND_CALL, 100)), "only when the call starts");
     }
 }

@@ -518,7 +518,7 @@
 | 7 | 文字插入碼：0xF003 = 星球名（字串 101「MAKE {F003} PROSPEROUS!」，新遊戲取名後顯示）[確認，重製已代入]；英文表只用到 0xF003，其餘 0xF002–0xF00B 與歐語重音字形對照未查 | 在地化 | 字串繪製函式 |
 | 8 | 天氣值 0/1 的畫面、轉盤縮放的確切按鍵對應 | UI | HOME 場景 state machine 0x10039eb8 |
 | 9 | Lab QR payload（`FUN_10017f44` 0x10017f44，呼叫者 0x10042548 一帶）：`"%s%s%s"` = device_rand(0x18000c54)、QRUID1(0x1800168c，6 碼)、QRUID2(0x18001690，7 碼) 的 36 進位字串，再接 romtype(2 碼)、TamaID、第二 ID(4 碼)、顏色(1，0x1f→16)、planet rank(1)、朋友數(1)、亂數 % 0xb640(3)，全部 36 進位；之後用 flash 資產 1–3 的金鑰算 64 B 驗證值（`FUN_10069de0`）一起編成 QR [確認]。驗證演算法與金鑰用途未解，且需要 Tamagotchi Lab App 才能驗證——屬手機 App 互通，不是遊戲內容 | Lab App 互通 | `FUN_10069de0`、資產 1–3 |
-| 10 | 多數音效 ID 的觸發場景 | 音效 | 資料表裡的 sound id 欄位 |
+| 10 | ~~多數音效 ID 的觸發場景~~ **已解 [確認]**：全部呼叫點對照見 [11-sounds.md](spec/11-sounds.md) 與 `data/sound_usage.csv`；87 個中 55 個有使用，其餘無呼叫點 | 音效 | — |
 | 11 | ~~每日 +50 點屬於哪個畫面~~ **已解 [確認]**：LABOMENU→BOOK→MICROSCOPE→LAB CODE 輸入「NO DATA」碼（碼表 0x100a1660 的 29–59 筆）時每天一次 | 小 | 05-content §2.2、§2.4a |
 
 規則類問題可在實機用 UART monitor 驗證（需接 UART0：RX 在 TP48，TX 為 P0.0 無測試點）。

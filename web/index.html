@@ -98,6 +98,7 @@
   const save = () => store.set(game.save());
   // ?debug: window.tama.get() returns the save as an object, window.tama.set(obj) replaces the game.
   if (params.has("debug")) {
+    window.soundLog = [];
     window.tama = {
       get: () => JSON.parse(game.save()),
       set: obj => { game = Tama.load(data, JSON.stringify(obj)); save(); },
@@ -265,6 +266,7 @@
       if (req) connect(req);
       const sounds = game.take_sounds();
       if (sounds.length) { const s = sounds[sounds.length - 1]; playMelody(s >> 8, s & 0xff); }
+      if (window.soundLog) for (const s of sounds) window.soundLog.push(s >> 8);
     }
     ctx.putImageData(new ImageData(new Uint8ClampedArray(game.framebuffer()), w, h), 0, 0);
     requestAnimationFrame(frame);

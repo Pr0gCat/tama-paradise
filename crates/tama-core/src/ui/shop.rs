@@ -516,7 +516,10 @@ impl Game {
             if pos == 8 {
                 let code: String = digits.iter().map(|d| char::from(b'0' + d)).collect();
                 let text = match self.pet.enter_code(&self.data, &code) {
-                    Ok(_) => t::UNLOCK_ITEM,
+                    Ok(_) => {
+                        self.sfx(super::SND_CODE_UNLOCKED, 100);
+                        t::UNLOCK_ITEM
+                    }
                     Err(ShopError::Full) => t::CODE_USED,
                     Err(_) => t::WRONG_CODE,
                 };

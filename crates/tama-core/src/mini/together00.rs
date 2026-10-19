@@ -26,7 +26,11 @@ const PANEL_FADE: u8 = 6;
 /// Result panel (elem 0x535) with its two icons (0x538 / 0x539).
 const PANEL: [(u16, i32, i32); 3] = [(0x89b, 64, 104), (0x899, 48, 96), (0x89a, 80, 96)];
 
+/// Opening jingle.
+const OPENING_SND: u16 = 0x4c;
+
 pub struct Together00 {
+    started: bool,
     answers: Vec<u8>,
     /// Answer index 0..17, saved back when the game ends (C10).
     pub idx: usize,
@@ -52,6 +56,7 @@ impl Together00 {
         let mut pet = Node::new(INTRO);
         pet.place(PET.0, PET.1);
         Together00 {
+            started: false,
             answers,
             idx: idx.min(17),
             state: 0x65,
@@ -100,6 +105,11 @@ impl Together00 {
 
 impl MiniGame for Together00 {
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
+        if !self.started {
+            // Opening jingle (`FUN_10052e7c` state 100).
+            self.started = true;
+            sounds.push((OPENING_SND, 100));
+        }
         self.pet.tick(&data.motions);
         self.pet.take_sounds(sounds);
         for t in [&mut self.fade, &mut self.panel].into_iter().flatten() {

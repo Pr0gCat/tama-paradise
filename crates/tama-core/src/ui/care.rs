@@ -42,7 +42,8 @@ impl Game {
             let then = Scene::Message { text, then: Box::new(after) };
             self.scene = self.play(&[script::RANK_UP], (0, OnPress::None), None, then);
         } else if !self.pet.claim_missions().is_empty() {
-            self.sfx(1, 100);
+            // Mission clear jingle (PSID_INFO_MISSION `FUN_10048bd0`).
+            self.sfx(SND_MISSION_CLEAR, 100);
             self.scene = Scene::Message { text: 0xa8, then: Box::new(Scene::Home) };
         }
     }
@@ -255,6 +256,9 @@ impl Game {
         }
         if let Some(next) = p.queue.pop() {
             p.node = Node::new(next);
+            if let Some((_, snd)) = p.cue.filter(|c| c.0 == next) {
+                self.sfx(snd, 100);
+            }
             return Scene::Play(p);
         }
         // Treatments complete when their animations end.

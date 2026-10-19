@@ -72,7 +72,18 @@ impl Game {
                             Scene::Home
                         };
                         let trip = TRIP[f][kind as usize & 1][r.result as usize];
-                        self.play(&[DEPART, trip, HOME[f][r.result as usize]], (0, super::OnPress::None), None, then)
+                        let mut scene = self.play(
+                            &[DEPART, trip, HOME[f][r.result as usize]],
+                            (0, super::OnPress::None),
+                            None,
+                            then,
+                        );
+                        // The trip music starts with the trip (state 0x1006); ponytail: the firmware
+                        // repeats it 12 times, here it plays once.
+                        if let Scene::Play(p) = &mut scene {
+                            p.cue = Some((trip, super::SND_HUNT_TRIP));
+                        }
+                        scene
                     }
                     Err(_) => self.hunt_message(t::CANT_BRING_NOW, Scene::Home),
                 }

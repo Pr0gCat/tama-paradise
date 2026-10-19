@@ -12,6 +12,8 @@ const MONTH_DAYS: [u8; 12] = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 impl Game {
     /// New-game setup (after the language and clock): name the planet, then the birthday.
     pub fn begin_intro(&mut self) {
+        // The first-start jingle (PSID_INITIAL_LOGO `FUN_10038250`).
+        self.sfx(SND_FIRST_START, 100);
         let then = Scene::PlanetName { chars: [crate::screen::SPACE; 8], pos: 0, intro: true };
         self.scene = Scene::Message { text: INTRO_NAME, then: Box::new(then) };
     }
