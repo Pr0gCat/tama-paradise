@@ -46,7 +46,7 @@
 | Mission 獎勵 | 每個 +1000（表 `0x1009430c`，22 × u16 全為 1000）**[確認]** | `FUN_10048bd0` state 4000 |
 | 新年事件 | +1000 **[確認]** | `FUN_1003f1f0` state 0xbba |
 | Lab 小遊戲結果 | `0x10091bec[result + level*4]`：level0 = 10/100/150/250，level1 = 10/200/300/500，level2 = 10/300/450/800（result 0..3）**[確認]** | `FUN_100228c4`（LABOGAME_RESULT） |
-| 每日一次 +50 | `DAT_18000be9` bit0 未設且某結果 ==4 時 +50 並設 bit0；bit0 每日在 `FUN_10013234` 清除 **[確認]**；所屬畫面 **[推測]** 為 lab/arcade 類 | `FUN_1005cc78`、`FUN_1005e61c` |
+| 每日一次 +50 | **MICROSCOPE 的 LAB CODE**（§2.4a）：輸入的是表中「NO DATA」的有效碼（結果 4），訊息 0xe7 之後若 `DAT_18000be9` bit0 未設 → 畫面 0xe2「LOOKING FORWARD TO SEEING YOU AGAIN」+50 並設 bit0；bit0 每日在 `FUN_10013234` 清除 **[確認]** | `FUN_1005e61c` state 0xca、`FUN_1005cc78` |
 | Arcade 連線遊戲 | 加上分數欄位（ghost +0x1c）**[確認]** | `FUN_100883e0` |
 | 賣物品 | +售價 × 數量 | `FUN_1004af0c` |
 | Shop demo | 一次 +99999（展示模式，debug `shopdemo`）**[確認]** | `FUN_10013158` |
@@ -126,7 +126,15 @@
 | 賣（`FUN_1004af0c`） | 可賣數 = 持有 − 已擺放（`FUN_1001e628`）；得到 sell × 數量；`item_give(id, −n)` **[確認]** | |
 | Shop code（`FUN_1004bcf4`、`FUN_1006da10`） | 輸入 8 位數字；與表 `0x100a1a20`（109 筆 `{u16 item, char* code}`）＋ PRAM 表 `0x0000e25c`（6 筆，筆數在 `0x0000e1b0`）比對；命中 → 解鎖該物品（之後才會在商店出現）**[確認]**。清單：`data/shopcodes.csv` | |
 | 區域解鎖（`FUN_1004c1f8`） | 3 個 field 各一個擴充區，價格表 `0x10093d14` = 10000 × 3；點數不足 → state 5000（錯誤訊息）；成功：`DAT_18000c6d |= 1<<field`，扣 10000 **[確認]** | |
-| 保母（HELP_SITTER → `FUN_1004d304`） | 費用 300。條件：成長階段 ≥ 3（msg 0x6b）、時間 06:00–18:58（0xd6）、onaka 與 gokigen 皆 > 0（0xd7）、點數 ≥ 300（0xd8）、未睡覺（0xd9）。成功：`DAT_18000d08 = 1`（託管中）**[確認]**；19 點時段開始時若仍託管：結束並 **−5 心情** **[確認]**（`FUN_10012c90`）。託管動畫 80% 0x832、20% 0x833 | |
+| 保母（HELP_SITTER → `FUN_1004d304`） | 費用 300。條件：成長階段 ≥ 3（msg 0x6b）、時間 06:00–18:58（0xd6）、onaka 與 gokigen 皆 > 0（0xd7）、點數 ≥ 300（0xd8）、未睡覺（0xd9）。成功：`DAT_18000d08 = 1`（託管中，即 cond 1）**[確認]**；19 點時段開始時若仍託管：結束並 **−5 心情** **[確認]**（`FUN_10012c90`）。託管動畫 0x831 來、80% 0x832 / 20% 0x833、0x834 走；託管中 HOME 一律路由到這個畫面，按鍵可提前結束（0xd4，預設 NO，不扣心情）**[確認]**（08-care-ui §2.18） | |
+
+#### 2.4a MICROSCOPE（LABOMENU→BOOK→MICROSCOPE，PSID_BOOK_CELL 0x40，`FUN_1004f360`）[確認]
+
+- BOOK（0x36，`FUN_100464c4`）兩項：TAMA FILE（0x09 → 0x3f）、MICROSCOPE（0x0a → 0x40）。
+- MICROSCOPE 選單（`FUN_1005ce28`）：LAB CODE（0x10）、COLLECTION（0x11，`0x18001684` 沒有任何位元時反灰）。
+- LAB CODE（`FUN_1005c9f8`）：訊息 0xe3 → 文字鍵盤（`FUN_10065034`，最多 16 字）→ SEARCHING…（0xe1，40 frames，`FUN_1005e61c`）→ 比對：長度 ≠ 8 → 0xe4；表外 → 0xe5；已收集 → 0xe6；表中 chr = 0 → 0xe7「NO DATA」（+ 每日 +50，見 §2.2）；否則 → 結果畫面（`FUN_1005c0b0`：UI 0x272 背景、0x273 角色、0x274 NEW!、0x275 名字），並 `FUN_1001f8a8(index)` 記錄收集。
+- 碼表 XIP `0x100a1660`：60 筆 × 16 B `{u16 chr, u16, char* code8, ..}`（`FUN_1006db1c`；英數 8 碼）。0–28 有角色（ChrID 0x40–0xa1，都是成體），29–59 是 NO DATA 碼。NO DATA 碼不會被標成已用，所以每天都能換 +50。重製：`shop::LAB_CODES`、`Pet::lab_code`。
+- 未做：COLLECTION 檢視（0xdac `FUN_1005ead0`）、結果畫面的放大（dial 上，0x1194）。
 
 ### 2.5 世界：field、區域、天氣
 
@@ -553,7 +561,7 @@ UNCHI(0x10)、ONAKA(0x11)、GOKIGEN(0x12)、EVOL_SUPPORT(0x13)、METAMORPHO(0x14
 1. 天氣值 0/1 的實際外觀（看 `FUN_1000aeac` 背景表對應的 sprite）。
 2. Zoom 的 dial／按鍵映射與轉場動畫：`FUN_10039eb8` 的 state 1000 輸入處理（`FUN_10005ea8` 按鍵、`FUN_1008e604` dial）。
 3. 玩具（SETSUBI 擺放）有沒有效果：`FUN_10043a44` 沒有直接加值；TOGETHER 的效果只來自小遊戲（§2.11）。
-5. 每日 +50 點（`FUN_1005cc78`）屬於哪個畫面。
+5. ~~每日 +50 點屬於哪個畫面~~ 已解：MICROSCOPE 的 NO DATA lab code（§2.4a）。
 7. 可拜訪星球（type 8 物品，9901–9910）與 TRAVEL 目的地的關係；TamaData+0x1B 計量（旅行 −60、被吃 +6、標為 UNCHI METER）的增加來源。
 8. 離線媒合 `new_generation_egg` 的實際參數（反組譯遺失）。
 9. Lab QR payload 格式。

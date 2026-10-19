@@ -224,6 +224,12 @@ pub struct Pet {
     pub no_wake_today: bool,
     #[serde(default)]
     pub no_sleep_today: bool,
+    /// MICROSCOPE: lab-code characters found (bit = code index, `0x18001684`), and today's
+    /// NO DATA bonus taken (`0x18000be9` bit0, cleared at day change).
+    #[serde(default)]
+    pub lab_cells: u64,
+    #[serde(default)]
+    pub lab_bonus: bool,
     raised: u64,
     done: u64,
     pub(crate) rng: u32,
@@ -354,6 +360,8 @@ impl Pet {
             gifts_received: Vec::new(),
             unchi_meter: 0,
             inventory: Vec::new(),
+            lab_cells: 0,
+            lab_bonus: false,
             no_wake_today: false,
             no_sleep_today: false,
             raised: 0,
@@ -581,6 +589,7 @@ impl Pet {
         }
         self.no_wake_today = false;
         self.no_sleep_today = false;
+        self.lab_bonus = false;
         self.hunt_used = [0; 3];
         self.breeds_today = 0;
         self.raise_calendar(t);
@@ -702,11 +711,9 @@ impl Pet {
         if self.death_remain > 0 {
             self.death_remain = self.death_remain.saturating_sub(dt);
             if self.death_remain == 0 {
+                // DYING then waits at 0 for the dying scene (`end_dying`).
                 if self.is_pending(req::DEATH) && !self.was_raised(req::DYING) {
                     self.raise(req::DYING);
-                } else if self.cond == Cond::Dying {
-                    // The firmware leaves this to the dying scene; the core ends it itself.
-                    self.raise(req::DEAD);
                 }
             }
         }
@@ -1077,6 +1084,41 @@ impl Pet {
         true
     }
 
+    /// The ancestor who comes to save a dying pet (`FUN_1000af5c`): the first grave of an
+    /// old-age death whose spirit has not helped yet.
+    pub fn dying_ancestor(&self) -> Option<usize> {
+        self.graves.iter().position(|g| g.spirit)
+    }
+
+    /// End of the dying scene (`req_done(DYING, arg)`): saved by the ancestor in grave `saved`
+    /// (its spirit is used up, cond back to normal), or dead (dirt cleared, DEAD raised).
+    pub fn end_dying(&mut self, saved: Option<usize>) {
+        if self.cond != Cond::Dying {
+            return;
+        }
+        self.clear(req::DYING);
+        match saved {
+            Some(i) => {
+                if let Some(g) = self.graves.get_mut(i) {
+                    g.spirit = false;
+                }
+                self.cond = Cond::Normal;
+                self.death_remain = 0;
+            }
+            None => {
+                self.status &= !status::DIRTY;
+                self.raise(req::DEAD);
+            }
+        }
+    }
+
+    /// Take the pet back from the tama sitter early (HELP_SITTER, END TAMA SITTING? → YES).
+    pub fn end_sitter(&mut self) {
+        if self.cond == Cond::Sitter {
+            self.cond = Cond::Normal;
+        }
+    }
+
     /// Tama days ≥ 30 at death counts as old age (daiojo).
     pub fn daiojo(&self) -> bool {
         self.cond == Cond::Dead && self.days >= 30
@@ -1219,11 +1261,28 @@ pub(crate) mod tests {
             let t = p.last.unwrap();
             p.advance_to(t + DAY);
         }
-        assert!(matches!(p.cond, Cond::Death | Cond::Dying | Cond::Dead), "{:?}", p.cond);
+        assert!(matches!(p.cond, Cond::Death | Cond::Dying), "{:?}", p.cond);
         let t = p.last.unwrap();
         p.advance_to(t + 2 * 3600);
+        assert_eq!((p.cond, p.death_remain), (Cond::Dying, 0), "waits for the dying scene");
+        p.end_dying(None);
         assert_eq!(p.cond, Cond::Dead);
         assert_eq!(p.death_cause, DeathCause::Hunger);
+        assert!(!p.graves[0].spirit, "died young");
+    }
+
+    #[test]
+    fn an_old_age_ancestor_saves_a_dying_pet_once() {
+        let mut p = pet(KID());
+        p.days = 30;
+        p.raise(req::DYING);
+        p.end_dying(None);
+        assert!(p.daiojo() && p.graves[0].spirit);
+        p.cond = Cond::Normal;
+        p.raise(req::DYING);
+        assert_eq!(p.dying_ancestor(), Some(0));
+        p.end_dying(Some(0));
+        assert_eq!((p.cond, p.dying_ancestor(), p.graves.len()), (Cond::Normal, None, 1));
     }
 
     #[test]

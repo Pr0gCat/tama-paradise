@@ -213,6 +213,54 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 | I4 | 取得食物：商店（LABOMENU→SHOP，Food/Snack 分頁需 rank ≥1，見 05-content §2.4）；EGG HUNT 每顆蛋 `item_give(food,1)`，表 `0x100a0600`（6 B `{u16 sprite, u16 item, u16 idx}`，索引 `field*8 + 變體*4 + rand(0..3)`，field 0 → 5066–5071、1 → 5076–5081、2 → 5056–5061）；料理（消耗 3 個材料）| 0x10041df8、0x1004b624 | [確認] |
 | I5 | 新玩家 rank 0 → 商店食物分頁不能用 → 開局可吃的就是 I1 + I3 | 同上 | [確認] |
 
+### 2.13 HOME 路由到事件場景（`FUN_1001abd0`）[確認]
+
+每次進 HOME（0x1c）：先 done HOMETRG/UNCHI，然後依序：cond 6 → **EVENT_DEAD 0x4a**；cond 5 → **EVENT_DYING 0x49**；rank 上升 → 0x7d；mission → 0x39；**cond 1 → HELP_SITTER 0x41**；狀態 request → 0x4e；隨機事件。所以死亡、臨終、保母期間玩家根本看不到 HOME。cond 4（DEATH 急救窗口）不路由，HOME 顯示狀態 0x19。
+
+### 2.14 急救（PSID_EVENT_RESCUE 0x54，`FUN_1003eae4`）[確認]
+
+- 進入：寵物層（zoom 0x20000）HOME 狀態 0x19 時任意鍵（0xf）→ 音效 1 → 0x54（`home_field_tama_state` 0x10039eb8 state 0x7d0）。場地層、細胞層不行。
+- 若 DEATH 不在待處理 → 直接離開。否則播 0x5ce；腳本暫停（signal 4）時任意鍵或逾時（場景時鐘差 > 0xa0000）繼續；0x5ce 結束 → 播 0x5d4 → 結束時 `req_done(DEATH,0)`（cond=0、DeathRemain=DeathByCold=cold=0、DeathByHungry = onaka==0 ? 129600 : 0）→ HOME。
+- 重製：`ui/event.rs::rescue`（Play 0x5ce→0x5d4，`OnPress::Rescue`）。逾時自動繼續沒做（ponytail）。
+
+### 2.15 臨終（PSID_EVENT_DYING 0x49，`FUN_1003d474`）[確認]
+
+| state | 內容 |
+|---|---|
+| 0 | `g_tama_days` < 30 → 播 0x5db，否則 0x5ed（大往生） |
+| 1000 | 等 DeathRemain（TamaCare+0x64，DYING 時設 60 s）到 0。然後 `FUN_1000af5c` 找死亡紀錄中第一筆 **bit12（大往生）仍設著**的格子：有 → 2000；沒有 → 天數 < 30 → 3000，否則 5000 |
+| 2000 | **祖先來救**：播 0x5e0，角色 0 = 寵物（0xbd）、角色 1 = 0xd6+格子（ghost slot 0x19+格子，也就是那位大往生的前代）。結束 → `FUN_1000b134` 清掉該筆 bit12（每位祖先只救一次）→ `req_done(DYING,1)`：cond=0、DeathRemain=0 → HOME |
+| 3000 | 年輕死亡：播 0x5e7 → 結束 `req_done(DYING,0)`：清 DIRTY、發 DEAD（寫死亡紀錄，cond 6）→ 4000 |
+| 5000 | 大往生：播 0x5ef → 結束 → 清 DIRTY、播 0x5f4 → 結束 `req_done(DYING,0)` → 4000 |
+| 4000 | 墓地：UI 0x2c8（anim 191）、0x2c9（anim 192）；5 個墓位 0x2d0+i（sprite 1107，座標 (30,28)(58,56)(92,26)(22,68)(44,104)），新墓播 anim `200 + bit12`，其他已用的墓 frame = bit12；UI 0x2ca（anim 194，(90,92)）播完 → HOME → 路由到 EVENT_DEAD |
+
+- Rust 核心原本在 DYING 的 60 s 到時自己發 DEAD；改成等臨終場景（`Pet::end_dying`），和原版一樣。離線期間 DYING 停在 0，下次開 HOME 時場景立刻接續。
+- 重製：`Grave::spirit`（bit12）、`Pet::dying_ancestor`、`Pet::end_dying(Some(i)|None)`、`Scene::Dying`、`Scene::Graveyard`。大往生的清 DIRTY 提前到 0x5ef 之前（ponytail）。
+
+### 2.16 墓碑（PSID_EVENT_DEAD 0x4a，`FUN_1003ccb0`）[確認]
+
+- 頁 0（墓碑）：layout 0x13f（sprite 109）；花 0x142/0x143（anim 21，(24,110)/(104,110)，進場有 y tween 未做）；墓碑 0x140（anim 169）或大往生 0x141（anim 170），(64,96)。
+- 輸入：**B** → 音效 1 → 紀錄頁；**按住 C 再按 A** → 音效 1 → 單項清單「NEW EGG」(0x18)。
+- 紀錄頁（state 2000）：背景 0x194（sprite 141），條 0x147/0x14a/0x14d；名字 0x146 (64,18)、天數 0x148 (60,47)（最後一筆死亡紀錄的 days）、「YEARS」0x149、「CAUSE」(0x79) 0x14b、死因 0x14c：cause 1 → 「TAMA SICK」0x7a、cause 3 → 「HUNGER」0x7c。C（或閒置逾時）→ 音效 2 → 回墓碑。
+- NEW EGG 清單：選定 → 場地背景、播 0x672、HOME 層 = 場地（`0x18001c6a` = 1）→ 結束 `tama_birth_reset(0)` 0x1000f708 → HOME。取消 → 回墓碑。
+- 重製：`Scene::Dead`、`Action::Tomb/NewEgg`、`OnPress::NewEgg`。
+
+### 2.17 嬰兒進化支援（PSID_EVENT_EVOL_SUPPORT 0x4b，`FUN_1003bd20`）[確認]
+
+- 進入：細胞層（zoom 0x10000）HOME 狀態 0x1a（EVOL_SUPPORT 呼叫）時任意鍵 → 音效 1 → 0x4b（`FUN_100398c8` state 1000）。15 分鐘內沒按，`care_tick` 逾時：刪掉 dominant 區域的紀錄、support miss +1（02-evolution §2.4）。
+- state 0：stage 2、age < 14400 且 EVOL_SUPPORT 待處理 → 1000；只有 EVOLUTION → 直接 7000；其他（非嬰兒或 age ≥ 14400）→ 3000（把整個區域／食物紀錄做成 icon 一個個吸進去，然後 7000）。
+- 1000：寵物播 0x54a（等待）；4 個 icon 放在 UI 0x35a/0x377/0x374/0x364 的座標（(38,42)(98,28)(18,114)(104,98)），sprite = `FUN_1000ae44(dominant)`：0x4a0/0x4a1/0x49c（dominant 3 → 0x49c）；目標點 (64,54)。
+- 2000…0x7d7：四輪。每輪任意鍵（0xf）或 200 frames → 寵物播 0x547、一個 icon tween 到目標並淡出、音效 1；40 frames 後寵物回 0x54a。順序是 icon 0、3、2、1。
+- 0x7d8：20 frames → 7000：support 計時器清零、進 EVENT_EVOLUTION 0x4c，那裡 `req_done(EVOL_SUPPORT)` → `tama_evolve`（用 dominant 區域進化，+300）。
+- 重製：`Scene::Support`、`Pet::support`。icon 飛行用線性 20 frames（ponytail：tween 曲線 5 未解）。
+
+### 2.18 保母（PSID_HELP_SITTER 0x41，`FUN_1004d304`）[確認]
+
+- 叫保母（LABOMENU→HELP→TAMA SITTER）：state 0 → 檢查 stage ≥3（0x6b）、06:00–18:58（0xd6）→ 說明 0xd5「到 PM7:00 為止照顧，一次 300」→ YES/NO 0xd3（預設 YES）→ 再檢查時間、onaka/gokigen > 0（0xd7）、未睡（0xd9）→ **cond = 1**、`be8 |= 0x80`、扣 300 → 播 0x831（保母來）→ 2000。
+- 2000：0x832 / 0x833（80% / 20%，每次播完重抽）循環。cond 不再是 1（19:00 由 `care_time_update` 結束並 gokigen −5）→ 3000：播 0x834 → HOME，層 = 場地。任意鍵 → 0xd4「END TAMA SITTING?」（**預設 NO**）：YES → 播 0x834 → cond=0（不扣心情、不退點數）→ HOME；NO → 回 0x832。
+- 保母期間 HOME 路由永遠進 0x41，玩家看不到 HOME。`care_tick`：cond 1 只跑 onaka 計時器、累加 UNCHI METER，不掉飢餓、心情（01-care §2）。
+- 重製：`Scene::Sitter`、`Action::SitterView/EndSitter`、`Pet::end_sitter`。
+
 ---
 
 ## 3. 資料表與格式
@@ -423,4 +471,5 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 5. 文字元件 p[0]（0x10xx）是字型/樣式 id，其版面（字型、對齊、顏色）細節在 `textbox_init` 0x10064d90，未展開。
 6. 分類清單樣式表 0x10093e5a 各欄的完整語意；圈選單開/關的過場（`FUN_1001af50/af78(8)`）。
 7. 狀態第 2 頁說明文字 `chara_def[+4]` 與名字 `FUN_10018394` 的確切來源；QR 資料加密（`FUN_10069de0`）屬另一子系統。
-8. 細胞層的 EVOL_SUPPORT（0x4b）、星球層選單各項目未在本文件展開（見 05-content）。
+8. ~~細胞層的 EVOL_SUPPORT（0x4b）~~ 已解（§2.17）；星球層選單各項目未在本文件展開（見 05-content）。
+9. 急救腳本 0x5ce 暫停點的逾時（場景時鐘差 > 0xa0000）換算成幾秒；墓碑頁花的進場 tween（`FUN_10066968` +0xb0，從 y−256）；支援場景 icon 的 tween 曲線 5。

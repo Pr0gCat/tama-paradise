@@ -27,6 +27,9 @@ pub struct Grave {
     /// 1 illness, 3 hunger.
     pub cause: u8,
     pub days: u16,
+    /// Old-age death (days ≥ 30, `g_death_log` bit12) whose spirit can still save a dying pet.
+    #[serde(default)]
+    pub spirit: bool,
 }
 
 impl Pet {
@@ -71,7 +74,7 @@ impl Pet {
         if self.graves.len() == 5 {
             self.graves.remove(0);
         }
-        self.graves.push(Grave { ghost: self.ghost(), cause, days: self.days });
+        self.graves.push(Grave { ghost: self.ghost(), cause, days: self.days, spirit: self.days > 29 });
     }
 
     /// NEW EGG (HELP_GRAZING, `FUN_1004dcd0`): the adult goes to its home field, generation

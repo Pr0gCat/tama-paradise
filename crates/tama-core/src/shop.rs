@@ -27,6 +27,35 @@ pub fn day_group(t: u64) -> u8 {
     ((m + d) % 5 + 1) as u8
 }
 
+/// MICROSCOPE lab codes (XIP 0x100a1660, 16-byte entries `{u16 chr, u16, char* code, ..}`):
+/// the first 29 show a character (ChrID); the rest are valid codes with NO DATA.
+pub const LAB_CODES: [(&str, u16); 60] = [
+    ("4RG89EWK", 0x40), ("XKGDC0FX", 0x50), ("Y536U3WA", 0x60), ("4S4GL6QN", 0x61), ("1EWR12VQ", 0x4c),
+    ("L5B4RUHL", 0x45), ("LW5JHHDB", 0x54), ("K04B787H", 0x44), ("8E6XEDXR", 0x56), ("C1X9FUKR", 0x68),
+    ("487V6CAU", 0x41), ("35LPY0WX", 0x75), ("9EBAMVF8", 0x77), ("4Y8ECKXP", 0x78), ("T97YQ3U5", 0x7b),
+    ("02UXR90S", 0x7c), ("E1F79X8P", 0x7f), ("4AEX49V8", 0x84), ("WN9Q7X85", 0x89), ("2WBRUA3H", 0x8d),
+    ("3MTWNK6X", 0x85), ("KT31XBG1", 0x90), ("0Y1G7G66", 0x91), ("TF8C4XG3", 0x99), ("V5A0EP28", 0x96),
+    ("PA9E4NAQ", 0xa1), ("HCF8K432", 0x9a), ("1HUNV49V", 0x9c), ("4NEYYB0B", 0x9d), ("CCU056KH", 0),
+    ("52GSVBYQ", 0), ("K0T76S7W", 0), ("N1KAK9WM", 0), ("XT4EM76L", 0), ("R15YCM3B", 0),
+    ("XGNEM8PH", 0), ("R3TKW5H5", 0), ("6LWVAJQF", 0), ("YDVCYU37", 0), ("5RXQTV84", 0),
+    ("7REWT39J", 0), ("W8H4PJBV", 0), ("KUD1X3SY", 0), ("25VTBKRW", 0), ("AB12K27L", 0),
+    ("WL27XQWA", 0), ("QTM4K9F1", 0), ("VECPA9T0", 0), ("UYFU1M5E", 0), ("FNNFK4EQ", 0),
+    ("HLVCRT2C", 0), ("RMND87L2", 0), ("KCLGKNW9", 0), ("N4U9LB46", 0), ("GKF9DWSD", 0),
+    ("ULQ4MSBS", 0), ("BUWRC7V9", 0), ("W3VFXW1B", 0), ("C6GC8YG8", 0), ("AY85L2AM", 0),
+];
+pub const LAB_BONUS: u32 = 50;
+
+/// Result of a MICROSCOPE lab code (`FUN_1005e61c` state 100).
+#[derive(Debug, PartialEq, Eq)]
+pub enum LabCode {
+    Wrong,
+    Used,
+    /// A valid code without a character; `bonus` = today's +50 points were paid now.
+    NoData { bonus: bool },
+    /// A new character (ChrID) for the collection.
+    Found(u16),
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ShopError {
     NotEnoughPoints,
@@ -103,6 +132,29 @@ impl Pet {
     pub fn give_capped(&mut self, item: &Item, n: i32) {
         let room = cap(item.kind) as i32 - self.count(item.id) as i32;
         self.give(item.id, n.min(room));
+    }
+
+    /// Enter a MICROSCOPE lab code (`FUN_1006db1c`, `FUN_1005e61c`). A NO DATA code pays
+    /// +50 points once a day (`FUN_1005cc78`).
+    pub fn lab_code(&mut self, code: &str) -> LabCode {
+        let Some(i) = LAB_CODES.iter().position(|(c, _)| *c == code) else { return LabCode::Wrong };
+        if self.lab_cells & 1 << i != 0 {
+            return LabCode::Used;
+        }
+        match LAB_CODES[i].1 {
+            0 => {
+                let bonus = !self.lab_bonus;
+                if bonus {
+                    self.earn(LAB_BONUS);
+                    self.lab_bonus = true;
+                }
+                LabCode::NoData { bonus }
+            }
+            chr => {
+                self.lab_cells |= 1 << i;
+                LabCode::Found(chr)
+            }
+        }
     }
 
     /// Enter an 8-digit shop code (`FUN_1004bcf4`): unlocks its item.
@@ -208,6 +260,20 @@ mod tests {
         p.rank = 1;
         p.points = 1000;
         p
+    }
+
+    #[test]
+    fn lab_codes_and_the_daily_no_data_bonus() {
+        let mut p = pet();
+        assert_eq!(p.lab_code("00000000"), LabCode::Wrong);
+        assert_eq!(p.lab_code("4RG89EWK"), LabCode::Found(0x40));
+        assert_eq!(p.lab_code("4RG89EWK"), LabCode::Used);
+        assert_eq!(p.lab_code("CCU056KH"), LabCode::NoData { bonus: true });
+        assert_eq!(p.lab_code("AY85L2AM"), LabCode::NoData { bonus: false }, "once a day");
+        assert_eq!(p.points, 1050);
+        p.advance_to(OCT15);
+        p.advance_to(OCT15 + DAY);
+        assert_eq!(p.lab_code("CCU056KH"), LabCode::NoData { bonus: true }, "NO DATA codes are never used up");
     }
 
     #[test]

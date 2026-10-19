@@ -169,6 +169,9 @@ impl Game {
         if (target - self.zoom).abs() <= 0.125 {
             self.zoom = target;
         }
+        if matches!(self.scene, Scene::Home) {
+            self.route_home();
+        }
         if matches!(self.scene, Scene::Home) && now / 60 != self.event_minute {
             self.event_minute = now / 60;
             let r = self.rand();

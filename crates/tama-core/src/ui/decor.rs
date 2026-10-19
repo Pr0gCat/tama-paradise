@@ -640,7 +640,7 @@ mod tests {
         let mut g = game();
         for days in [10, 40] {
             let ghost = crate::family::Ghost { id: 2113, color: 0, generation: 1 };
-            g.pet.graves.push(crate::family::Grave { ghost, cause: 3, days });
+            g.pet.graves.push(crate::family::Grave { ghost, cause: 3, days, spirit: false });
         }
         g.scene = g.open(Action::Stars);
         press(&mut g, A); // the older grave's star

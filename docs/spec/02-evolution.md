@@ -96,7 +96,7 @@
 | EVOL_SUPPORT 存在期間，0x18000d44 累加 dt；≥ 900 s（15 分鐘）沒完成就逾時：呼叫 `evo_drop_dominant_field` 0x10082118（從紀錄刪掉所有 dominant 區域的筆數），清除 request，miss + 1 | 0x100134bc、0x10082118 | [確認] |
 | EVOL_SUPPORT 被「完成」時（`req_done(0x13)`），與 EVOLUTION 一樣呼叫 `tama_evolve` | 0x10068aa0 case 1/0x13 | [確認] |
 | age ≥ 14400：如果 EVOL_SUPPORT 還在，先 drop dominant 再清除，然後強制發出 EVOLUTION | 0x100134bc | [確認] |
-| 玩家如何「完成」support（推測是小遊戲 "delivering vitamin!"，文字 #804） | — | [推測] |
+| 玩家如何「完成」support：EVOL_SUPPORT 時 HOME 顯示狀態 0x1a，**在細胞層按任意鍵** → EVENT_EVOL_SUPPORT 0x4b：4 個 dominant 區域 icon 每按一次（或 200 frames）飛進寶寶一個，結束後進 EVENT_EVOLUTION 0x4c，`req_done(0x13)`。不是小遊戲（08-care-ui §2.17） | 0x100398c8、0x1003bd20、0x1003dab8 | [確認] |
 
 ### 2.5 `tama_evolve` (0x1000fc98) 的完整分支
 
@@ -335,7 +335,7 @@
 
 ## 5. 未解問題
 
-- **EVOL_SUPPORT 的玩家操作**：哪個 UI 或小遊戲會呼叫 `req_done(0x13)`？可以搜尋 `FUN_10068aa0(0x13` 或間接呼叫。
+- ~~EVOL_SUPPORT 的玩家操作~~ 已解：細胞層任意鍵 → 0x4b → 0x4c `req_done(0x13)`（§2.4）。
 - **g_tama_chara_id2 的意義**：第 2 代以後固定為 60000，出生時 50% 取伴侶 ID。推測是「外觀繼承」或遺傳特徵用的 ID；60000-series 的紀錄（ChrID 189–220）需要對照 sprite 確認。
 - **`onaka_max`/`gokigen_max` > 4 的成長來源**：XIP.c 第 10711 行附近的函式有 +1，需要追呼叫者，可能是訓練。
 - **request 0x1b**：會讓 `care_miss_log_count` −1，需要找出是哪個事件（可能是讚美或道具）。

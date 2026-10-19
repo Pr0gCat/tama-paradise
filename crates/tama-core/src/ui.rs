@@ -9,6 +9,7 @@ use crate::Game;
 
 mod connect;
 mod decor;
+mod event;
 mod hunt;
 mod shop;
 
@@ -177,6 +178,16 @@ pub(crate) enum Action {
     /// CONNECTION → MINI GAMES: the Tama Space Arcade menu, and one of its two games.
     Arcade,
     PlayArcade(u8),
+    /// HELP_SITTER while sitting, and taking the pet back.
+    SitterView,
+    EndSitter,
+    /// EVENT_DEAD tombstone and its NEW EGG.
+    Tomb,
+    NewEgg,
+    /// Lab menu BOOK (TAMA FILE / MICROSCOPE), MICROSCOPE and its LAB CODE entry.
+    Book,
+    Microscope,
+    LabCode,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -198,6 +209,12 @@ pub(crate) enum OnPress {
     Injury,
     /// Calendar event: reward applied when the animation ends.
     Event(u8),
+    /// First aid (`req_done(DEATH)`), end of dying (saved by grave n, or dead), new egg,
+    /// sitter leaving.
+    Rescue,
+    Dying(Option<usize>),
+    NewEgg,
+    EndSitter,
 }
 
 pub(crate) struct Play {
@@ -248,6 +265,8 @@ pub(crate) enum Scene {
     HuntEggs { items: Vec<u16>, t: u16, peach: bool },
     /// Points earned, then `then` (lab game result screen).
     Points { points: u32, then: Box<Scene> },
+    /// MICROSCOPE's daily +50 for a NO DATA code (`FUN_1005cc78`).
+    Bonus,
     /// A mini-game: lab game index and difficulty (None for play-together games).
     Mini { session: crate::mini::Session, lab: Option<(u8, u8)> },
     FoodCategory { idx: usize },
@@ -258,6 +277,21 @@ pub(crate) enum Scene {
     Status { page: u8, idle: u16 },
     /// Play the pending eating effects one by one, then show the food list.
     Effects { cat: u8, idx: usize },
+    /// HELP_SITTER while the pet is with the sitter (`FUN_1004d304` state 2000).
+    Sitter { node: Node },
+    /// EVENT_EVOL_SUPPORT (`FUN_1003bd20`): `round` icons taken, `t` frames into this step,
+    /// `busy` while the baby takes one in.
+    Support { pet: Node, round: u8, t: u16, busy: bool },
+    /// EVENT_DYING (`FUN_1003d474`) until DeathRemain runs out.
+    Dying { node: Node },
+    /// The graves after a death (EVENT_DYING state 4000); the last node ends the scene.
+    Graveyard { nodes: Vec<(Node, i32, i32)> },
+    /// EVENT_DEAD (`FUN_1003ccb0`): page 0 the tombstone, 1 the record.
+    Dead { page: u8, nodes: Vec<(Node, i32, i32)> },
+    /// MICROSCOPE (`FUN_1004f360`): LAB CODE entry (font glyphs), searching, a character found.
+    LabCode { chars: [u16; 8], pos: usize },
+    Searching { code: String, t: u16 },
+    Found { chr: u16 },
 }
 
 fn pressed_any(p: u8) -> bool {
@@ -329,6 +363,7 @@ impl Game {
                 | Scene::Stars { .. }
                 | Scene::PlanetName { .. }
                 | Scene::PlanetLv { .. }
+                | Scene::LabCode { .. }
         ) {
             let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
             if pressed & C != 0 {
@@ -365,6 +400,19 @@ impl Game {
             Scene::Card { kind, items, idx } => self.update_card(kind, items, idx, pressed),
             Scene::Points { points, then } => {
                 if pressed_any(pressed) { *then } else { Scene::Points { points, then } }
+            }
+            Scene::Bonus => {
+                if pressed_any(pressed) { self.open(Action::Microscope) } else { Scene::Bonus }
+            }
+            Scene::Sitter { node } => self.update_sitter(node, pressed),
+            Scene::Support { pet, round, t, busy } => self.update_support(pet, round, t, busy, pressed),
+            Scene::Dying { node } => self.update_dying(node),
+            Scene::Graveyard { nodes } => self.update_graveyard(nodes),
+            Scene::Dead { page, nodes } => self.update_dead(page, nodes, pressed),
+            Scene::LabCode { chars, pos } => self.update_lab_code(chars, pos, pressed),
+            Scene::Searching { code, t } => self.update_searching(code, t),
+            Scene::Found { chr } => {
+                if pressed_any(pressed) { self.open(Action::Microscope) } else { Scene::Found { chr } }
             }
             Scene::Message { text, then } => {
                 if pressed_any(pressed) { *then } else { Scene::Message { text, then } }
@@ -722,13 +770,13 @@ impl Game {
         }
         let p = &self.pet;
         let sleeping = p.last.is_some_and(|t| p.is_sleeping_at(t));
-        if p.cond == Cond::Dead {
-            self.pet.new_egg(&self.data);
-            return Scene::Home;
+        let state = self.home_state.map(|s| s.0);
+        // First aid (HOME state 0x19, pet layer) and the baby's support call (0x1a, cell layer).
+        if self.level == Level::Pet && state == Some(0x19) {
+            return self.rescue();
         }
-        if p.cond == Cond::Death {
-            self.pet.rescue();
-            return Scene::Home;
+        if self.level == Level::Cell && state == Some(0x1a) {
+            return self.support();
         }
         if self.level != Level::Cell && p.is_pending(req::SOWASOWA) {
             self.pet.toilet();
@@ -829,6 +877,12 @@ impl Game {
                 self.pet.treat_injury();
             }
             OnPress::Event(id) => self.pet.finish_event(id),
+            OnPress::Rescue => {
+                self.pet.rescue();
+            }
+            OnPress::Dying(saved) => self.pet.end_dying(saved),
+            OnPress::NewEgg => self.pet.new_egg(&self.data),
+            OnPress::EndSitter => self.pet.end_sitter(),
             _ => {}
         }
         *p.then
@@ -987,8 +1041,44 @@ impl Game {
                 self.draw_field_bg();
                 true
             }
+            Scene::Sitter { node } | Scene::Dying { node } => {
+                self.draw_field_bg();
+                let mut draws = Vec::new();
+                node.draws(64, 64, &mut draws);
+                self.draw_list_of(&draws, None);
+                true
+            }
+            Scene::Support { pet, round, t, busy } => {
+                self.draw_support(pet, *round, *t, *busy);
+                true
+            }
+            Scene::Graveyard { nodes } => {
+                self.draw_graveyard(nodes);
+                true
+            }
+            Scene::Dead { page, nodes } => {
+                self.draw_dead(*page, nodes);
+                true
+            }
+            Scene::LabCode { chars, pos } => {
+                self.draw_lab_code(chars, *pos);
+                true
+            }
+            Scene::Searching { .. } => {
+                self.draw_list(&[], 0, Some(0xe1));
+                true
+            }
+            Scene::Found { chr } => {
+                self.draw_found(*chr);
+                true
+            }
             Scene::Card { kind, items, idx } => {
                 self.draw_card(*kind, items, *idx);
+                true
+            }
+            Scene::Bonus => {
+                self.draw_list(&[], 0, Some(0xe2));
+                self.draw_digits(crate::shop::LAB_BONUS, 64, 96);
                 true
             }
             Scene::Points { points, .. } => {

@@ -41,7 +41,32 @@ mod t {
     pub const CALL_SITTER: u16 = 0xd3;
     pub const CANT_CALL_SITTER: u16 = 0xd6;
     pub const NOT_ENOUGH_POINTS: u16 = 0xd8;
+    pub const TAMA_FILE: u16 = 0x09;
+    pub const MICROSCOPE: u16 = 0x0a;
+    pub const LAB_CODE: u16 = 0x10;
+    pub const COLLECTION_CELLS: u16 = 0x11;
+    pub const INPUT_LAB_CODE: u16 = 0xe3;
+    pub const WRONG_LAB_CODE: u16 = 0xe5;
+    pub const LAB_CODE_USED: u16 = 0xe6;
+    pub const NO_DATA: u16 = 0xe7;
 }
+
+/// LAB CODE letters: font glyphs for 0–9 and A–Z.
+const LAB_CHARS: [u16; 36] = {
+    let mut c = [0; 36];
+    let mut i = 0;
+    while i < 36 {
+        c[i] = if i < 10 { 306 + i as u16 } else { 318 + i as u16 - 10 };
+        i += 1;
+    }
+    c
+};
+/// SEARCHING… shows for 40 frames (`FUN_1005e61c` state 1).
+const SEARCH_FRAMES: u16 = 40;
+/// Found character: background, the character, NEW!, name bar (UI 0x272–0x276).
+const FOUND_BG: u16 = 0x272;
+const FOUND_NEW: u16 = 0x274;
+const FOUND_NAME_BAR: u16 = 0x276;
 
 const COOK_ICON_MATERIAL_Y: i32 = 112;
 
@@ -71,7 +96,7 @@ impl Game {
                     (t::MINI_GAMES, Some(Action::MiniGames)),
                     (t::SHOP, Some(Action::Shop)),
                     (t::HELP, Some(Action::Help)),
-                    (t::COLLECTION, Some(Action::Graves)),
+                    (t::COLLECTION, Some(Action::Book)),
                     (t::SETTINGS, Some(Action::Settings)),
                 ],
                 idx: 2,
@@ -172,7 +197,25 @@ impl Game {
                     None => self.message(t::NO_MORE_TODAY, Action::Help),
                 }
             }
-            Action::Graves => Scene::Graves { idx: 0, back: Action::Lab },
+            Action::Graves => Scene::Graves { idx: 0, back: Action::Book },
+            // LABOMENU_BOOK (`FUN_100464c4`): TAMA FILE (here the graves) and MICROSCOPE.
+            Action::Book => Scene::Menu {
+                items: vec![(t::TAMA_FILE, Some(Action::Graves)), (t::MICROSCOPE, Some(Action::Microscope))],
+                idx: 0,
+                back: Some(Action::Lab),
+            },
+            // MICROSCOPE (`FUN_1005ce28`): ponytail: its COLLECTION viewer is not built yet, so it
+            // stays greyed out (the original greys it out until a character is found).
+            Action::Microscope => Scene::Menu {
+                items: vec![(t::LAB_CODE, Some(Action::LabCode)), (t::COLLECTION_CELLS, None)],
+                idx: 0,
+                back: Some(Action::Book),
+            },
+            Action::LabCode => {
+                let entry = Scene::LabCode { chars: [LAB_CHARS[0]; 8], pos: 0 };
+                Scene::Message { text: t::INPUT_LAB_CODE, then: Box::new(entry) }
+            }
+            Action::SitterView | Action::EndSitter | Action::Tomb | Action::NewEgg => self.open_event(a),
             Action::MiniGames => Scene::Menu {
                 items: LAB_GAMES
                     .iter()
@@ -300,7 +343,7 @@ impl Game {
                 Scene::Mini { session: crate::mini::Session::together(game), lab: None }
             }
             Action::CallSitter => match self.pet.call_sitter(now) {
-                Ok(()) => Scene::Home,
+                Ok(()) => self.sitter_arrives(),
                 Err(ShopError::NotEnoughPoints) => self.message(t::NOT_ENOUGH_POINTS, Action::Lab),
                 Err(_) => self.message(t::CANT_CALL_SITTER, Action::Lab),
             },
@@ -488,6 +531,75 @@ impl Game {
         if self.pet.claimed & 1 << i != 0 {
             self.draw_text(0xa5, 80, 120, true, 0);
         }
+    }
+
+    /// LAB CODE entry: like the shop code, with letters (the original uses its text keyboard).
+    pub(super) fn update_lab_code(&mut self, mut chars: [u16; 8], mut pos: usize, pressed: u8) -> Scene {
+        let at = LAB_CHARS.iter().position(|&c| c == chars[pos]).unwrap_or(0);
+        if pressed & (A | UP) != 0 {
+            chars[pos] = LAB_CHARS[(at + 1) % LAB_CHARS.len()];
+        }
+        if pressed & DOWN != 0 {
+            chars[pos] = LAB_CHARS[(at + LAB_CHARS.len() - 1) % LAB_CHARS.len()];
+        }
+        if pressed & C != 0 {
+            if pos == 0 {
+                return self.open(Action::Microscope);
+            }
+            pos -= 1;
+        }
+        if pressed & (B | PUSH) != 0 {
+            pos += 1;
+            if pos == 8 {
+                let code = chars.iter().map(|&c| LAB_CHARS.iter().position(|&l| l == c).map_or('0', |i| b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i] as char)).collect();
+                return Scene::Searching { code, t: 0 };
+            }
+        }
+        Scene::LabCode { chars, pos }
+    }
+
+    /// SEARCHING…, then the result (`FUN_1005e61c`): a character, or a message; a NO DATA code
+    /// is followed by the daily +50 points screen.
+    pub(super) fn update_searching(&mut self, code: String, t: u16) -> Scene {
+        if t < SEARCH_FRAMES {
+            return Scene::Searching { code, t: t + 1 };
+        }
+        let text = match self.pet.lab_code(&code) {
+            crate::shop::LabCode::Found(chr) => return Scene::Found { chr },
+            crate::shop::LabCode::NoData { bonus: true } => {
+                return Scene::Message { text: t::NO_DATA, then: Box::new(Scene::Bonus) };
+            }
+            crate::shop::LabCode::NoData { bonus: false } => t::NO_DATA,
+            crate::shop::LabCode::Used => t::LAB_CODE_USED,
+            crate::shop::LabCode::Wrong => t::WRONG_LAB_CODE,
+        };
+        self.message(text, Action::Microscope)
+    }
+
+    pub(super) fn draw_lab_code(&mut self, chars: &[u16; 8], pos: usize) {
+        self.draw_list(&[], 0, Some(t::INPUT_LAB_CODE));
+        for (i, &c) in chars.iter().enumerate() {
+            let x = 18 + i as i32 * 13;
+            self.screen.text(&self.data.fonts, &[c], x, 86, true, 1);
+            if i == pos {
+                self.screen.rect(x - 5, 96, 10, 2, [40, 40, 120]);
+            }
+        }
+    }
+
+    /// A character found under the microscope (`FUN_1005c0b0`), with its name and NEW!.
+    pub(super) fn draw_found(&mut self, chr: u16) {
+        self.draw_elem(FOUND_BG, None, None);
+        let Some(def) = self.data.characters.iter().find(|c| c.chr_id == chr).copied() else { return };
+        self.draw_character(def.id, None, 64, 91);
+        let new = self.ui_elem(FOUND_NEW);
+        let mut node = crate::motion::Node::new(new.p[3] as u16);
+        node.tick(&self.data.motions);
+        let mut draws = Vec::new();
+        node.draws(new.x as i32, new.y as i32, &mut draws);
+        self.draw_list_of(&draws, None);
+        self.draw_elem(FOUND_NAME_BAR, None, None);
+        self.draw_text(def.name_id, 64, 104, true, 0);
     }
 
     pub(super) fn draw_code(&mut self, digits: &[u8; 8], pos: usize) {

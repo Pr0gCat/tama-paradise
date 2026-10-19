@@ -132,16 +132,16 @@ LOVE/IMMUNITY/HAPPY/DANCE/KIRAKIRA 彼此互斥（設定時用 `status & 0x10 | 
 
 ### 2.9 死亡流程
 
-cond 值（`g_tama_cond` 0x18000d08，名稱來自 0x1007417c）：0 NORMAL、1 （未命名）、2 COLD、3 INJURY、4 DEATH、5 DYING、6 DEAD、7 ASCENSION（XIP 內找不到設定 7 的地方）。
+cond 值（`g_tama_cond` 0x18000d08，名稱來自 0x1007417c）：0 NORMAL、1 SITTER（託給保母，見下方 §5 與 08-care-ui §2.18）、2 COLD、3 INJURY、4 DEATH、5 DYING、6 DEAD、7 ASCENSION（XIP 內找不到設定 7 的地方）。
 
 1. 觸發 DEATH_DELAY(9)：DeathByHungry 到 0（onaka 到 0 起算 36 小時沒吃）、DeathByCold 到 0（感冒 36 小時沒治）、或第 5 次大便感冒 [確認]。
 2. 醒著的 tick：DEATH_DELAY → DEATH(8)。`req_raise(8)`：清 COLD、INJURY，發 HOMETRG，`DeathRemain=3540`（0xdd4），cond=4，status&=DIRTY [確認 0x10069218]。第 5 次失誤感冒則直接跳 DEATH。
-3. DEATH 期間：救援場景 0x1003eae4 → `req_done(8,0)`：cond=0、DeathRemain=DeathByCold=0、cold=0，`DeathByHungry = (onaka==0 ? 129600 : 0)` [確認]。待機喚醒點：剩餘時間降到表 0x100a4c64 的 {1740,1140,840,540,240} 時以 DEATH 為原因喚醒，降到 0 時以 DYING 為原因 [確認]。
+3. DEATH 期間：救援場景 0x1003eae4（EVENT_RESCUE 0x54，寵物層 HOME 狀態 0x19 時任意鍵進入，08-care-ui §2.14）→ `req_done(8,0)`：cond=0、DeathRemain=DeathByCold=0、cold=0，`DeathByHungry = (onaka==0 ? 129600 : 0)` [確認]。待機喚醒點：剩餘時間降到表 0x100a4c64 的 {1740,1140,840,540,240} 時以 DEATH 為原因喚醒，降到 0 時以 DYING 為原因 [確認]。
 4. DeathRemain 到 0 → DYING(0xc)：清 DEATH，`DeathRemain=60`，cond=5 [確認]。
-5. 場景 0x1003d474：`req_done(0xc,0)` → 清 DIRTY、發 DEAD(0xd)；`req_done(0xc,1)` → cond=0、DeathRemain=0（被救回）[確認]。
+5. 場景 0x1003d474（EVENT_DYING 0x49，HOME 路由在 cond 5 時進入）：等 DeathRemain 到 0；死亡紀錄裡有 bit12（大往生）還沒用過的前代 → 播 0x5e0、清掉該筆 bit12、`req_done(0xc,1)` → cond=0、DeathRemain=0（被救回）；否則 `req_done(0xc,0)` → 清 DIRTY、發 DEAD(0xd) [確認]。UI 見 08-care-ui §2.15。
 6. `req_raise(0xd)` DEAD：清 DYING；`death_log_add(cause, g_tama_days)` 0x1000affc，cause：`be9 bit1` 有設（疾病）→ 1，否則（飢餓）→ 3；cond=6 [確認]。
 7. 死亡紀錄 `g_death_log` 0x18000df0：5 筆 u32 環狀緩衝，索引在 `0x18000dec&7`。bit0=used、bits1–3=cause、bits4–11=days、**bit12 = days>29（大往生 daiojo）**。大往生不是另一條死法，只是死亡時 tama_days ≥30 [確認]。`cmd_dying 1` 把 days 設 30 來模擬大往生。
-8. 之後：新蛋由 `tama_birth_reset` 0x1000f708 產生（chara 1000、stage 1、days=0、清空 0x70 bytes care 區塊與所有請求，保留生日、新年等事件）。呼叫者有 cmd_birth 0x10071fec 和場景 0x100148f4、0x1003ccb0、0x1004dcd0、0x1004e1ec、0x1008c430。傳入前代 id 時會繼承顏色（50%）與世代計數 `0x18000d06`（≤99）[確認]。UI 流程（墓碑→蛋）[推測]。
+8. 之後：新蛋由 `tama_birth_reset` 0x1000f708 產生（chara 1000、stage 1、days=0、清空 0x70 bytes care 區塊與所有請求，保留生日、新年等事件）。呼叫者有 cmd_birth 0x10071fec 和場景 0x100148f4、0x1003ccb0、0x1004dcd0、0x1004e1ec、0x1008c430。傳入前代 id 時會繼承顏色（50%）與世代計數 `0x18000d06`（≤99）[確認]。UI 流程：EVENT_DEAD 0x4a 墓碑頁，按住 C 再按 A → NEW EGG → 0x672 → `tama_birth_reset(0)` [確認，08-care-ui §2.16]。
 9. 沒有自然壽命：年齡計時器上限 14 天，也沒找到依天數觸發死亡的程式 [確認：g_tama_days 只在 0x100134bc 累加、0x1000f708 歸零、0x10072550 debug 寫入]。
 
 ### 2.10 請求系統（EM_REQ）
@@ -260,10 +260,10 @@ yogore 規則見 §2.4；`play_days(0x18000c98)++`（≤999）；清 WAKE、SLEE
 
 ## 5. 未解問題
 
-- **cond 1** 是什麼：由 0x1004d304 的場景設定，條件是 onaka、gokigen 都 >0、`TamaData+0x10==0`、時間早於某個時刻。19:00 結束，gokigen −5。期間只走 onaka 計時，並累加 0x18000d13（≤60）。推測是「外出／放養」類活動，要看該場景的 sprite（0x831–0x834）。
+- ~~cond 1 是什麼~~ 已解 [確認]：**託給保母（TAMA SITTER）**。`scene_help_sitter` 0x1004d304（LABOMENU→HELP→TAMA SITTER，300 點）設 cond=1；19:00 由 `care_time_update` 結束並 gokigen −5，玩家也可以在保母畫面按鍵、回答 END TAMA SITTING? → YES 提前結束（不扣心情）。0x831 保母來、0x832/0x833 照顧中、0x834 保母走。UI 流程見 08-care-ui §2.18。
+- ~~救援場景 0x1003eae4 和 dying 場景 0x1003d474 的進入條件~~ 已解 [確認]：急救 = 寵物層 HOME 狀態 0x19 時任意鍵；臨終 = HOME 路由在 cond 5 時自動進入。大往生的前代（死亡紀錄 bit12）會在臨終時救回寵物一次。見 08-care-ui §2.13–2.16。
 - `0x18001be9 bit1`（跳過 DeathRemain 遞減）與 `0x18000be9 bit1`（死因）是兩個不同變數，前者的語意待確認。
 - 誰讓玩家把 SLEEP 標成 done（主動「哄睡」）：XIP 內 `req_done(3,…)` 只出現在自動路徑，可能經由變數 id 呼叫（例如 `FUN_1000fc98`、場景 0x1004f7d8）。
-- 救援場景 0x1003eae4 和 dying 場景 0x1003d474 的進入條件（需要哪個道具或操作）。
 - `FUN_100188d8`（清大便 bonus 的來源）、`0x18000cb2` 累計值的用途。
 - `cond 7 ASCENSION` 在 XIP 中沒有寫入點，可能在 PRAM（ram.c 中沒搜到 0x18000d08）或已廢棄。
 - stage 2 的進化路徑（EVOL_SUPPORT、`FUN_10081c68()==3`）屬進化子系統，這裡沒展開。
