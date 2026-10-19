@@ -47,6 +47,10 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
+/// Play-together menu (09-minigames-together §2.1): title and game number.
+const TOGETHER_GAMES: [(u16, u8); 4] = [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7)];
+/// Play-together games playable so far.
+const TOGETHER_IMPLEMENTED: &[u8] = &[];
 /// Games playable so far.
 const IMPLEMENTED: &[u8] = &[0, 1, 2, 3, 4, 5, 6];
 
@@ -223,6 +227,29 @@ impl Game {
             | Action::Travel
             | Action::GoTravel(_)
             | Action::PlanetLv => self.open_decor(a),
+            Action::Together => {
+                if self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t)) {
+                    return Scene::Message { text: 0x69, then: Box::new(Scene::Home) };
+                }
+                Scene::Menu {
+                    items: TOGETHER_GAMES
+                        .iter()
+                        .map(|&(title, g)| (title, TOGETHER_IMPLEMENTED.contains(&g).then_some(Action::PlayTogether(g))))
+                        .collect(),
+                    idx: 0,
+                    back: None,
+                }
+            }
+            Action::PlayTogether(g) => {
+                let n = self.pet.together_plays[g as usize] as usize;
+                self.pet.together_plays[g as usize] = (n as u8).wrapping_add(1);
+                let game: Box<dyn crate::mini::MiniGame> = match g {
+                    // Each together game registers here: game number → constructor (n = play count).
+                    _ => return self.open(Action::Together),
+                };
+                #[allow(unreachable_code)]
+                Scene::Mini { session: crate::mini::Session::new(game, None), lab: None }
+            }
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,
                 Err(ShopError::NotEnoughPoints) => self.message(t::NOT_ENOUGH_POINTS, Action::Lab),
@@ -244,10 +271,10 @@ impl Game {
             }
             (Some(r), None) => {
                 self.pet.play_reward(r as usize);
-                self.pet_menu()
+                self.open(Action::Together)
             }
             (None, Some(_)) => self.open(Action::MiniGames),
-            (None, None) => self.pet_menu(),
+            (None, None) => self.open(Action::Together),
         }
     }
 

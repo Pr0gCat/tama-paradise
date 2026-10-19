@@ -246,6 +246,7 @@ impl Pet {
         fresh.seen_partners = std::mem::take(&mut self.seen_partners);
         fresh.device_uid = self.device_uid;
         fresh.mini_plays = self.mini_plays;
+        fresh.together_plays = self.together_plays;
         fresh.toys = self.toys;
         fresh.equip = self.equip;
         fresh.travel_toggle = self.travel_toggle;

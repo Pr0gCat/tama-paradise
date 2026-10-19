@@ -148,6 +148,9 @@ pub(crate) enum Action {
     Travel,
     GoTravel(u8),
     PlanetLv,
+    /// Pet menu PLAY: the play-together menu, and one of its games (by game number).
+    Together,
+    PlayTogether(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -531,7 +534,7 @@ impl Game {
 
     pub(crate) fn pet_menu(&self) -> Scene {
         Scene::Menu {
-            items: vec![(text::FEED, Some(Action::Feed)), (text::PLAY, None), (text::CLEAN_TAMA, Some(Action::Groom))],
+            items: vec![(text::FEED, Some(Action::Feed)), (text::PLAY, Some(Action::Together)), (text::CLEAN_TAMA, Some(Action::Groom))],
             idx: 0,
             back: None,
         }

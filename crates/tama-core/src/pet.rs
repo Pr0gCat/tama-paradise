@@ -198,6 +198,9 @@ pub struct Pet {
     /// Times each lab game was played (picks its fixed layouts in turn).
     #[serde(default)]
     pub mini_plays: [u8; 7],
+    /// Play-together cycle counters by game number 0–7 (09-minigames-together C10).
+    #[serde(default)]
+    pub together_plays: [u8; 8],
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -323,6 +326,7 @@ impl Pet {
             in_area2: false,
             hunt_used: [0; 3],
             mini_plays: [0; 7],
+            together_plays: [0; 8],
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,
