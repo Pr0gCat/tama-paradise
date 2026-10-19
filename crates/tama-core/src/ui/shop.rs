@@ -649,15 +649,16 @@ impl Game {
     pub(super) fn draw_found(&mut self, chr: u16) {
         self.draw_elem(FOUND_BG, None, None);
         let Some(def) = self.data.characters.iter().find(|c| c.chr_id == chr).copied() else { return };
-        self.draw_character(def.id, None, 64, 91);
+        // The NEW! glow fills the screen, so the character and its name go on top.
         let new = self.ui_elem(FOUND_NEW);
         let mut node = crate::motion::Node::new(new.p[3] as u16);
         node.tick(&self.data.motions);
         let mut draws = Vec::new();
         node.draws(new.x as i32, new.y as i32, &mut draws);
         self.draw_list_of(&draws, None);
+        self.draw_character(def.id, None, 64, 91);
         self.draw_elem(FOUND_NAME_BAR, None, None);
-        self.draw_text(def.name_id, 64, 104, true, 0);
+        self.draw_text(def.name_id, 64, 104, true, 1);
     }
 
     pub(super) fn draw_code(&mut self, digits: &[u8; 8], pos: usize) {
