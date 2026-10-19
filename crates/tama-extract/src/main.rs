@@ -372,6 +372,8 @@ fn main() {
             })
             .collect(),
         recipes: words(0x1009_1fbc, 24).chunks(2).map(|c| (c[0], c[1])).collect(),
+        weather_months: words(0x1009_1b5c, 72).chunks(6).map(|c| std::array::from_fn(|i| c[i])).collect(),
+        weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),
         field_bg: {
             let bg = words(0x1009_2e06, 96);
             (0..3).map(|f| std::array::from_fn(|v| std::array::from_fn(|k| bg[f * 32 + v * 16 + k]))).collect()

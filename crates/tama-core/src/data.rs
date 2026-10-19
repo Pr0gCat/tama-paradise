@@ -178,6 +178,12 @@ pub struct Data {
     /// Cooking: (product, material needed ×3), XIP 0x10091fbc.
     #[serde(default)]
     pub recipes: Vec<(u16, u16)>,
+    /// Weather: per-month chances of patterns 0–4 (rest = 5), XIP 0x10091b5c; and per pattern the
+    /// weather (0 clear, 1 cloudy, 2 rain/snow) for each time-of-day period, XIP 0x1009138c.
+    #[serde(default)]
+    pub weather_months: Vec<[u16; 6]>,
+    #[serde(default)]
+    pub weather_patterns: Vec<[u8; 5]>,
 }
 
 impl Data {

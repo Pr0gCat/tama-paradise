@@ -51,7 +51,9 @@
   };
   if (params.has("reset")) store.set("");
   const localSecs = () => Date.now() / 1000 - new Date().getTimezoneOffset() * 60;
-  const t0 = localSecs(), wall0 = performance.now();
+  // ?hours=N shifts the clock for testing (debug only).
+  const shift = params.has("debug") ? (Number(params.get("hours")) || 0) * 3600 : 0;
+  const t0 = localSecs() + shift, wall0 = performance.now();
   const data = await (await fetch("game.json")).text();
   let game;
   const saved = store.get();
@@ -61,6 +63,13 @@
   game ??= new Tama(data, Date.now() >>> 0);
   game.advance_to(t0); // catches up the time the page was closed (max 24 h)
   const save = () => store.set(game.save());
+  // ?debug: window.tama.get() returns the save as an object, window.tama.set(obj) replaces the game.
+  if (params.has("debug")) {
+    window.tama = {
+      get: () => JSON.parse(game.save()),
+      set: obj => { game = Tama.load(data, JSON.stringify(obj)); save(); },
+    };
+  }
   addEventListener("pagehide", save);
   document.addEventListener("visibilitychange", () => document.hidden && save());
   setInterval(save, 10_000);

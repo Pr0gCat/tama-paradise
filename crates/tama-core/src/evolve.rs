@@ -264,7 +264,7 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![] }
+        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![] }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;

@@ -10,6 +10,7 @@ pub mod save;
 pub mod screen;
 pub mod shop;
 pub mod sprite;
+pub mod world;
 mod ui;
 
 use data::{Data, PART_BODY, PART_DIRT, PART_EYES, PART_MOUTH};
@@ -111,6 +112,10 @@ impl Game {
         self.held = held;
         self.frame_count = self.frame_count.wrapping_add(1);
         self.pet.advance_to(now);
+        if self.pet.weather_day != now / 86_400 {
+            self.pet.weather_day = now / 86_400;
+            self.pet.roll_weather(&self.data, now);
+        }
         if matches!(self.scene, Scene::Home) {
             if self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO) {
                 self.pet.evolve(&self.data);

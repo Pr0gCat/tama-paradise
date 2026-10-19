@@ -103,6 +103,19 @@ impl Game {
                 Err(_) => self.message(t::NOT_ENOUGH_POINTS, Action::Expand),
             },
             Action::Missions => Scene::Missions { idx: 0 },
+            Action::Fields => {
+                let fields = self.pet.visible_fields(&self.data);
+                Scene::Menu {
+                    idx: fields.iter().position(|&f| f == self.pet.field).unwrap_or(0),
+                    items: fields.into_iter().map(|f| (t::FIELD_NAMES[f as usize], Some(Action::SwitchField(f)))).collect(),
+                    back: None,
+                }
+            }
+            Action::SwitchField(f) => {
+                self.pet.switch_field(f);
+                self.level = crate::Level::Field;
+                Scene::Home
+            }
             Action::Help => Scene::Ask { text: t::CALL_SITTER, yes: true, on_yes: Action::CallSitter, back: Action::Lab },
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,

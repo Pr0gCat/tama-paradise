@@ -154,6 +154,13 @@ pub struct Pet {
     /// Expansion areas bought, bit per field.
     #[serde(default)]
     pub areas: u8,
+    /// Today's weather pattern 0–5 and whether HOME shows the field's expansion area.
+    #[serde(default)]
+    pub weather: u8,
+    #[serde(default)]
+    pub weather_day: u64,
+    #[serde(default)]
+    pub in_area2: bool,
     /// UNCHI METER (0x18000d13), 0–60.
     #[serde(default)]
     pub unchi_meter: u8,
@@ -269,6 +276,9 @@ impl Pet {
             unlocked: Vec::new(),
             used_codes: Vec::new(),
             areas: 0,
+            weather: 0,
+            weather_day: 0,
+            in_area2: false,
             unchi_meter: 0,
             inventory: Vec::new(),
             no_wake_today: false,

@@ -74,6 +74,8 @@ mod elem {
 }
 
 const ARROWS: u16 = 89;
+/// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
+const PARTICLE: u16 = 0x457;
 const TABLE: u16 = 0x786;
 /// Placeholder sprite in eating scripts, replaced by the food's sprite.
 const FOOD_PLACEHOLDER: u16 = 0x682;
@@ -107,6 +109,8 @@ pub(crate) enum Action {
     ExpandField(u8),
     CallSitter,
     Missions,
+    Fields,
+    SwitchField(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -414,7 +418,12 @@ impl Game {
 
     fn field_menu(&self) -> Scene {
         Scene::Menu {
-            items: vec![(text::OUTSIDE_TOY, None), (text::EGG_HUNT, None), (text::CLEAN_POOP, Some(Action::CleanPoop)), (text::FIELDS, None)],
+            items: vec![
+                (text::OUTSIDE_TOY, None),
+                (text::EGG_HUNT, None),
+                (text::CLEAN_POOP, Some(Action::CleanPoop)),
+                (text::FIELDS, (self.pet.rank >= 4).then_some(Action::Fields)),
+            ],
             idx: 2,
             back: None,
         }
@@ -439,6 +448,12 @@ impl Game {
             };
         }
         if !pressed_any(pressed) || self.pet.def.stage == 1 {
+            return Scene::Home;
+        }
+        // C on the field: go to the field's expansion area and back (HOME_FIELD2).
+        if self.level == Level::Field && pressed & C != 0 && self.pet.areas & 1 << self.pet.field != 0 {
+            self.pet.in_area2 = !self.pet.in_area2;
+            self.sfx(9, 100);
             return Scene::Home;
         }
         let p = &self.pet;
@@ -580,8 +595,11 @@ impl Game {
 
     /// Field background sprite for the current field and time of day (`field_bg_create` 0x10015d90).
     pub(crate) fn field_bg(&self) -> Option<u16> {
-        let period = self.pet.last.map_or(1, crate::pet::Pet::period) as usize;
-        let id = self.data.field_bg.get(self.pet.field as usize)?[0][1 + period * 3];
+        let now = self.pet.last.unwrap_or(12 * 3600);
+        let period = crate::pet::Pet::period(now) as usize;
+        let weather = self.pet.weather_now(&self.data, now) as usize;
+        let variant = self.pet.in_area2 as usize;
+        let id = self.data.field_bg.get(self.pet.field as usize)?[variant][1 + period * 3 + weather];
         let e = self.ui_elem(id);
         (e.kind == UI_SPRITE).then_some(e.p[3] as u16)
     }
@@ -592,6 +610,11 @@ impl Game {
                 self.screen.blit(bg, 0, 64, 64, 64, false, None);
             }
             None => self.screen.rect(0, 0, 128, 128, [200, 230, 240]),
+        }
+        // Rain / snow when the weather is 2: a full-screen 4-frame overlay (UI element 0x2d5).
+        if self.pet.weather_now(&self.data, self.pet.last.unwrap_or(0)) == 2 {
+            let frame = (self.frame_count / 4 % 4) as u16;
+            self.screen.blit(PARTICLE, frame, 64, 64, 64, false, None);
         }
     }
 
