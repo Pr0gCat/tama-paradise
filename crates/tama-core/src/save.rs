@@ -55,7 +55,6 @@ impl Game {
 mod tests {
     use super::*;
     use crate::evolve::tests::data;
-    use crate::Button;
 
     const NOON: u64 = 86_400 + 12 * 3600;
 
@@ -63,7 +62,7 @@ mod tests {
         let mut g = Game::new(data(), 9);
         g.advance_to(NOON);
         g.advance_to(NOON + 3 * 3600);
-        g.press(Button::A);
+        g.frame(NOON + 3 * 3600, crate::input::A);
         g
     }
 

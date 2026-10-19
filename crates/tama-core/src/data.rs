@@ -29,9 +29,20 @@ pub struct CharDef {
 }
 
 /// Item record (asset data table 10, 23 × u16). Only the fields the game logic uses.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Item {
     pub id: u16,
+    /// Name string id.
+    #[serde(default)]
+    pub name: u16,
+    /// Sprite shown while eating (frames: full, half, empty) and in lists.
+    #[serde(default)]
+    pub eat_sprite: u16,
+    #[serde(default)]
+    pub icon_sprite: u16,
+    /// Drink (item +0x14 bit0): uses the drinking animations.
+    #[serde(default)]
+    pub drink: bool,
     /// 1 meal, 2 snack, 3/4 toys, 5 hat, 6 glasses, 7 accessory, 8 planet.
     pub kind: u8,
     /// 0xffff = not for sale.
@@ -102,6 +113,31 @@ pub struct Model {
     pub anims: Vec<Vec<Part>>,
 }
 
+/// Bitmap font (data tables 0/1): glyph code c = frame c of `sprite`, width = advance + adj[c].
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Font {
+    pub sprite: u16,
+    pub advance: i16,
+    pub line_height: i16,
+    pub adj: Vec<i16>,
+}
+
+/// UI element (data tables 4/5, `ui_element_def_get` 0x10023124): kind 1 = sprite
+/// (p[3] sprite, p[6] alpha, p[7] frame, p[8] palette), 2 = text (p[3] string), 5 = animation (p[3] script).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiElem {
+    pub kind: u8,
+    pub x: i16,
+    pub y: i16,
+    pub p: [i16; 11],
+}
+
+pub const UI_SPRITE: u8 = 1;
+pub const UI_TEXT: u8 = 2;
+pub const UI_ANIM: u8 = 5;
+
+pub const LANGS: [&str; 9] = ["ja", "en", "fr", "de", "pt", "es", "it", "zh", "ko"];
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Data {
     /// Device edition (flash 0xd29000): 1–6. Glacier = 6.
@@ -117,6 +153,16 @@ pub struct Data {
     /// HOME state → {field, close-up, cell} motion script (XIP 0x1009dbd8, 32 states).
     #[serde(default)]
     pub home_motions: Vec<[u16; 3]>,
+    #[serde(default)]
+    pub fonts: Vec<Font>,
+    /// `strings[lang][id]` = glyph codes (see `LANGS`). 0xF000 = newline.
+    #[serde(default)]
+    pub strings: Vec<Vec<Vec<u16>>>,
+    #[serde(default)]
+    pub ui: Vec<UiElem>,
+    /// Field background UI elements `[field][variant][1 + period*3 + weather]` (XIP 0x10092e06).
+    #[serde(default)]
+    pub field_bg: Vec<[[u16; 16]; 2]>,
 }
 
 impl Data {
@@ -130,6 +176,10 @@ impl Data {
 
     pub fn model(&self, chr_id: u16) -> Option<&Model> {
         self.models.iter().find(|m| m.chr_id == chr_id)
+    }
+
+    pub fn ui(&self, id: u16) -> UiElem {
+        self.ui.get(id as usize).copied().unwrap_or_default()
     }
 
     pub fn item(&self, id: u16) -> Option<Item> {

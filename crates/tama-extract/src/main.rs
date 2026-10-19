@@ -3,7 +3,7 @@
 //! Usage: tama-extract <dump.bin> <data_dir>
 //! Writes <data_dir>/game.json and <data_dir>/sprites/<index>.tsp.gz (format: tama_core::sprite).
 use std::io::Write;
-use tama_core::data::{CharDef, Data, Evolution, Item, Model, Part};
+use tama_core::data::{CharDef, Data, Evolution, Font, Item, Model, Part, UiElem};
 use tama_core::sprite::Sprite;
 
 const ASSET_ARC: usize = 0x111000;
@@ -82,6 +82,74 @@ fn motions(dump: &[u8]) -> Vec<Vec<u16>> {
         .map(|i| {
             let (a, b) = (u16_at(dump, t13 + i * 2) as usize, u16_at(dump, t13 + i * 2 + 2) as usize);
             (0..(b - a) * 2).map(|w| u16_at(dump, t14 + a * 4 + w * 2)).collect()
+        })
+        .collect()
+}
+
+/// UI elements: table 4 = u16 offsets (u16 units) into table 5. Record: u16 header (kind in the
+/// top 4 bits, optional-field bits below), i16 x, i16 y, then the present optional fields.
+fn ui_elems(dump: &[u8]) -> Vec<UiElem> {
+    const SPEC: [&[(u16, usize, i16)]; 9] = [
+        &[(0x800, 0, 0)],
+        &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0x1000), (0x20, 6, 0x40), (0x40, 7, 0), (0x80, 8, 0), (0x100, 9, 0), (0x400, 10, 0), (0x800, 0, 0)],
+        &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0), (0x40, 6, 0x40), (0x80, 7, 0), (0x100, 8, 0), (0x400, 9, 0), (0x800, 0, 0)],
+        &[(0x8, 3, 1), (0x10, 4, 1), (0x20, 5, 0), (0x40, 6, 0), (0x100, 7, 0), (0x400, 8, 0), (0x800, 0, 0)],
+        &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0), (0x20, 6, 0), (0x100, 7, 0), (0x200, 8, 0), (0x800, 0, 0)],
+        &[(0x1, 3, 0), (0x100, 4, 0), (0x200, 5, 0), (0x800, 0, 0)],
+        &[(0x1, 3, 0)],
+        &[(0x1, 8, 0), (0x8, 3, 0), (0x10, 4, 0), (0x20, 5, 0), (0x40, 7, 0), (0x80, 6, 0), (0x800, 0, 0)],
+        &[(0x1, 0, 0), (0x8, 4, 0), (0x10, 5, 0), (0x40, 6, 0x40), (0x80, 7, 0), (0x100, 8, 0), (0x400, 9, 0), (0x800, 3, 0)],
+    ];
+    let (t4, t5) = (table_start(dump, 4), table_start(dump, 5));
+    (0..(t5 - t4) / 2)
+        .map(|i| {
+            let a = t5 + u16_at(dump, t4 + i * 2) as usize * 2;
+            let h = u16_at(dump, a);
+            let kind = (h >> 12) as usize;
+            let mut p = [0i16; 11];
+            let mut q = a + 6;
+            for &(bit, slot, default) in SPEC.get(kind).copied().unwrap_or(&[]) {
+                p[slot] = if h & bit != 0 {
+                    q += 2;
+                    u16_at(dump, q - 2) as i16
+                } else {
+                    default
+                };
+            }
+            UiElem { kind: kind as u8, x: u16_at(dump, a + 2) as i16, y: u16_at(dump, a + 4) as i16, p }
+        })
+        .collect()
+}
+
+/// The 5 fonts: table 0 = u16 offsets (u16 units) into table 1.
+/// Record: u16 sprite, u16 advance, u16 line height, i16 glyph count − 1, then per glyph c
+/// at +4 + c*4: {u16 char code, i16 advance adjust}.
+fn fonts(dump: &[u8]) -> Vec<Font> {
+    let (t0, t1) = (table_start(dump, 0), table_start(dump, 1));
+    (0..5)
+        .map(|i| {
+            let f = t1 + u16_at(dump, t0 + i * 2) as usize * 2;
+            let count = u16_at(dump, f + 6) as i16 as usize + 1;
+            Font {
+                sprite: u16_at(dump, f),
+                advance: u16_at(dump, f + 2) as i16,
+                line_height: u16_at(dump, f + 4) as i16,
+                adj: (0..count).map(|c| if c == 0 { 0 } else { u16_at(dump, f + 6 + c * 4) as i16 }).collect(),
+            }
+        })
+        .collect()
+}
+
+/// String tables: ARC2 entry 2 holds 9 files (languages); each = u16 count, u16 offsets[count+1]
+/// (u16 units from the file start), strings of glyph codes.
+fn strings(dump: &[u8]) -> Vec<Vec<Vec<u16>>> {
+    let arc = arc_entry(dump, 2).0;
+    let n = u32_at(dump, arc + 12) as usize;
+    (0..n)
+        .map(|i| {
+            let file = arc + u32_at(dump, arc + 0x10 + i * 16 + 4) as usize;
+            let w = |k: usize| u16_at(dump, file + k * 2) as usize;
+            (0..w(0)).map(|j| (w(j + 1)..w(j + 2)).map(|k| w(k) as u16).take_while(|&c| c != 0).collect()).collect()
         })
         .collect()
 }
@@ -231,6 +299,10 @@ fn main() {
         .into_iter()
         .map(|r| Item {
             id: r[0],
+            name: r[1],
+            eat_sprite: r[2],
+            icon_sprite: r[3],
+            drink: r[10] & 1 != 0,
             kind: r[11] as u8,
             buy: r[12],
             sell: r[13],
@@ -271,6 +343,13 @@ fn main() {
         models,
         motions: motions(&dump),
         home_motions,
+        fonts: fonts(&dump),
+        strings: strings(&dump),
+        ui: ui_elems(&dump),
+        field_bg: {
+            let bg = words(0x1009_2e06, 96);
+            (0..3).map(|f| std::array::from_fn(|v| std::array::from_fn(|k| bg[f * 32 + v * 16 + k]))).collect()
+        },
     };
     for id in data.evolution.kids.iter().chain(data.evolution.teens.iter().flatten()) {
         assert!(data.character(*id).is_some(), "evolution target {id} missing");

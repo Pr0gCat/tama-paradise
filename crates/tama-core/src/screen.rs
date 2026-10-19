@@ -1,7 +1,8 @@
 //! 128×128 RGBA framebuffer plus the sprites the platform has supplied.
 
+use crate::data::Font;
 use crate::sprite::Sprite;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 pub const WIDTH: usize = 128;
 pub const HEIGHT: usize = 128;
@@ -11,11 +12,13 @@ pub struct Screen {
     pub sprites: HashMap<u16, Sprite>,
     /// RGBA8888, row-major.
     pub fb: Vec<u8>,
+    /// Sprites a draw asked for that are not loaded yet (the platform fetches them).
+    pub wanted: BTreeSet<u16>,
 }
 
 impl Default for Screen {
     fn default() -> Self {
-        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4] }
+        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new() }
     }
 }
 
@@ -33,7 +36,15 @@ impl Screen {
     /// `palette` = (sprite, set) whose palette replaces the sprite's own set 0.
     /// Returns false if the sprite is not loaded yet.
     pub fn blit(&mut self, id: u16, frame: u16, cx: i32, cy: i32, alpha: u8, flip: bool, palette: Option<(u16, usize)>) -> bool {
-        let Some(s) = self.sprites.get(&id) else { return false };
+        let Some(s) = self.sprites.get(&id) else {
+            self.wanted.insert(id);
+            return false;
+        };
+        if let Some((pid, _)) = palette {
+            if !self.sprites.contains_key(&pid) {
+                self.wanted.insert(pid);
+            }
+        }
         let (w, h) = (s.w as i32, s.h as i32);
         let f = (frame % s.frames.max(1)) as usize * (w * h) as usize;
         let pal = palette.and_then(|(pid, set)| self.sprites.get(&pid).map(|p| (p, set)));
@@ -58,8 +69,49 @@ impl Screen {
                     let d = self.fb[i + ch] as u32;
                     self.fb[i + ch] = ((c[ch] as u32 * a + d * (64 - a)) / 64) as u8;
                 }
+                self.fb[i + 3] = 255;
             }
         }
         true
     }
+}
+
+/// Glyph codes 0xF000.. are control codes; 0xF000 is a newline.
+pub const NEWLINE: u16 = 0xF000;
+
+impl Screen {
+    /// Width in pixels of one line of glyph codes. `fonts[1]` covers kana/Latin, `fonts[2]` adds CJK.
+    pub fn text_width(fonts: &[Font], glyphs: &[u16]) -> i32 {
+        glyphs.iter().take_while(|&&c| c != NEWLINE).map(|&c| glyph(fonts, c).map_or(0, |(f, _)| advance(f, c))).sum()
+    }
+
+    /// Draw text with each line centred on `cx` (or starting at `cx` when `center` is false);
+    /// `cy` is the middle of the first line. `palette` picks the font sprite's palette set.
+    pub fn text(&mut self, fonts: &[Font], glyphs: &[u16], cx: i32, cy: i32, center: bool, palette: usize) {
+        let mut y = cy;
+        for line in glyphs.split(|&c| c == NEWLINE) {
+            let mut x = if center { cx - Self::text_width(fonts, line) / 2 } else { cx };
+            for &c in line {
+                let Some((f, sprite)) = glyph(fonts, c) else { continue };
+                let w = self.sprites.get(&sprite).map_or(16, |s| s.w as i32);
+                let pal = (palette > 0).then_some((sprite, palette));
+                // Glyph codes start at 1; frame 0 of the font sprite is glyph 1.
+                self.blit(sprite, c - 1, x + w / 2, y, 64, false, pal);
+                x += advance(f, c);
+            }
+            y += fonts.get(1).map_or(12, |f| f.line_height as i32 + 2);
+        }
+    }
+}
+
+fn glyph(fonts: &[Font], c: u16) -> Option<(&Font, u16)> {
+    if c >= 0xF000 || c == 0 {
+        return None;
+    }
+    let f = fonts.get(1).filter(|f| (c as usize) < f.adj.len()).or_else(|| fonts.get(2))?;
+    Some((f, f.sprite))
+}
+
+fn advance(f: &Font, c: u16) -> i32 {
+    f.advance as i32 + f.adj.get(c as usize).copied().unwrap_or(0) as i32
 }

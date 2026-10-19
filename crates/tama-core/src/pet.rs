@@ -114,6 +114,14 @@ pub struct Pet {
     pub comm: [u8; 2],
     pub points: u32,
     pub generation: u8,
+    /// Inventory: (item id, count).
+    #[serde(default)]
+    pub inventory: Vec<(u16, u8)>,
+    /// The player answered NO to the wake / sleep prompt today (cleared at day change).
+    #[serde(default)]
+    pub no_wake_today: bool,
+    #[serde(default)]
+    pub no_sleep_today: bool,
     raised: u64,
     done: u64,
     pub(crate) rng: u32,
@@ -164,6 +172,9 @@ impl Pet {
             comm: [0; 2],
             points: 0,
             generation: 1,
+            inventory: Vec::new(),
+            no_wake_today: false,
+            no_sleep_today: false,
             raised: 0,
             done: 0,
             rng: seed | 1,
@@ -382,6 +393,8 @@ impl Pet {
         for id in [req::WAKE, req::SLEEP, req::OTEIRE] {
             self.clear(id);
         }
+        self.no_wake_today = false;
+        self.no_sleep_today = false;
     }
 
     /// Advance to wall-clock `now` (`care_time_update` 0x10012c90).
@@ -564,6 +577,37 @@ impl Pet {
         !matches!(self.cond, Cond::Death | Cond::Dying | Cond::Dead)
     }
 
+    /// Like (+1) / dislike (−1) of a food (`food_pref_bonus` 0x100171fc).
+    pub fn food_pref(&self, item: &Item) -> i32 {
+        let mut pref = 0;
+        if item.group != 0 && item.group == self.def.likes {
+            pref += 1;
+        } else if item.group != 0 && item.group == self.def.dislikes {
+            pref -= 1;
+        }
+        if self.def.stage > 4 && item.id == 5002 {
+            pref = -1;
+        }
+        if item.kind == KIND_SNACK && self.def.stage == 5 && item.snack_flag == 1 {
+            pref += 1;
+        }
+        pref
+    }
+
+    pub fn count(&self, id: u16) -> u8 {
+        self.inventory.iter().find(|e| e.0 == id).map_or(0, |e| e.1)
+    }
+
+    /// Add (or remove with negative `n`) items; per-item cap 10 (`item_give` 0x1001e0d8).
+    pub fn give(&mut self, id: u16, n: i32) {
+        match self.inventory.iter_mut().find(|e| e.0 == id) {
+            Some(e) => e.1 = (e.1 as i32 + n).clamp(0, 10) as u8,
+            None if n > 0 => self.inventory.push((id, n.min(10) as u8)),
+            None => {}
+        }
+        self.inventory.retain(|e| e.1 > 0);
+    }
+
     /// Feed a meal or snack (`care_eat_item` 0x1001021c). Returns false if refused.
     // ponytail: special snacks (colour juices, HAPPY/LOVE/IMMUNITY, nap tea) not handled yet.
     pub fn feed(&mut self, item: &Item) -> bool {
@@ -573,21 +617,10 @@ impl Pet {
         {
             return false;
         }
+        let pref = self.food_pref(item);
         self.add_onaka(item.onaka as i32);
         self.log_food(item);
-        let mut pref = 0;
-        if item.group == self.def.likes {
-            pref += 1;
-        } else if item.group == self.def.dislikes {
-            pref -= 1;
-        }
-        if self.def.stage > 4 && item.id == 5002 {
-            pref = -1;
-        }
         if item.kind == KIND_SNACK {
-            if self.def.stage == 5 && item.snack_flag == 1 {
-                pref += 1;
-            }
             self.add_gokigen(item.gokigen as i32 + pref);
         } else {
             self.add_gokigen(pref);
@@ -635,6 +668,32 @@ impl Pet {
         self.yogore = 0;
         self.add_gokigen(1);
         self.mark_done(req::OTEIRE);
+    }
+
+    /// Mood reward from a care action (e.g. +1 after cleaning poop).
+    pub fn happy(&mut self, n: i32) {
+        self.add_gokigen(n);
+    }
+
+    /// Put the pet to bed when it asks to sleep ("TIME TO SLEEP?" YES).
+    pub fn put_to_bed(&mut self) -> bool {
+        if !self.is_pending(req::SLEEP) {
+            return false;
+        }
+        self.mark_done(req::SLEEP);
+        self.status &= status::DIRTY;
+        true
+    }
+
+    /// Treat an injury (`req_done(INJURY)`): mood +1, back to normal (or cold).
+    pub fn treat_injury(&mut self) -> bool {
+        if self.cond != Cond::Injury {
+            return false;
+        }
+        self.clear(req::INJURY);
+        self.add_gokigen(1);
+        self.cond = if self.is_pending(req::COLD) { Cond::Cold } else { Cond::Normal };
+        true
     }
 
     /// Wake the pet when it is asking to get up.
@@ -691,20 +750,7 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn meal(onaka: u8, group: u8) -> Item {
-        Item {
-            id: 5000,
-            kind: KIND_MEAL,
-            buy: 0,
-            sell: 0,
-            category: 0,
-            rank: 0,
-            group,
-            snack_flag: 0,
-            onaka,
-            gokigen: 0,
-            day_group: 0,
-            flags: 0,
-        }
+        Item { id: 5000, kind: KIND_MEAL, group, onaka, ..Default::default() }
     }
 
     const BABY: fn() -> CharDef = || def(1001, 2, 3, 5, 0);

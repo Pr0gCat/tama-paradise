@@ -244,7 +244,7 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![] }
+        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![] }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;
@@ -264,7 +264,7 @@ pub(crate) mod tests {
     }
 
     fn food(category: u8, points: u8) -> Item {
-        Item { id: 5000, kind: KIND_MEAL, buy: 0, sell: 0, category, rank: 0, group: 0, snack_flag: 0, onaka: 1, gokigen: points, day_group: 0, flags: 0 }
+        Item { id: 5000, kind: KIND_MEAL, category, onaka: 1, gokigen: points, ..Default::default() }
     }
 
     #[test]

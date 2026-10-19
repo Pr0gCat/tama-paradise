@@ -15,6 +15,7 @@ const ARGS: [(u16, usize); 6] = [(15, 0), (14, 1), (13, 2), (11, 3), (10, 4), (9
 /// Character placeholder ids that mean "the player's pet". 0x1f also hides the eyes and mouth.
 pub const PET: u16 = 0;
 pub const PET_NO_FACE: u16 = 0x1f;
+pub const PET_IN_CELL: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Tween {
@@ -70,6 +71,9 @@ pub struct Node {
     alpha: Tween,
     pub flip: bool,
     pub visible: bool,
+    /// `signal -1`: the scene may move on. `signal 4`: wait for a button press (`resume`).
+    pub finished: bool,
+    pub paused: bool,
     /// Spawn position relative to the parent, and draw order (negative = behind the parent).
     pub at: (i32, i32),
     pub z: i16,
@@ -101,6 +105,8 @@ impl Node {
             alpha: Tween { from: 256, to: 256, t: 0, len: 0 },
             flip: false,
             visible: true,
+            finished: false,
+            paused: false,
             at: (0, 0),
             z: 0,
             children: Vec::new(),
@@ -120,7 +126,7 @@ impl Node {
         self.x.step();
         self.y.step();
         self.alpha.step();
-        if self.done || self.wait == KEEP as u16 {
+        if self.done || self.paused || self.wait == KEEP as u16 {
             return;
         }
         if self.wait > 0 {
@@ -158,7 +164,7 @@ impl Node {
                 c.tick(scripts);
             }
             self.wait = a[5] as u16;
-            if self.wait != 0 {
+            if self.wait != 0 || self.paused {
                 return;
             }
         }
@@ -187,6 +193,8 @@ impl Node {
                 self.children.push(child);
             }
             0x14 => self.visible = c & 1 != 0,
+            0x1a if c == -1 => self.finished = true,
+            0x1a if c == 4 => self.paused = true,
             0x1b => self.loop_pc = self.pc,
             0x1c => self.look = Look::Chr { chr: a as u16, anim: c as u16, eyes: d, mouth: KEEP },
             0x1d | 0x1e | 0x24 => {
@@ -201,6 +209,23 @@ impl Node {
             0x20 => self.children.clear(),
             // Scale, rotation, sound, scene effects and actor signals are not used yet.
             _ => {}
+        }
+    }
+
+    /// The script (or one of its children) signalled completion, or everything has ended.
+    pub fn is_finished(&self) -> bool {
+        self.finished || self.done || self.children.iter().any(|c| c.is_finished() && !c.done)
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused || self.children.iter().any(Node::is_paused)
+    }
+
+    /// Continue after a `signal 4` pause.
+    pub fn resume(&mut self) {
+        self.paused = false;
+        for c in &mut self.children {
+            c.resume();
         }
     }
 
@@ -264,6 +289,20 @@ mod tests {
         n.tick(&s);
         n.tick(&s);
         assert!(n.children.is_empty());
+    }
+
+    #[test]
+    fn pause_waits_for_resume_then_finishes() {
+        // signal 4 (pause), signal -1 (finished), wait forever
+        let s = vec![vec![3 << 1, 0x1a | C, 4, 0x1a | C, -1i16 as u16, 0x00 | W, KEEP as u16, END]];
+        let mut n = Node::new(0);
+        n.tick(&s);
+        assert!(n.is_paused() && !n.is_finished());
+        n.tick(&s);
+        assert!(n.is_paused());
+        n.resume();
+        n.tick(&s);
+        assert!(n.is_finished() && !n.done);
     }
 
     #[test]
