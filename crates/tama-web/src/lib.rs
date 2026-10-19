@@ -1,5 +1,5 @@
 use tama_core::data::Data;
-use tama_core::{Button, Game};
+use tama_core::Game;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -36,17 +36,12 @@ impl Tama {
         tama_core::TICK_MS
     }
 
-    /// 0 = A, 1 = B, 2 = C.
-    pub fn press(&mut self, b: u8) {
-        let b = match b {
-            0 => Button::A,
-            1 => Button::B,
-            _ => Button::C,
-        };
-        self.0.press(b);
+    /// One 20 fps frame. `held`: bit0 A, bit1 B, bit2 C, bit3 dial push, bit6 dial down, bit7 dial up.
+    pub fn frame(&mut self, now: f64, held: u8) {
+        self.0.frame(now as u64, held);
     }
 
-    /// Local wall-clock time in seconds.
+    /// Local wall-clock time in seconds (catch-up without input, e.g. after loading).
     pub fn advance_to(&mut self, now: f64) {
         self.0.advance_to(now as u64);
     }

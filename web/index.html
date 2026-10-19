@@ -1,15 +1,40 @@
 <!doctype html>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#222">
 <title>Tama Paradise</title>
 <style>
-  body { margin: 0; background: #222; display: grid; place-items: center; height: 100vh; gap: 12px; }
-  canvas { width: min(90vw, 512px); image-rendering: pixelated; }
-  button { font-size: 20px; width: 64px; }
-  pre { color: #ccc; margin: 0; }
+  :root { --bg: #222; --btn: #3a3a44; --btn-on: #5a5a6a; --fg: #ccc; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    box-sizing: border-box; overflow: hidden;
+    /* no double-tap zoom, text selection or tap flash while playing */
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+  }
+  /* square screen: as large as fits next to the controls */
+  canvas { width: min(92vw, 100dvh - 230px, 512px); aspect-ratio: 1; image-rendering: pixelated;
+           border-radius: 12px; touch-action: none; }
+  .pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 10px 14px; justify-content: center; }
+  button { height: 56px; border: 0; border-radius: 28px; background: var(--btn); color: var(--fg);
+           font: 600 20px system-ui; touch-action: none; }
+  button.on { background: var(--btn-on); }
+  pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
 </style>
-<canvas id="c"></canvas>
-<div><button data-b="0">A</button> <button data-b="1">B</button> <button data-b="2">C</button></div>
+<canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
+<div class="pad">
+  <button data-k="0x40" aria-label="Dial left">◀</button>
+  <button data-k="0x08" aria-label="Dial press">●</button>
+  <button data-k="0x80" aria-label="Dial right">▶</button>
+  <button data-k="0x01">A</button>
+  <button data-k="0x02">B</button>
+  <button data-k="0x04">C</button>
+</div>
 <pre id="s"></pre>
 <script type="module">
   import init, { Tama } from "./pkg/tama_web.js";
@@ -41,10 +66,34 @@
   const c = document.getElementById("c");
   c.width = w; c.height = h;
   const ctx = c.getContext("2d");
-  const keys = { a: 0, s: 1, d: 2 };
-  const press = b => { game.press(b); save(); };
-  document.querySelectorAll("button").forEach(el => el.onclick = () => press(+el.dataset.b));
-  addEventListener("keydown", e => e.key in keys && press(keys[e.key]));
+  // Input bits as in the firmware. Buttons are held; dial turns are one-frame pulses.
+  // Every press is also latched for one frame, so a tap shorter than a frame still counts.
+  const A = 1, B = 2, C = 4, PUSH = 8, DOWN = 0x40, UP = 0x80, DIAL = DOWN | UP;
+  const keys = { a: A, s: B, d: C, " ": PUSH, Enter: PUSH, ArrowLeft: DOWN, ArrowRight: UP };
+  let held = 0, pulses = 0;
+  const down = bit => { pulses |= bit; if (!(bit & DIAL)) held |= bit; };
+  const up = bit => { held &= ~bit; save(); };
+  addEventListener("keydown", e => { if (e.key in keys && !e.repeat) { down(keys[e.key]); e.preventDefault(); } });
+  addEventListener("keyup", e => e.key in keys && up(keys[e.key]));
+  for (const el of document.querySelectorAll("button[data-k]")) {
+    const bit = Number(el.dataset.k);
+    el.onpointerdown = e => { el.setPointerCapture(e.pointerId); el.classList.add("on"); down(bit); navigator.vibrate?.(8); };
+    el.onpointerup = el.onpointercancel = () => { el.classList.remove("on"); up(bit); };
+    el.oncontextmenu = e => e.preventDefault();
+  }
+  // Touch screen: swipe sideways turns the dial (one step per 24 px), a tap presses it.
+  let swipeX = null, swiped = false;
+  c.onpointerdown = e => { c.setPointerCapture(e.pointerId); swipeX = e.clientX; swiped = false; };
+  c.onpointermove = e => {
+    if (swipeX === null) return;
+    const dx = e.clientX - swipeX;
+    if (Math.abs(dx) >= 24) { down(dx > 0 ? UP : DOWN); swipeX = e.clientX; swiped = true; }
+  };
+  c.onpointerup = () => {
+    if (swipeX !== null && !swiped) { down(PUSH); up(PUSH); }
+    swipeX = null;
+  };
+  c.onpointercancel = () => { swipeX = null; };
   // Sprites are fetched on demand; the core asks for what the current screen needs.
   const loading = new Set();
   async function loadSprite(id) {
@@ -67,7 +116,8 @@
     const n = Math.floor(acc / tickMs);
     acc -= n * tickMs;
     if (n) {
-      game.advance_to(t0 + (now - wall0) / 1000 * speed);
+      const t = t0 + (now - wall0) / 1000 * speed;
+      for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
       document.getElementById("s").textContent = game.status();
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
     }

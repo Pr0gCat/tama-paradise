@@ -4,12 +4,14 @@ pub mod data;
 pub(crate) mod evolve;
 pub mod pet;
 pub mod save;
+pub mod screen;
 pub mod sprite;
 
 use data::{Data, Part, KIND_MEAL, PART_BODY, PART_EYES, PART_MOUTH};
 use pet::{Cond, Pet};
+pub use screen::{HEIGHT, WIDTH};
+use screen::Screen;
 use sprite::Sprite;
-use std::collections::HashMap;
 
 /// Sprite with the 16 pet body colour palettes; set n = colour n (game-spec §8).
 const COLOR_PALETTES: u16 = 206;
@@ -17,8 +19,6 @@ const COLOR_PALETTES: u16 = 206;
 // ponytail: guessed from the eyes sheet; the real sleep pose is another animation number.
 const EYES_SLEEP: u16 = 7;
 
-pub const WIDTH: usize = 128;
-pub const HEIGHT: usize = 128;
 /// Frame step, 20 fps like the original (game-spec §2). Pet simulation runs on wall-clock seconds.
 pub const TICK_MS: u32 = 50;
 
@@ -29,13 +29,23 @@ pub enum Button {
     C,
 }
 
+/// Input bitmask, same bits as the firmware (game-spec §2). Dial bits are one-frame pulses.
+pub mod input {
+    pub const A: u8 = 0x01;
+    pub const B: u8 = 0x02;
+    pub const C: u8 = 0x04;
+    pub const PUSH: u8 = 0x08;
+    pub const DOWN: u8 = 0x40;
+    pub const UP: u8 = 0x80;
+}
+
 pub struct Game {
     pub data: Data,
     pub pet: Pet,
-    /// Decoded sprites by sprite-pack index, supplied by the platform (`add_sprite`).
-    sprites: HashMap<u16, Sprite>,
-    /// RGBA8888, row-major.
-    fb: Vec<u8>,
+    screen: Screen,
+    /// Frames since start (20 fps), drives animation.
+    pub frame_count: u32,
+    held: u8,
 }
 
 impl Game {
@@ -47,7 +57,7 @@ impl Game {
     }
 
     fn with_pet(data: Data, pet: Pet) -> Self {
-        let mut g = Game { data, pet, sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4] };
+        let mut g = Game { data, pet, screen: Screen::default(), frame_count: 0, held: 0 };
         g.render();
         g
     }
@@ -79,6 +89,19 @@ impl Game {
         self.render();
     }
 
+    /// One 20 fps frame: `now` = local wall-clock seconds, `held` = `input` bits held this frame.
+    pub fn frame(&mut self, now: u64, held: u8) {
+        let pressed = held & !self.held;
+        self.held = held;
+        self.frame_count = self.frame_count.wrapping_add(1);
+        for (bit, b) in [(input::A, Button::A), (input::B, Button::B), (input::C, Button::C)] {
+            if pressed & bit != 0 {
+                self.press(b);
+            }
+        }
+        self.advance_to(now);
+    }
+
     /// Advance the pet to local wall-clock seconds `now` and redraw.
     /// A pending evolution completes here, as the original does when the pet is on screen.
     pub fn advance_to(&mut self, now: u64) {
@@ -90,7 +113,7 @@ impl Game {
     }
 
     pub fn framebuffer(&self) -> &[u8] {
-        &self.fb
+        &self.screen.fb
     }
 
     /// Current idle pose: alternates between the two idle keyframes every second.
@@ -110,56 +133,15 @@ impl Game {
         }
         ids.sort_unstable();
         ids.dedup();
-        ids.retain(|id| !self.sprites.contains_key(id));
+        ids.retain(|id| !self.screen.sprites.contains_key(id));
         ids
     }
 
     /// Add a sprite in `sprite::Sprite` byte format. Returns false if the bytes are invalid.
     pub fn add_sprite(&mut self, id: u16, bytes: &[u8]) -> bool {
         let Some(s) = Sprite::from_bytes(bytes) else { return false };
-        self.sprites.insert(id, s);
+        self.screen.sprites.insert(id, s);
         self.render();
-        true
-    }
-
-    fn rect(&mut self, x: usize, y: usize, w: usize, h: usize, c: [u8; 3]) {
-        for yy in y..(y + h).min(HEIGHT) {
-            for xx in x..(x + w).min(WIDTH) {
-                let i = (yy * WIDTH + xx) * 4;
-                self.fb[i..i + 4].copy_from_slice(&[c[0], c[1], c[2], 255]);
-            }
-        }
-    }
-
-    /// Draw `frame` of sprite `id` centred on (cx, cy) with alpha 0–64.
-    /// `palette` = (sprite, set) whose palette replaces the sprite's own set 0.
-    fn blit(&mut self, id: u16, frame: u16, cx: i32, cy: i32, alpha: u8, palette: Option<(u16, usize)>) -> bool {
-        let Some(s) = self.sprites.get(&id) else { return false };
-        let (w, h) = (s.w as i32, s.h as i32);
-        let f = (frame % s.frames) as usize * (w * h) as usize;
-        let pal = palette.and_then(|(pid, set)| self.sprites.get(&pid).map(|p| (p, set)));
-        for y in 0..h {
-            for x in 0..w {
-                let (px, py) = (cx - w / 2 + x, cy - h / 2 + y);
-                if !(0..WIDTH as i32).contains(&px) || !(0..HEIGHT as i32).contains(&py) {
-                    continue;
-                }
-                let idx = s.pixels[f + (y * w + x) as usize];
-                if s.transparent && idx == s.key {
-                    continue;
-                }
-                let c = match pal {
-                    Some((p, set)) => p.rgba(set, idx),
-                    None => s.rgba(0, idx),
-                };
-                let i = (py as usize * WIDTH + px as usize) * 4;
-                let a = alpha.min(64) as u32;
-                for ch in 0..3 {
-                    let d = self.fb[i + ch] as u32;
-                    self.fb[i + ch] = ((c[ch] as u32 * a + d * (64 - a)) / 64) as u8;
-                }
-            }
-        }
         true
     }
 
@@ -176,33 +158,35 @@ impl Game {
         };
         let restless = p.is_pending(pet::req::SOWASOWA);
         let color = p.def.color as usize;
-        self.rect(0, 0, WIDTH, HEIGHT, tint);
+        let pose = self.pose();
+        let scr = &mut self.screen;
+        scr.rect(0, 0, WIDTH as i32, HEIGHT as i32, tint);
 
         // Anchor = character's bottom centre.
         let (ax, ay) = (64 + if restless { 3 } else { 0 }, 104);
         let mut drawn = false;
-        for part in self.pose() {
+        for part in pose {
             let frame = if sleeping && part.kind == PART_EYES { EYES_SLEEP } else { part.frame };
             // The egg keeps its own palette; hatched characters take the colour palette.
             let pal = (part.kind == PART_BODY && stage > 1 && color < 16).then_some((COLOR_PALETTES, color));
-            drawn |= self.blit(part.sprite, frame, ax + part.x as i32, ay + part.y as i32, part.alpha, pal);
+            drawn |= scr.blit(part.sprite, frame, ax + part.x as i32, ay + part.y as i32, part.alpha, false, pal);
         }
         let (cx, cy) = (ax, ay - 32);
         if !drawn {
-            let size = 12 + stage * 8;
-            self.rect((cx as usize).saturating_sub(size / 2), (cy as usize).saturating_sub(size / 2), size, size, [120, 120, 140]);
+            let size = 12 + stage as i32 * 8;
+            scr.rect(cx - size / 2, cy - size / 2, size, size, [120, 120, 140]);
         }
 
         for i in 0..6 {
-            let c = if i < onaka { [240, 160, 60] } else { [150, 150, 160] };
-            self.rect(8 + i * 19, 6, 15, 8, c);
+            let c = if (i as usize) < onaka { [240, 160, 60] } else { [150, 150, 160] };
+            scr.rect(8 + i * 19, 6, 15, 8, c);
         }
         for i in 0..20 {
-            let c = if i < gokigen { [240, 100, 160] } else { [150, 150, 160] };
-            self.rect(4 + i * 6, 18, 5, 5, c);
+            let c = if (i as usize) < gokigen { [240, 100, 160] } else { [150, 150, 160] };
+            scr.rect(4 + i * 6, 18, 5, 5, c);
         }
-        for i in 0..unchi {
-            self.rect(8 + i * 20, 112, 12, 10, [130, 90, 40]);
+        for i in 0..unchi as i32 {
+            scr.rect(8 + i * 20, 112, 12, 10, [130, 90, 40]);
         }
     }
 }
