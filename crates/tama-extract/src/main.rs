@@ -3,7 +3,7 @@
 //! Usage: tama-extract <dump.bin> <data_dir>
 //! Writes <data_dir>/game.json and <data_dir>/sprites/<index>.tsp.gz (format: tama_core::sprite).
 use std::io::Write;
-use tama_core::data::{CharDef, Data, Evolution, Font, Item, Model, Part, UiElem};
+use tama_core::data::{CharDef, Data, Evolution, Font, Item, Melody, Model, Part, UiElem};
 use tama_core::sprite::Sprite;
 
 const ASSET_ARC: usize = 0x111000;
@@ -346,6 +346,22 @@ fn main() {
         fonts: fonts(&dump),
         strings: strings(&dump),
         ui: ui_elems(&dump),
+        melodies: {
+            // 87 pointers; one step = (divider + 1) ms, dividers at 0x10091b00 as {id, div} × 5.
+            let tempo = words(0x1009_1b00, 10);
+            (0..0x57u16)
+                .map(|i| {
+                    let div = tempo.chunks(2).find(|c| c[0] == i).map_or(8, |c| c[1]);
+                    let mut at = xip(u32_at(&dump, xip(0x100a_0a28) + i as usize * 4) as usize);
+                    let mut notes = Vec::new();
+                    while u16_at(&dump, at) != 0 {
+                        notes.push([u16_at(&dump, at), u16_at(&dump, at + 2), u16_at(&dump, at + 4)]);
+                        at += 6;
+                    }
+                    Melody { ms_per_step: div + 1, notes }
+                })
+                .collect()
+        },
         field_bg: {
             let bg = words(0x1009_2e06, 96);
             (0..3).map(|f| std::array::from_fn(|v| std::array::from_fn(|k| bg[f * 32 + v * 16 + k]))).collect()

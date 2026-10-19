@@ -25,6 +25,7 @@
            font: 600 20px system-ui; touch-action: none; }
   button.on { background: var(--btn-on); }
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
+  button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
 </style>
 <canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
 <div class="pad">
@@ -35,6 +36,7 @@
   <button data-k="0x02">B</button>
   <button data-k="0x04">C</button>
 </div>
+<button id="mute" class="small" aria-pressed="false">♪ sound on</button>
 <pre id="s"></pre>
 <script type="module">
   import init, { Tama } from "./pkg/tama_web.js";
@@ -94,6 +96,44 @@
     swipeX = null;
   };
   c.onpointercancel = () => { swipeX = null; };
+  // Sound: the original is a single-voice buzzer playing square-wave melodies (10% duty).
+  const melodies = JSON.parse(data).melodies ?? [];
+  let audio = null, voice = null;
+  let muted = (() => { try { return localStorage.getItem("tama-muted") === "1"; } catch { return false; } })();
+  const muteBtn = document.getElementById("mute");
+  const showMute = () => { muteBtn.textContent = muted ? "♪ sound off" : "♪ sound on"; muteBtn.setAttribute("aria-pressed", muted); };
+  showMute();
+  muteBtn.onclick = () => {
+    muted = !muted; showMute();
+    try { localStorage.setItem("tama-muted", muted ? "1" : "0"); } catch {}
+    if (muted) voice?.osc.stop();
+  };
+  // Browsers only allow audio after a user gesture.
+  const unlock = () => { audio ??= new AudioContext(); audio.resume(); };
+  addEventListener("pointerdown", unlock); addEventListener("keydown", unlock);
+  function pulseWave(duty) {
+    const n = 48, re = new Float32Array(n), im = new Float32Array(n);
+    for (let k = 1; k < n; k++) re[k] = 2 * Math.sin(Math.PI * k * duty) / (Math.PI * k);
+    return audio.createPeriodicWave(re, im);
+  }
+  function playMelody(id, vol) {
+    const m = melodies[id];
+    if (!m || !audio || muted || audio.state !== "running") return;
+    voice?.osc.stop();
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.setPeriodicWave(pulseWave(0.1));
+    osc.connect(gain).connect(audio.destination);
+    let t = audio.currentTime + 0.01;
+    for (const [steps, period, duty] of m.notes) {
+      const on = period > 0 && duty > 0;
+      if (on) osc.frequency.setValueAtTime(1e6 / period, t);
+      gain.gain.setValueAtTime(on ? 0.25 * vol / 100 : 0, t);
+      t += steps * m.ms_per_step / 1000;
+    }
+    osc.start(); osc.stop(t);
+    voice = { osc };
+  }
+
   // Sprites are fetched on demand; the core asks for what the current screen needs.
   const loading = new Set();
   async function loadSprite(id) {
@@ -120,6 +160,8 @@
       for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
       document.getElementById("s").textContent = game.status();
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
+      const sounds = game.take_sounds();
+      if (sounds.length) { const s = sounds[sounds.length - 1]; playMelody(s >> 8, s & 0xff); }
     }
     ctx.putImageData(new ImageData(new Uint8ClampedArray(game.framebuffer()), w, h), 0, 0);
     requestAnimationFrame(frame);

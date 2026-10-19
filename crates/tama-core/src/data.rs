@@ -136,6 +136,13 @@ pub const UI_SPRITE: u8 = 1;
 pub const UI_TEXT: u8 = 2;
 pub const UI_ANIM: u8 = 5;
 
+/// Buzzer melody (table XIP 0x100a0a28): notes `[steps, period µs (0 = rest), duty %]`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Melody {
+    pub ms_per_step: u16,
+    pub notes: Vec<[u16; 3]>,
+}
+
 pub const LANGS: [&str; 9] = ["ja", "en", "fr", "de", "pt", "es", "it", "zh", "ko"];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -163,6 +170,8 @@ pub struct Data {
     /// Field background UI elements `[field][variant][1 + period*3 + weather]` (XIP 0x10092e06).
     #[serde(default)]
     pub field_bg: Vec<[[u16; 16]; 2]>,
+    #[serde(default)]
+    pub melodies: Vec<Melody>,
 }
 
 impl Data {

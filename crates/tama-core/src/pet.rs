@@ -25,7 +25,21 @@ pub mod req {
     pub const GOKIGEN: u8 = 0x12;
     pub const EVOL_SUPPORT: u8 = 0x13;
     pub const METAMORPHO: u8 = 0x14;
+    pub const COLOR: u8 = 0x15;
+    pub const LOVE: u8 = 0x16;
+    pub const IMMUNITY: u8 = 0x17;
+    pub const HAPPY: u8 = 0x18;
+    pub const DOSSARI: u8 = 0x19;
     pub const NAP: u8 = 0x1a;
+    pub const REDU_CM: u8 = 0x1b;
+    pub const NEWYEAR: u8 = 0x07;
+    pub const SHOOTINGSTAR: u8 = 0x1f;
+    pub const UFO: u8 = 0x20;
+    pub const SANTA: u8 = 0x21;
+    pub const EVE: u8 = 0x22;
+    pub const XMAS: u8 = 0x23;
+    /// Effects shown after eating, in the order the feeding screen completes them.
+    pub const EFFECTS: [u8; 5] = [COLOR, LOVE, IMMUNITY, HAPPY, REDU_CM];
 }
 
 /// Status flags (`g_tama_status`).
@@ -114,6 +128,12 @@ pub struct Pet {
     pub comm: [u8; 2],
     pub points: u32,
     pub generation: u8,
+    /// Body colour 0–15; 0x1f = the character's default (`g_tama_color`).
+    #[serde(default = "no_color")]
+    pub color: u8,
+    /// Colour a juice will apply when its COLOR effect completes.
+    #[serde(default = "no_color")]
+    pub next_color: u8,
     /// Inventory: (item id, count).
     #[serde(default)]
     pub inventory: Vec<(u16, u8)>,
@@ -127,6 +147,51 @@ pub struct Pet {
     pub(crate) rng: u32,
     /// Last processed time; `None` until the first `advance_to`.
     pub last: Option<u64>,
+}
+
+pub const NO_COLOR: u8 = 0x1f;
+
+/// Calendar date (year, month 1–12, day 1–31) of local seconds since 1970-01-01.
+pub fn date(t: u64) -> (i64, u32, u32) {
+    // Howard Hinnant's civil_from_days.
+    let z = (t / DAY) as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (yoe + era * 400 + (m <= 2) as i64, m, d)
+}
+
+/// Calendar events of the day (`FUN_10083984`). The meteor mini-game and birthdays are not
+/// implemented, so METEOR and BIRTHDAY are never raised.
+fn calendar_events(t: u64) -> Vec<u8> {
+    let (_, m, d) = date(t);
+    let mut ev = Vec::new();
+    if (m, d) == (1, 1) {
+        ev.push(req::NEWYEAR);
+    }
+    if d % 7 == 0 {
+        ev.push(req::SHOOTINGSTAR);
+    }
+    if (m, d) == (11, 23) {
+        ev.push(req::UFO);
+    }
+    match (m, d) {
+        (12, 1..=23) => ev.push(req::SANTA),
+        (12, 24) => ev.push(req::EVE),
+        (12, 25) => ev.push(req::XMAS),
+        _ => {}
+    }
+    ev
+}
+
+pub const EVENTS: [u8; 6] = [req::NEWYEAR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
+
+fn no_color() -> u8 {
+    NO_COLOR
 }
 
 enum ColdSource {
@@ -172,6 +237,8 @@ impl Pet {
             comm: [0; 2],
             points: 0,
             generation: 1,
+            color: NO_COLOR,
+            next_color: NO_COLOR,
             inventory: Vec::new(),
             no_wake_today: false,
             no_sleep_today: false,
@@ -385,16 +452,29 @@ impl Pet {
         }
     }
 
-    /// `care_day_change` 0x10013234.
-    fn day_change(&mut self) {
+    /// `care_day_change` 0x10013234; `t` is the new day.
+    fn day_change(&mut self, t: u64) {
         if !self.is_done(req::OTEIRE) && self.cond != Cond::Dead {
             self.yogore = (self.yogore + 1).min(3);
         }
-        for id in [req::WAKE, req::SLEEP, req::OTEIRE] {
+        for id in [req::WAKE, req::SLEEP, req::OTEIRE].into_iter().chain(EVENTS) {
             self.clear(id);
         }
         self.no_wake_today = false;
         self.no_sleep_today = false;
+        for id in calendar_events(t) {
+            self.raise(id);
+        }
+    }
+
+    /// An event scene finished (`FUN_1003f1f0` / `FUN_1003efc4`): apply its reward.
+    pub fn finish_event(&mut self, id: u8) {
+        match id {
+            req::NEWYEAR => self.points = (self.points + 1000).min(99_999),
+            req::XMAS => self.add_gokigen(20),
+            _ => {}
+        }
+        self.mark_done(id);
     }
 
     /// Advance to wall-clock `now` (`care_time_update` 0x10012c90).
@@ -402,6 +482,9 @@ impl Pet {
     pub fn advance_to(&mut self, now: u64) {
         let Some(last) = self.last else {
             self.last = Some(now);
+            for id in calendar_events(now) {
+                self.raise(id);
+            }
             return;
         };
         if now <= last {
@@ -421,7 +504,7 @@ impl Pet {
         self.schedule(t);
         self.tick(t, dt.min(CHUNK) as u32);
         if now / DAY != last / DAY {
-            self.day_change();
+            self.day_change(now);
         }
         self.last = Some(now);
     }
@@ -577,6 +660,74 @@ impl Pet {
         !matches!(self.cond, Cond::Death | Cond::Dying | Cond::Dead)
     }
 
+    /// Colour actually drawn: the chosen colour or the character's default.
+    pub fn body_color(&self) -> u8 {
+        if self.color < 16 { self.color } else { self.def.color }
+    }
+
+    /// Special snack effects (`care_eat_item` 0x1001021c, ids 6002–6050; 05-content §2.3).
+    fn snack_effect(&mut self, id: u16) {
+        let cur = self.body_color();
+        let color = |c: u8, p: &mut Pet| {
+            p.next_color = c;
+            p.raise(req::COLOR);
+        };
+        match id {
+            6002..=6007 => color([0, 4, 6, 9, 11, 10][(id - 6002) as usize], self),
+            6008 | 6009 => {
+                let (lo, n) = if id == 6008 { (0, 9) } else { (9, 7) };
+                let mut c = lo + (self.rand100() % n) as u8;
+                if c == cur {
+                    c = lo + (c - lo + 1) % n as u8;
+                }
+                color(c, self);
+            }
+            6046 => color(6, self),
+            6049 => color(8, self),
+            6050 => color(14, self),
+            6010 => {
+                self.add_gokigen(20);
+                self.raise(req::HAPPY);
+            }
+            6011 if self.def.stage == 5 => self.raise(req::LOVE),
+            6012 => self.raise(req::IMMUNITY),
+            6013 => self.raise(req::DOSSARI),
+            6014 => {
+                self.status &= status::DIRTY;
+                self.nap_timer = 0;
+                self.raise(req::NAP);
+                self.mark_done(req::NAP);
+            }
+            6015 | 6047 => match self.rand100() % if self.def.stage == 5 { 3 } else { 2 } {
+                0 => {
+                    self.add_gokigen(20);
+                    self.raise(req::HAPPY);
+                }
+                1 => self.raise(req::IMMUNITY),
+                _ => self.raise(req::LOVE),
+            },
+            6016 => self.status = self.status & status::DIRTY | status::DANCE,
+            6017 => self.status = self.status & status::DIRTY | status::KIRAKIRA,
+            6048 => self.raise(req::REDU_CM),
+            _ => {}
+        }
+    }
+
+    /// Complete one pending eating effect (`req_done` for COLOR/LOVE/IMMUNITY/HAPPY/REDU_CM).
+    /// Returns the effect completed, if any.
+    pub fn complete_effect(&mut self) -> Option<u8> {
+        let id = req::EFFECTS.into_iter().find(|&r| self.is_pending(r))?;
+        match id {
+            req::COLOR => self.color = self.next_color,
+            req::LOVE => self.status = self.status & status::DIRTY | status::LOVE,
+            req::IMMUNITY => self.status = self.status & status::DIRTY | status::IMMUNITY,
+            req::HAPPY => self.status = self.status & status::DIRTY | status::HAPPY,
+            _ => self.miss_count = self.miss_count.saturating_sub(1),
+        }
+        self.mark_done(id);
+        Some(id)
+    }
+
     /// Like (+1) / dislike (−1) of a food (`food_pref_bonus` 0x100171fc).
     pub fn food_pref(&self, item: &Item) -> i32 {
         let mut pref = 0;
@@ -620,6 +771,7 @@ impl Pet {
         let pref = self.food_pref(item);
         self.add_onaka(item.onaka as i32);
         self.log_food(item);
+        self.snack_effect(item.id);
         if item.kind == KIND_SNACK {
             self.add_gokigen(item.gokigen as i32 + pref);
         } else {
@@ -925,6 +1077,46 @@ pub(crate) mod tests {
         let mut p = pet(KID());
         p.advance_to(NOON + 3 * DAY);
         assert_eq!(p.yogore, 1);
+    }
+
+    #[test]
+    fn juice_changes_colour_when_effect_completes() {
+        let mut p = pet(KID());
+        let juice = Item { id: 6003, kind: KIND_SNACK, gokigen: 1, ..Default::default() };
+        assert!(p.feed(&juice));
+        assert_eq!(p.body_color(), 0, "default colour until the effect plays");
+        assert_eq!(p.complete_effect(), Some(req::COLOR));
+        assert_eq!(p.body_color(), 4);
+        assert_eq!(p.complete_effect(), None);
+    }
+
+    #[test]
+    fn happy_pancakes_set_happy_and_stop_mood_loss() {
+        let mut p = pet(KID());
+        p.gokigen = 0;
+        p.feed(&Item { id: 6010, kind: KIND_SNACK, ..Default::default() });
+        assert_eq!(p.gokigen, 20);
+        assert_eq!(p.complete_effect(), Some(req::HAPPY));
+        run(&mut p, 3600);
+        assert_eq!(p.gokigen, 20);
+    }
+
+    #[test]
+    fn calendar() {
+        assert_eq!(date(0), (1970, 1, 1));
+        // 2026-12-25 12:00
+        let xmas = 20_812 * DAY + 12 * 3600;
+        assert_eq!(date(xmas), (2026, 12, 25));
+        assert_eq!(calendar_events(xmas), vec![req::XMAS]);
+        let mut p = Pet::new(KID(), 1);
+        p.advance_to(xmas - DAY);
+        assert!(p.is_pending(req::EVE) && !p.is_pending(req::XMAS));
+        p.advance_to(xmas);
+        assert!(p.is_pending(req::XMAS) && !p.is_pending(req::EVE));
+        p.gokigen = 0;
+        p.finish_event(req::XMAS);
+        assert_eq!(p.gokigen, 20);
+        assert!(!p.is_pending(req::XMAS));
     }
 
     #[test]

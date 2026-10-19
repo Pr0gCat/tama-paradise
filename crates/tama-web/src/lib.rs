@@ -74,6 +74,11 @@ impl Tama {
         self.0.add_sprite(id, bytes)
     }
 
+    /// Sounds started since the last call, as `id << 8 | volume`.
+    pub fn take_sounds(&mut self) -> Vec<u32> {
+        self.0.take_sounds().into_iter().map(|(id, vol)| (id as u32) << 8 | vol as u32).collect()
+    }
+
     /// Copy of the RGBA framebuffer.
     pub fn framebuffer(&self) -> Vec<u8> {
         self.0.framebuffer().to_vec()

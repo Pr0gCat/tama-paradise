@@ -56,6 +56,10 @@ pub struct Game {
     pub level: Level,
     /// String table index (`data::LANGS`), 1 = English.
     pub lang: u8,
+    /// Sounds started since the last `take_sounds`: (melody id, volume 0–100).
+    sounds: Vec<(u16, u8)>,
+    /// Minute of the last calendar-event check.
+    event_minute: u64,
 }
 
 impl Game {
@@ -87,6 +91,8 @@ impl Game {
             scene: Scene::Home,
             level: Level::Pet,
             lang: 1,
+            sounds: Vec::new(),
+            event_minute: 0,
         };
         g.render();
         g
@@ -106,9 +112,15 @@ impl Game {
             }
         }
         self.update_scene(pressed);
+        if matches!(self.scene, Scene::Home) && now / 60 != self.event_minute {
+            self.event_minute = now / 60;
+            let r = self.rand();
+            self.check_events(now, r);
+        }
         if matches!(self.scene, Scene::Home) {
             self.update_home(now);
             self.home.tick(&self.data.motions);
+            self.home.take_sounds(&mut self.sounds);
         }
         self.render();
     }
@@ -158,6 +170,12 @@ impl Game {
         &self.screen.fb
     }
 
+    /// Sounds to play since the last call, oldest first. The buzzer is single-voice, so a
+    /// platform may play only the last one.
+    pub fn take_sounds(&mut self) -> Vec<(u16, u8)> {
+        std::mem::take(&mut self.sounds)
+    }
+
     /// Sprite indexes the screen tried to draw that have not been added yet.
     pub fn missing_sprites(&self) -> Vec<u16> {
         self.screen.wanted.iter().copied().filter(|id| !self.screen.sprites.contains_key(id)).collect()
@@ -178,7 +196,8 @@ impl Game {
         let (chr_id, is_pet, face) = self.resolve_chr(chr);
         let Some(parts) = self.data.model(chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else { return false };
         let p = &self.pet;
-        let pal = (is_pet && p.def.stage > 1 && p.def.color < 16).then_some((COLOR_PALETTES, p.def.color as usize));
+        let color = p.body_color();
+        let pal = (is_pet && p.def.stage > 1 && color < 16).then_some((COLOR_PALETTES, color as usize));
         let dirty = is_pet && p.status & status::DIRTY != 0;
         let mut drawn = false;
         for part in parts {

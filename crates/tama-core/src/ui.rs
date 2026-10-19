@@ -44,6 +44,13 @@ mod script {
     pub const INJURY: u16 = 0x5c0;
     pub const INJURY_DONE: u16 = 0x5c8;
     pub const HAPPY_JUMP: u16 = 0x576;
+    /// After eating: COLOR, LOVE, IMMUNITY, HAPPY, REDU_CM (same order as `req::EFFECTS`).
+    pub const EFFECTS: [u16; 5] = [0x622, 0x623, 0x624, 0x625, 0x626];
+    pub const SHOOTINGSTAR: u16 = 0x6ac;
+    pub const UFO: u16 = 0x6ae;
+    pub const SANTA: u16 = 0x6af;
+    pub const EVE: u16 = 0x6b0;
+    pub const XMAS: u16 = 0x6b1;
 }
 
 /// UI elements (08-care-ui §2.3–2.11, §3.4).
@@ -94,6 +101,8 @@ pub(crate) enum OnPress {
     Groom,
     Medicine,
     Injury,
+    /// Calendar event: reward applied when the animation ends.
+    Event(u8),
 }
 
 pub(crate) struct Play {
@@ -115,6 +124,8 @@ pub(crate) enum Scene {
     Play(Play),
     Prompt { wake: bool, yes: bool },
     Status { page: u8, idle: u16 },
+    /// Play the pending eating effects one by one, then show the food list.
+    Effects { cat: u8, idx: usize },
 }
 
 fn pressed_any(p: u8) -> bool {
@@ -159,8 +170,26 @@ impl Game {
         items
     }
 
+    /// Sound ids (04-assets SND8, 08-care-ui U6): 0 cursor, 1 confirm, 2 cancel, 0xb not allowed, 0x28 zoom.
+    pub(crate) fn sfx(&mut self, id: u16, vol: u8) {
+        self.sounds.push((id, vol));
+    }
+
     /// Handle one frame of input for the current scene.
     pub(crate) fn update_scene(&mut self, pressed: u8) {
+        if matches!(
+            self.scene,
+            Scene::Menu { .. } | Scene::FoodCategory { .. } | Scene::FoodList { .. } | Scene::Confirm { .. } | Scene::Prompt { .. } | Scene::Status { .. }
+        ) {
+            let disabled = matches!(&self.scene, Scene::Menu { items, idx } if items[*idx].1.is_none());
+            if pressed & C != 0 {
+                self.sfx(2, 100);
+            } else if pressed & (B | PUSH) != 0 {
+                self.sfx(if disabled { 0x0b } else { 1 }, 100);
+            } else if pressed & (A | UP | DOWN) != 0 {
+                self.sfx(0, 100);
+            }
+        }
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
         self.scene = match scene {
             Scene::Home => self.update_home_input(pressed),
@@ -227,6 +256,17 @@ impl Game {
                 }
             }
             Scene::Play(p) => self.update_play(p, pressed),
+            Scene::Effects { cat, idx } => match self.pet.complete_effect() {
+                Some(id) => {
+                    let k = req::EFFECTS.iter().position(|&r| r == id).unwrap_or(0);
+                    self.play(&[script::EFFECTS[k]], (0, OnPress::None), None, Scene::Effects { cat, idx })
+                }
+                None => {
+                    let items = self.food_items(cat);
+                    let idx = idx.min(items.len() - 1);
+                    Scene::FoodList { cat, items, idx }
+                }
+            },
             Scene::Prompt { wake, mut yes } => {
                 if pressed & (A | UP | DOWN) != 0 {
                     yes = !yes;
@@ -254,6 +294,39 @@ impl Game {
         };
     }
 
+    /// Start a pending calendar event when HOME allows it (`FUN_1001abd0`): checked once a minute
+    /// with a fresh roll, as the original rolls each time HOME opens.
+    pub(crate) fn check_events(&mut self, now: u64, r: u32) {
+        let p = &self.pet;
+        let sleeping = p.is_sleeping_at(now);
+        let hour = now % 86_400 / 3600;
+        let busy = [req::ONAKA, req::GOKIGEN, req::SOWASOWA].iter().any(|&q| p.is_pending(q));
+        if p.def.stage < 3 || p.cond != Cond::Normal || busy {
+            return;
+        }
+        let (r, period) = (r % 100, crate::pet::Pet::period(now));
+        let ev = if p.is_pending(req::EVE) && sleeping && hour > 18 {
+            Some((req::EVE, script::EVE))
+        } else if sleeping {
+            None
+        } else if p.is_pending(req::NEWYEAR) {
+            Some((req::NEWYEAR, script::HAPPY_JUMP))
+        } else if p.is_pending(req::SHOOTINGSTAR) && period == 3 && r < 10 {
+            Some((req::SHOOTINGSTAR, script::SHOOTINGSTAR))
+        } else if p.is_pending(req::UFO) {
+            Some((req::UFO, script::UFO))
+        } else if p.is_pending(req::SANTA) && period >= 3 && r < 10 {
+            Some((req::SANTA, script::SANTA))
+        } else if p.is_pending(req::XMAS) {
+            Some((req::XMAS, script::XMAS))
+        } else {
+            None
+        };
+        if let Some((id, anim)) = ev {
+            self.scene = self.play(&[anim], (0, OnPress::Event(id)), None, Scene::Home);
+        }
+    }
+
     fn pet_menu(&self) -> Scene {
         Scene::Menu {
             items: vec![(text::FEED, Some(Action::Feed)), (text::PLAY, None), (text::CLEAN_TAMA, Some(Action::Groom))],
@@ -270,6 +343,9 @@ impl Game {
 
     /// HOME input (`home_field_tama_state` 0x10039eb8, `home_cell_state` 0x100398c8).
     fn update_home_input(&mut self, pressed: u8) -> Scene {
+        if pressed & (UP | DOWN) != 0 {
+            self.sfx(0x28, 40);
+        }
         if pressed & UP != 0 {
             self.level = match self.level {
                 Level::Field => Level::Pet,
@@ -310,10 +386,20 @@ impl Game {
             }
             Level::Pet if sleeping && p.is_pending(req::WAKE) && !p.no_wake_today => Scene::Prompt { wake: true, yes: true },
             Level::Pet if p.is_pending(req::SLEEP) && !p.no_sleep_today => Scene::Prompt { wake: false, yes: true },
+            _ if pressed & A == 0 => Scene::Home,
             // Sick, injured or asleep pets cannot open the menu.
-            _ if pressed & A == 0 || sleeping || p.cond != Cond::Normal => Scene::Home,
-            Level::Pet => self.pet_menu(),
-            Level::Field => self.field_menu(),
+            _ if sleeping || p.cond != Cond::Normal => {
+                self.sfx(0x0b, 100);
+                Scene::Home
+            }
+            Level::Pet => {
+                self.sfx(1, 100);
+                self.pet_menu()
+            }
+            Level::Field => {
+                self.sfx(1, 100);
+                self.field_menu()
+            }
             Level::Cell => Scene::Home,
         }
     }
@@ -344,9 +430,7 @@ impl Game {
         if cat == KIND_MEAL && self.pet.onaka >= 6 {
             scripts.push(script::FULL);
         }
-        let items = self.food_items(cat);
-        let idx = idx.min(items.len() - 1);
-        self.play(&scripts, (0, OnPress::None), sprite, Scene::FoodList { cat, items, idx })
+        self.play(&scripts, (0, OnPress::None), sprite, Scene::Effects { cat, idx })
     }
 
     fn start_poop_clean(&mut self) -> Scene {
@@ -370,6 +454,7 @@ impl Game {
             p.node.resume();
         }
         p.node.tick(&self.data.motions);
+        p.node.take_sounds(&mut self.sounds);
         if !p.node.is_finished() {
             return Scene::Play(p);
         }
@@ -385,6 +470,7 @@ impl Game {
             OnPress::Injury => {
                 self.pet.treat_injury();
             }
+            OnPress::Event(id) => self.pet.finish_event(id),
             _ => {}
         }
         *p.then
@@ -488,6 +574,10 @@ impl Game {
             }
             Scene::Status { page, .. } => {
                 self.draw_status(*page);
+                true
+            }
+            Scene::Effects { .. } => {
+                self.draw_field_bg();
                 true
             }
         };

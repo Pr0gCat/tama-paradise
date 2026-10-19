@@ -78,6 +78,8 @@ pub struct Node {
     pub at: (i32, i32),
     pub z: i16,
     pub children: Vec<Node>,
+    /// Sounds started this frame: (melody id, volume 0–100).
+    pub sounds: Vec<(u16, u8)>,
 }
 
 /// Something to draw, in back-to-front order.
@@ -110,6 +112,7 @@ impl Node {
             at: (0, 0),
             z: 0,
             children: Vec::new(),
+            sounds: Vec::new(),
         }
     }
 
@@ -186,6 +189,7 @@ impl Node {
             }
             0x0a | 0x0c => self.alpha.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e),
             0x0d => self.flip = c & 1 != 0,
+            0x0e => self.sounds.push((a as u16, c.clamp(0, 100) as u8)),
             0x10 => {
                 let mut child = Node::new(a as u16);
                 child.at = (c as i32, d as i32);
@@ -209,6 +213,14 @@ impl Node {
             0x20 => self.children.clear(),
             // Scale, rotation, sound, scene effects and actor signals are not used yet.
             _ => {}
+        }
+    }
+
+    /// Collect and clear the sounds started by this node and its children.
+    pub fn take_sounds(&mut self, out: &mut Vec<(u16, u8)>) {
+        out.append(&mut self.sounds);
+        for c in &mut self.children {
+            c.take_sounds(out);
         }
     }
 
