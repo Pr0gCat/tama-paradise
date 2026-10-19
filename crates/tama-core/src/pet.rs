@@ -242,6 +242,11 @@ impl Pet {
 
     // ---- small helpers --------------------------------------------------
 
+    /// Seed for other random sources (e.g. HOME behaviour) derived from this pet.
+    pub(crate) fn rng_seed(&self) -> u32 {
+        self.rng
+    }
+
     pub(crate) fn rand100(&mut self) -> u32 {
         // xorshift32; the firmware's rand() depends on frame count, so bit-exactness is not a goal.
         let mut x = self.rng;

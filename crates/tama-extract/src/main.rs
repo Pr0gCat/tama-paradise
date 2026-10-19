@@ -57,7 +57,7 @@ fn keyframe(dump: &[u8], idx: usize) -> Part {
             p += 2;
         }
     }
-    Part { sprite: k[0], frame: k[6], x: k[1] as i16, y: k[2] as i16, kind: k[10], alpha: k[5] as u8 }
+    Part { sprite: k[0], frame: k[6], x: k[1] as i16, y: k[2] as i16, kind: k[10], alpha: k[5] as u8, flip: k[9] & 1 != 0 }
 }
 
 /// Character models (table 18, 0xd8 bytes = 54 × {i16 first keyframe, i16 part count}).
@@ -69,8 +69,20 @@ fn models(dump: &[u8], chr_ids: impl Iterator<Item = u16>) -> Vec<Model> {
         (0..count.max(0)).map(|i| keyframe(dump, (first + i) as usize)).collect()
     };
     chr_ids
-        .map(|chr| Model { chr_id: chr, idle: [pose(chr, 1), pose(chr, 2)] })
-        .filter(|m| !m.idle[0].is_empty())
+        .map(|chr| Model { chr_id: chr, anims: (0..54).map(|a| pose(chr, a)).collect() })
+        .filter(|m| m.anims.iter().any(|a| !a.is_empty()))
+        .collect()
+}
+
+/// Motion scripts: table 13 = u16 offsets in u32 units into table 14 (one extra end entry).
+fn motions(dump: &[u8]) -> Vec<Vec<u16>> {
+    let (t13, t14) = (table_start(dump, 13), table_start(dump, 14));
+    let n = (t14 - t13) / 2 - 1;
+    (0..n)
+        .map(|i| {
+            let (a, b) = (u16_at(dump, t13 + i * 2) as usize, u16_at(dump, t13 + i * 2 + 2) as usize);
+            (0..(b - a) * 2).map(|w| u16_at(dump, t14 + a * 4 + w * 2)).collect()
+        })
         .collect()
 }
 
@@ -249,15 +261,26 @@ fn main() {
     chr_ids.sort_unstable();
     chr_ids.dedup();
     let models = models(&dump, chr_ids.into_iter());
-    let data = Data { rom_type: u32_at(&dump, VERSION_INFO) as u8, characters, items, evolution, models };
+    let home = words(0x1009_dbd8, 96);
+    let home_motions = home.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let data = Data {
+        rom_type: u32_at(&dump, VERSION_INFO) as u8,
+        characters,
+        items,
+        evolution,
+        models,
+        motions: motions(&dump),
+        home_motions,
+    };
     for id in data.evolution.kids.iter().chain(data.evolution.teens.iter().flatten()) {
         assert!(data.character(*id).is_some(), "evolution target {id} missing");
     }
-    std::fs::write(out_dir.join("game.json"), serde_json::to_string_pretty(&data).unwrap()).expect("write");
+    std::fs::write(out_dir.join("game.json"), serde_json::to_string(&data).unwrap()).expect("write");
     println!(
-        "{} characters, {} models, {} items, rom_type {}",
+        "{} characters, {} models, {} motions, {} items, rom_type {}",
         data.characters.len(),
         data.models.len(),
+        data.motions.len(),
         data.items.len(),
         data.rom_type
     );

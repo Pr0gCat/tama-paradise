@@ -11,3 +11,7 @@
 /re/strings.txt
 /re/external-calls.txt
 /data/sprites
+
+# ROM-derived data: generate locally with tama-extract, never publish
+/data/game.json
+/docs/spec/data/strings.csv

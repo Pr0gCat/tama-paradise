@@ -83,18 +83,23 @@ pub struct Part {
     pub kind: u16,
     /// 0–64, 64 = opaque.
     pub alpha: u8,
+    /// Mirrored horizontally (keyframe [9] bit0).
+    #[serde(default)]
+    pub flip: bool,
 }
 
 pub const PART_BODY: u16 = 0;
 pub const PART_EYES: u16 = 1;
 pub const PART_MOUTH: u16 = 15;
+/// Dirt splotches, shown on the player's pet while DIRTY.
+pub const PART_DIRT: u16 = 0x11;
 
-/// Character model (data table 18): poses by animation number, only those the game uses.
+/// Character model (data table 18): 54 static poses by animation number (game-spec §8).
+/// 1–20 large close-up poses, 30–53 small field poses.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Model {
     pub chr_id: u16,
-    /// Idle (anim 1) and idle alternate (anim 2).
-    pub idle: [Vec<Part>; 2],
+    pub anims: Vec<Vec<Part>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,6 +111,12 @@ pub struct Data {
     pub evolution: Evolution,
     #[serde(default)]
     pub models: Vec<Model>,
+    /// Motion scripts (data tables 13/14): raw u16 words, word 0 = (count << 1) | loop.
+    #[serde(default)]
+    pub motions: Vec<Vec<u16>>,
+    /// HOME state → {field, close-up, cell} motion script (XIP 0x1009dbd8, 32 states).
+    #[serde(default)]
+    pub home_motions: Vec<[u16; 3]>,
 }
 
 impl Data {
