@@ -1,0 +1,33 @@
+{
+ "items_0x10094140": [
+  {
+   "text_id": 815,
+   "scene": "0x69"
+  },
+  {
+   "text_id": 810,
+   "scene": "0x66"
+  },
+  {
+   "text_id": 819,
+   "scene": "0x6a"
+  },
+  {
+   "text_id": 820,
+   "scene": "0x6b"
+  }
+ ],
+ "rank_req_0x1009396e": [
+  0,
+  0,
+  0,
+  0
+ ],
+ "locked_msg_by_rank_0x10093fe0": [
+  0,
+  242,
+  243,
+  244
+ ],
+ "note": "12 B items {u32 text, u16 scene, pad}; listmenu style 0, bg 4 (elem 0x2af = sprite 204)"
+}

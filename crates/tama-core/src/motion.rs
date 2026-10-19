@@ -71,6 +71,8 @@ pub struct Node {
     alpha: Tween,
     pub flip: bool,
     pub visible: bool,
+    /// Palette set of the node's sprite (op 0x03, or set by game code).
+    pub palette: u8,
     /// `signal -1`: the scene may move on. `signal 4`: wait for a button press (`resume`).
     pub finished: bool,
     pub paused: bool,
@@ -91,6 +93,7 @@ pub struct Draw {
     pub flip: bool,
     /// 0–64 like the blitter.
     pub alpha: u8,
+    pub palette: u8,
 }
 
 impl Node {
@@ -107,6 +110,7 @@ impl Node {
             alpha: Tween { from: 256, to: 256, t: 0, len: 0 },
             flip: false,
             visible: true,
+            palette: 0,
             finished: false,
             paused: false,
             at: (0, 0),
@@ -181,6 +185,7 @@ impl Node {
                     *frame = (c & 0x1ff) as u16;
                 }
             }
+            0x03 => self.palette = c as u8,
             0x04 => self.x.start(c, d, e),
             0x05 => self.y.start(c, d, e),
             0x06 => {
@@ -247,15 +252,33 @@ impl Node {
         let mut kids: Vec<&Node> = self.children.iter().collect();
         kids.sort_by_key(|c| c.z);
         for c in kids.iter().filter(|c| c.z < 0) {
-            c.draws(px, py, out);
+            c.draws_tinted(px, py, self.palette, out);
         }
         if self.visible && self.look != Look::None {
             let alpha = (self.alpha.value().clamp(0, 256) / 4) as u8;
-            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha });
+            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha, palette: self.palette });
         }
         for c in kids.iter().filter(|c| c.z >= 0) {
-            c.draws(px, py, out);
+            c.draws_tinted(px, py, self.palette, out);
         }
+    }
+
+    /// Children inherit the parent's palette unless they set their own.
+    fn draws_tinted(&self, x: i32, y: i32, palette: u8, out: &mut Vec<Draw>) {
+        let start = out.len();
+        self.draws(x, y, out);
+        if self.palette == 0 {
+            for d in &mut out[start..] {
+                if d.palette == 0 {
+                    d.palette = palette;
+                }
+            }
+        }
+    }
+
+    /// Move the node's anchor (game code placing a node).
+    pub fn place(&mut self, x: i32, y: i32) {
+        self.at = (x, y);
     }
 }
 

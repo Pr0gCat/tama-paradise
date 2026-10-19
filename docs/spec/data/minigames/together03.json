@@ -1,0 +1,175 @@
+{
+ "maps_0x1009c5b0": [
+  [
+   "wwwwwwwwwwww",
+   "wSwwwwwwwwww",
+   "w wwwwww-H-w",
+   "w wwwww    w",
+   "w www   w ww",
+   "w  ww www ww",
+   "ww w  www  w",
+   "ww w www   w",
+   "ww w www-H-w",
+   "ww   wwww  w",
+   "ww-H-www   w",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwwwww"
+  ],
+  [
+   "wwwwwwwwwwww",
+   "wSwwwwwwwwww",
+   "w wwwwwwwwww",
+   "w         -w",
+   "wwwwwwwww Vw",
+   "wwwwwwwww -w",
+   "ww        ww",
+   "w-   wwwwwww",
+   "wV www  -H-w",
+   "w-  w      w",
+   "ww     w   w",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwwwww"
+  ],
+  [
+   "wwwwwwwwwwww",
+   "wSwwwwwwwwww",
+   "w wwww wwwww",
+   "w www  wwwww",
+   "w  ww    www",
+   "ww -w w -H-w",
+   "ww Vw w  www",
+   "w  -w w   ww",
+   "w ww  ww  ww",
+   "w w   www  w",
+   "w   -H-w   w",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwGGGw",
+   "wwwwwwwwwwww"
+  ]
+ ],
+ "legend": {
+  "w": "wall",
+  "S": "start",
+  "G": "goal",
+  "H": "obstacle moving +-48 px horizontally",
+  "V": "obstacle moving +-48 px vertically",
+  "-": "obstacle track (no logic)",
+  " ": "floor"
+ },
+ "cell_px": 48,
+ "fieldtype_0x1009472c": [
+  {
+   "intro_anim": "0xacb",
+   "bg_sprite": "0x8a3",
+   "obstacle_sprite": "0x8a9",
+   "wall_sprite": "0x8a6",
+   "goal_sprite": "0x8ac"
+  },
+  {
+   "intro_anim": "0xacc",
+   "bg_sprite": "0x8a4",
+   "obstacle_sprite": "0x8aa",
+   "wall_sprite": "0x8a7",
+   "goal_sprite": "0x8ad"
+  },
+  {
+   "intro_anim": "0xace",
+   "bg_sprite": "0x8af",
+   "obstacle_sprite": "0x8b1",
+   "wall_sprite": "0x8b2",
+   "goal_sprite": "0x8b0"
+  }
+ ],
+ "mood_0x100a0c68": [
+  10,
+  5,
+  1,
+  0
+ ],
+ "result_anims": {
+  "hits0": "0xadd",
+  "hits1": "0xade",
+  "hits2plus": "0xadf",
+  "timeout": "0xae0"
+ },
+ "elems": {
+  "0x550": [
+   64,
+   88
+  ],
+  "0x551": [
+   64,
+   88
+  ],
+  "0x552": [
+   64,
+   88
+  ],
+  "0x553": [
+   64,
+   88
+  ],
+  "0x554": [
+   64,
+   -16
+  ],
+  "0x555": [
+   64,
+   80
+  ],
+  "0x556": [
+   64,
+   80
+  ],
+  "0x557": [
+   120,
+   11
+  ],
+  "0x558": [
+   120,
+   11
+  ],
+  "0x559": [
+   64,
+   64
+  ],
+  "0x55a": [
+   -80,
+   -76
+  ],
+  "0x55b": [
+   0,
+   0
+  ],
+  "0x55c": [
+   0,
+   -8
+  ],
+  "0x55d": [
+   0,
+   0
+  ],
+  "0x55e": [
+   0,
+   0
+  ],
+  "0x55f": [
+   64,
+   88
+  ],
+  "0x560": [
+   64,
+   88
+  ],
+  "0x561": [
+   64,
+   88
+  ],
+  "0x562": [
+   64,
+   88
+  ]
+ }
+}

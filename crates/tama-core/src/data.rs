@@ -188,6 +188,15 @@ pub struct Data {
     /// entry 24 is the GOLDEN PEACH bonus (XIP 0x100a0600).
     #[serde(default)]
     pub hunt_finds: Vec<[u16; 3]>,
+    #[serde(default)]
+    pub mini: MiniData,
+}
+
+/// Fixed mini-game layouts (docs/spec/09-minigames-*.md).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MiniData {
+    /// Game 00: `[level*3 + n]` boards of rows × 6 holes (non-zero = a baby wakes), 24 rows read.
+    pub lab00_boards: Vec<Vec<[i16; 6]>>,
 }
 
 impl Data {

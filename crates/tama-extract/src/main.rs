@@ -373,6 +373,22 @@ fn main() {
             .collect(),
         recipes: words(0x1009_1fbc, 24).chunks(2).map(|c| (c[0], c[1])).collect(),
         weather_months: words(0x1009_1b5c, 72).chunks(6).map(|c| std::array::from_fn(|i| c[i])).collect(),
+        mini: tama_core::data::MiniData {
+            // Game 00 board pointers live in RW data (packed in encrypted PRAM at 0xe6a0);
+            // the boards themselves are in XIP. Rows per level at 0x1009de92 (31, 26, 21);
+            // the game reads 24, so short boards are padded with empty rows.
+            lab00_boards: [0x100a_013e, 0x100a_02b2, 0x100a_0426, 0x100a_0c78, 0x100a_0db0, 0x100a_0ee8, 0x100a_0696, 0x100a_0792, 0x100a_088e]
+                .iter()
+                .enumerate()
+                .map(|(i, &a)| {
+                    let rows = words(0x1009_de92, 3)[i / 3] as usize;
+                    let w = words(a, rows * 6);
+                    let mut b: Vec<[i16; 6]> = w.chunks(6).map(|r| std::array::from_fn(|k| r[k] as i16)).collect();
+                    b.resize(b.len().max(24), [0; 6]);
+                    b
+                })
+                .collect(),
+        },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),
         weather_patterns: (0..6).map(|p| std::array::from_fn(|i| dump[xip(0x1009_138c) + p * 5 + i])).collect(),
         field_bg: {

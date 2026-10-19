@@ -1,0 +1,177 @@
+{
+ "commands_0x100a10c2": [
+  [
+   {
+    "feint": 1,
+    "answer": 1
+   },
+   {
+    "feint": 2,
+    "answer": 2
+   },
+   {
+    "feint": 4,
+    "answer": 1
+   },
+   {
+    "feint": 3,
+    "answer": 2
+   },
+   {
+    "feint": 2,
+    "answer": 4
+   },
+   {
+    "feint": 3,
+    "answer": 1
+   },
+   {
+    "feint": 4,
+    "answer": 1
+   },
+   {
+    "feint": 2,
+    "answer": 4
+   },
+   {
+    "feint": 1,
+    "answer": 2
+   },
+   {
+    "feint": 2,
+    "answer": 3
+   }
+  ],
+  [
+   {
+    "feint": 1,
+    "answer": 2
+   },
+   {
+    "feint": 3,
+    "answer": 3
+   },
+   {
+    "feint": 1,
+    "answer": 1
+   },
+   {
+    "feint": 4,
+    "answer": 2
+   },
+   {
+    "feint": 3,
+    "answer": 3
+   },
+   {
+    "feint": 1,
+    "answer": 4
+   },
+   {
+    "feint": 4,
+    "answer": 2
+   },
+   {
+    "feint": 1,
+    "answer": 1
+   },
+   {
+    "feint": 2,
+    "answer": 3
+   },
+   {
+    "feint": 3,
+    "answer": 4
+   }
+  ],
+  [
+   {
+    "feint": 1,
+    "answer": 2
+   },
+   {
+    "feint": 2,
+    "answer": 1
+   },
+   {
+    "feint": 3,
+    "answer": 3
+   },
+   {
+    "feint": 2,
+    "answer": 1
+   },
+   {
+    "feint": 4,
+    "answer": 4
+   },
+   {
+    "feint": 1,
+    "answer": 3
+   },
+   {
+    "feint": 2,
+    "answer": 2
+   },
+   {
+    "feint": 1,
+    "answer": 3
+   },
+   {
+    "feint": 4,
+    "answer": 4
+   },
+   {
+    "feint": 2,
+    "answer": 4
+   }
+  ]
+ ],
+ "answer_meaning": {
+  "1": "A only (screen-left flag, palette 1, up)",
+  "2": "B only (screen-right flag, palette 0 red, up)",
+  "3": "A and B",
+  "4": "no button"
+ },
+ "feint_anim_by_value_0x100a00a0": {
+  "1": "0xa96",
+  "2": "0xa97",
+  "3": "0xa98",
+  "4": "0xa99"
+ },
+ "answer_anim_by_value_0x100a00a8": {
+  "1": "0xa9a",
+  "2": "0xa9b",
+  "3": "0xa9c",
+  "4": "0xa9d"
+ },
+ "result_anims_0x100a13c0": [
+  "0xaa0",
+  "0xaa1",
+  "0xaa2",
+  "0xaa3"
+ ],
+ "thresholds_0x100a13d8": [
+  10,
+  8,
+  1
+ ],
+ "ok_anim": "0xa9e",
+ "ng_anim": "0xa9f",
+ "intro_anim": "0xa95",
+ "input_window_frames": 20,
+ "elems": {
+  "0x53b": [
+   64,
+   88
+  ],
+  "0x53c": [
+   15,
+   11
+  ],
+  "0x53d": [
+   14,
+   11
+  ]
+ }
+}

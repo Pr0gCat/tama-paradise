@@ -1,0 +1,241 @@
+{
+ "maps_0x1009c7a8": [
+  [
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "www            www",
+   "www            www",
+   "www    T    G  www",
+   "www            www",
+   "www         T  www",
+   "www  T         www",
+   "www      S     www",
+   "www            www",
+   "www            www",
+   "www            www",
+   "www   G      T www",
+   "www     T      www",
+   "www            www",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww"
+  ],
+  [
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "www            www",
+   "www      T     www",
+   "www  S         www",
+   "www         G  www",
+   "www            www",
+   "www            www",
+   "www      G T   www",
+   "www   T        www",
+   "www            www",
+   "www            www",
+   "www          T www",
+   "www T          www",
+   "www            www",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww"
+  ],
+  [
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "www            www",
+   "www            www",
+   "www  G     T   www",
+   "www            www",
+   "www T          www",
+   "www            www",
+   "www     T      www",
+   "www            www",
+   "www        S   www",
+   "www            www",
+   "www   T        www",
+   "www      G  T  www",
+   "www            www",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww",
+   "wwwwwwwwwwwwwwwwww"
+  ]
+ ],
+ "legend": {
+  "w": "wall (tree sprite)",
+  "S": "start",
+  "T": "shirotama to collect",
+  "G": "bump creature (stun)",
+  " ": "floor"
+ },
+ "cell_px": 32,
+ "fieldtype_0x1009474a": [
+  {
+   "intro_anim": "0xaeb",
+   "bg_sprite": "0x8b7",
+   "bump_elem": "0x595",
+   "wall_sprite": "0x8be"
+  },
+  {
+   "intro_anim": "0xaeb",
+   "bg_sprite": "0x8b8",
+   "bump_elem": "0x596",
+   "wall_sprite": "0x8bf"
+  },
+  {
+   "intro_anim": "0xaeb",
+   "bg_sprite": "0x8b9",
+   "bump_elem": "0x597",
+   "wall_sprite": "0x8c0"
+  }
+ ],
+ "mood_0x100a0c70": [
+  10,
+  5,
+  1,
+  0
+ ],
+ "result_anims": {
+  "0": [
+   "0xb00",
+   "0x59a"
+  ],
+  "1": [
+   "0xb01",
+   "0x59b"
+  ],
+  "2": [
+   "0xb02",
+   "0x59c"
+  ],
+  "fail": [
+   "0xb03",
+   "0x59d"
+  ]
+ },
+ "elems": {
+  "0x57c": [
+   64,
+   88
+  ],
+  "0x57d": [
+   64,
+   64
+  ],
+  "0x57e": [
+   -24,
+   -72
+  ],
+  "0x57f": [
+   152,
+   -72
+  ],
+  "0x580": [
+   15,
+   11
+  ],
+  "0x581": [
+   14,
+   11
+  ],
+  "0x582": [
+   120,
+   11
+  ],
+  "0x583": [
+   120,
+   11
+  ],
+  "0x584": [
+   64,
+   80
+  ],
+  "0x585": [
+   64,
+   80
+  ],
+  "0x586": [
+   64,
+   80
+  ],
+  "0x587": [
+   64,
+   80
+  ],
+  "0x588": [
+   64,
+   80
+  ],
+  "0x589": [
+   64,
+   80
+  ],
+  "0x58a": [
+   64,
+   80
+  ],
+  "0x58b": [
+   64,
+   80
+  ],
+  "0x58c": [
+   64,
+   80
+  ],
+  "0x58d": [
+   32,
+   80
+  ],
+  "0x58e": [
+   32,
+   80
+  ],
+  "0x58f": [
+   32,
+   80
+  ],
+  "0x590": [
+   32,
+   80
+  ],
+  "0x591": [
+   32,
+   80
+  ],
+  "0x592": [
+   32,
+   80
+  ],
+  "0x593": [
+   32,
+   80
+  ],
+  "0x594": [
+   32,
+   80
+  ],
+  "0x595": [
+   96,
+   80
+  ],
+  "0x596": [
+   96,
+   80
+  ],
+  "0x597": [
+   96,
+   80
+  ],
+  "0x598": [
+   0,
+   0
+  ],
+  "0x599": [
+   0,
+   -8
+  ]
+ }
+}

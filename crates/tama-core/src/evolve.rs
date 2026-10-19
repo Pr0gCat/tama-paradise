@@ -245,6 +245,7 @@ impl Pet {
         fresh.breeds_today = self.breeds_today;
         fresh.seen_partners = std::mem::take(&mut self.seen_partners);
         fresh.device_uid = self.device_uid;
+        fresh.mini_plays = self.mini_plays;
         fresh.friends = std::mem::take(&mut self.friends);
         fresh.gifts_sent = self.gifts_sent;
         fresh.gifts_received = std::mem::take(&mut self.gifts_received);
@@ -276,7 +277,7 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![], hunt_finds: vec![] }
+        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![], hunt_finds: vec![], mini: Default::default() }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;

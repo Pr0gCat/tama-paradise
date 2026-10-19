@@ -7,6 +7,7 @@ use crate::Game;
 
 mod t {
     pub const INFORMATION: u16 = 0x00;
+    pub const LEVELS: [u16; 3] = [0xbf, 0xc0, 0xc1];
     pub const TAMA_SITTER: u16 = 0x16;
     pub const NEW_EGG: u16 = 0x18;
     pub const BREED: u16 = 0x19;
@@ -44,6 +45,11 @@ mod t {
 
 const COOK_ICON_MATERIAL_Y: i32 = 112;
 
+/// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
+const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
+/// Games playable so far.
+const IMPLEMENTED: &[u8] = &[0];
+
 impl Game {
     /// Run a menu action and return the scene it opens.
     pub(crate) fn open(&mut self, a: Action) -> Scene {
@@ -57,7 +63,7 @@ impl Game {
             Action::Lab => Scene::Menu {
                 items: vec![
                     (t::INFORMATION, Some(Action::Missions)),
-                    (t::MINI_GAMES, None),
+                    (t::MINI_GAMES, Some(Action::MiniGames)),
                     (t::SHOP, Some(Action::Shop)),
                     (t::HELP, Some(Action::Help)),
                     (t::COLLECTION, Some(Action::Graves)),
@@ -162,11 +168,54 @@ impl Game {
                 }
             }
             Action::Graves => Scene::Graves { idx: 0 },
+            Action::MiniGames => Scene::Menu {
+                items: LAB_GAMES
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &(title, game))| (title, (IMPLEMENTED.contains(&game) && self.pet.lab_game_open(i)).then_some(Action::LabGame(game))))
+                    .collect(),
+                idx: 0,
+                back: Some(Action::Lab),
+            },
+            Action::LabGame(g) => Scene::Menu {
+                items: (0..3).map(|l| (t::LEVELS[l], self.pet.lab_level_open(l).then_some(Action::PlayLab(g, l as u8)))).collect(),
+                idx: 0,
+                back: Some(Action::MiniGames),
+            },
+            Action::PlayLab(g, level) => {
+                let n = self.pet.mini_plays[g as usize];
+                self.pet.mini_plays[g as usize] = n.wrapping_add(1);
+                let game: Box<dyn crate::mini::MiniGame> = match g {
+                    _ => {
+                        let boards = &self.data.mini.lab00_boards;
+                        let board = boards.get(level as usize * 3 + n as usize % 3).cloned().unwrap_or_default();
+                        Box::new(crate::mini::lab00::Lab00::new(board))
+                    }
+                };
+                Scene::Mini { session: crate::mini::Session::new(game, Some(level as usize)), lab: Some((g, level)) }
+            }
             Action::CallSitter => match self.pet.call_sitter(now) {
                 Ok(()) => Scene::Home,
                 Err(ShopError::NotEnoughPoints) => self.message(t::NOT_ENOUGH_POINTS, Action::Lab),
                 Err(_) => self.message(t::CANT_CALL_SITTER, Action::Lab),
             },
+        }
+    }
+
+    /// After a mini-game: lab games pay points (`FUN_100228c4`), then back to the game menu.
+    pub(crate) fn after_mini(&mut self, result: Option<u8>, lab: Option<(u8, u8)>) -> Scene {
+        match (result, lab) {
+            (Some(r), Some((_, level))) => {
+                let pts = self.pet.lab_reward(level as usize, r as usize);
+                let then = self.open(Action::MiniGames);
+                Scene::Points { points: pts, then: Box::new(then) }
+            }
+            (Some(r), None) => {
+                self.pet.play_reward(r as usize);
+                self.pet_menu()
+            }
+            (None, Some(_)) => self.open(Action::MiniGames),
+            (None, None) => self.pet_menu(),
         }
     }
 

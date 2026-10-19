@@ -1,0 +1,5491 @@
+{
+ "toy_slots": {
+  "note": "slot 0-3 small (type 3), 4-5 large (type 4); large 4 covers small 0,1; large 5 covers small 2,3",
+  "small_cursor_order": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "large_cursor_order": [
+   4,
+   5
+  ],
+  "remove_cursor_order": [
+   0,
+   4,
+   1,
+   2,
+   5,
+   3
+  ],
+  "setsubi_pos": {
+   "TROPICAL/0": [
+    {
+     "slot": 0,
+     "z": 100,
+     "elem": 800,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 801,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 802,
+     "type": "sprite",
+     "x": 152,
+     "y": 54,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 803,
+     "type": "sprite",
+     "x": 144,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 200,
+     "elem": 804,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 805,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    }
+   ],
+   "TROPICAL/1": [
+    {
+     "slot": 0,
+     "z": 100,
+     "elem": 815,
+     "type": "sprite",
+     "x": -4,
+     "y": 63,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 816,
+     "type": "sprite",
+     "x": 25,
+     "y": 101,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 817,
+     "type": "sprite",
+     "x": 179,
+     "y": 74,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 818,
+     "type": "sprite",
+     "x": 140,
+     "y": 94,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 200,
+     "elem": 819,
+     "type": "sprite",
+     "x": -8,
+     "y": 70,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 820,
+     "type": "sprite",
+     "x": 132,
+     "y": 53,
+     "sprite": 1110
+    }
+   ],
+   "FROZEN/0": [
+    {
+     "slot": 0,
+     "z": 100,
+     "elem": 833,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 834,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 835,
+     "type": "sprite",
+     "x": 152,
+     "y": 54,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 836,
+     "type": "sprite",
+     "x": 144,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 200,
+     "elem": 837,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 838,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    }
+   ],
+   "FROZEN/1": [
+    {
+     "slot": 0,
+     "z": 100,
+     "elem": 848,
+     "type": "sprite",
+     "x": 3,
+     "y": 69,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 849,
+     "type": "sprite",
+     "x": -57,
+     "y": 122,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 850,
+     "type": "sprite",
+     "x": 196,
+     "y": 78,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 851,
+     "type": "sprite",
+     "x": 146,
+     "y": 122,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 200,
+     "elem": 852,
+     "type": "sprite",
+     "x": 8,
+     "y": 52,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 853,
+     "type": "sprite",
+     "x": 150,
+     "y": 116,
+     "sprite": 1110
+    }
+   ],
+   "MORI/0": [
+    {
+     "slot": 0,
+     "z": 100,
+     "elem": 767,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 768,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 769,
+     "type": "sprite",
+     "x": 132,
+     "y": 55,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 770,
+     "type": "sprite",
+     "x": 142,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 200,
+     "elem": 771,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 772,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    }
+   ],
+   "MORI/1": [
+    {
+     "slot": 0,
+     "z": 200,
+     "elem": 782,
+     "type": "sprite",
+     "x": 0,
+     "y": 77,
+     "sprite": 1109
+    },
+    {
+     "slot": 1,
+     "z": 300,
+     "elem": 783,
+     "type": "sprite",
+     "x": 8,
+     "y": 127,
+     "sprite": 1109
+    },
+    {
+     "slot": 2,
+     "z": 100,
+     "elem": 784,
+     "type": "sprite",
+     "x": 101,
+     "y": 78,
+     "sprite": 1109
+    },
+    {
+     "slot": 3,
+     "z": 300,
+     "elem": 785,
+     "type": "sprite",
+     "x": 124,
+     "y": 112,
+     "sprite": 1109
+    },
+    {
+     "slot": 4,
+     "z": 100,
+     "elem": 786,
+     "type": "sprite",
+     "x": -1,
+     "y": 55,
+     "sprite": 1110
+    },
+    {
+     "slot": 5,
+     "z": 200,
+     "elem": 787,
+     "type": "sprite",
+     "x": 116,
+     "y": 93,
+     "sprite": 1110
+    }
+   ]
+  },
+  "home_pos": {
+   "TROPICAL/0": [
+    {
+     "role": "slot0",
+     "z": 100,
+     "elem": 800,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 801,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 100,
+     "elem": 802,
+     "type": "sprite",
+     "x": 152,
+     "y": 54,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 803,
+     "type": "sprite",
+     "x": 144,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 200,
+     "elem": 804,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 200,
+     "elem": 805,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 797,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 200,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ],
+   "TROPICAL/1": [
+    {
+     "role": "slot0",
+     "z": 100,
+     "elem": 815,
+     "type": "sprite",
+     "x": -4,
+     "y": 63,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 816,
+     "type": "sprite",
+     "x": 25,
+     "y": 101,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 200,
+     "elem": 817,
+     "type": "sprite",
+     "x": 179,
+     "y": 74,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 818,
+     "type": "sprite",
+     "x": 140,
+     "y": 94,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 200,
+     "elem": 819,
+     "type": "sprite",
+     "x": -8,
+     "y": 70,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 100,
+     "elem": 820,
+     "type": "sprite",
+     "x": 132,
+     "y": 53,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 797,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 200,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ],
+   "FROZEN/0": [
+    {
+     "role": "slot0",
+     "z": 100,
+     "elem": 833,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 834,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 100,
+     "elem": 835,
+     "type": "sprite",
+     "x": 152,
+     "y": 54,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 836,
+     "type": "sprite",
+     "x": 144,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 200,
+     "elem": 837,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 200,
+     "elem": 838,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 830,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 400,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ],
+   "FROZEN/1": [
+    {
+     "role": "slot0",
+     "z": 100,
+     "elem": 848,
+     "type": "sprite",
+     "x": 3,
+     "y": 69,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 849,
+     "type": "sprite",
+     "x": -57,
+     "y": 122,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 100,
+     "elem": 850,
+     "type": "sprite",
+     "x": 196,
+     "y": 78,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 851,
+     "type": "sprite",
+     "x": 146,
+     "y": 122,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 200,
+     "elem": 852,
+     "type": "sprite",
+     "x": 8,
+     "y": 52,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 100,
+     "elem": 853,
+     "type": "sprite",
+     "x": 150,
+     "y": 116,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 830,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 400,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ],
+   "MORI/0": [
+    {
+     "role": "slot0",
+     "z": 100,
+     "elem": 767,
+     "type": "sprite",
+     "x": -40,
+     "y": 38,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 768,
+     "type": "sprite",
+     "x": -32,
+     "y": 84,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 100,
+     "elem": 769,
+     "type": "sprite",
+     "x": 132,
+     "y": 55,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 770,
+     "type": "sprite",
+     "x": 142,
+     "y": 100,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 200,
+     "elem": 771,
+     "type": "sprite",
+     "x": -40,
+     "y": 64,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 200,
+     "elem": 772,
+     "type": "sprite",
+     "x": 150,
+     "y": 72,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 764,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 400,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ],
+   "MORI/1": [
+    {
+     "role": "slot0",
+     "z": 200,
+     "elem": 782,
+     "type": "sprite",
+     "x": 0,
+     "y": 77,
+     "sprite": 1109
+    },
+    {
+     "role": "slot1",
+     "z": 300,
+     "elem": 783,
+     "type": "sprite",
+     "x": 8,
+     "y": 127,
+     "sprite": 1109
+    },
+    {
+     "role": "slot2",
+     "z": 100,
+     "elem": 784,
+     "type": "sprite",
+     "x": 101,
+     "y": 78,
+     "sprite": 1109
+    },
+    {
+     "role": "slot3",
+     "z": 300,
+     "elem": 785,
+     "type": "sprite",
+     "x": 124,
+     "y": 112,
+     "sprite": 1109
+    },
+    {
+     "role": "slot4",
+     "z": 100,
+     "elem": 786,
+     "type": "sprite",
+     "x": -1,
+     "y": 55,
+     "sprite": 1110
+    },
+    {
+     "role": "slot5",
+     "z": 200,
+     "elem": 787,
+     "type": "sprite",
+     "x": 116,
+     "y": 93,
+     "sprite": 1110
+    },
+    {
+     "role": "pet",
+     "z": 400,
+     "elem": 764,
+     "type": "anim",
+     "x": 64,
+     "y": 80,
+     "anim": 228
+    },
+    {
+     "role": "pet_egg",
+     "z": 400,
+     "elem": 964,
+     "type": "anim",
+     "x": 64,
+     "y": 64,
+     "anim": 1336
+    },
+    {
+     "role": "guest",
+     "z": 100,
+     "elem": 966,
+     "type": "anim",
+     "x": 98,
+     "y": 64,
+     "anim": 1338
+    }
+   ]
+  },
+  "empty_slot_idle_anims": {
+   "slot0": 286,
+   "slot1": 287,
+   "slot2": 288,
+   "slot3": 286
+  }
+ },
+ "toys": [
+  {
+   "id": 7999,
+   "name_txt": 397,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1210,
+   "list_sprite": 1210,
+   "place_anim": 294,
+   "play_anim": 295,
+   "per_field_play": false,
+   "buy": 65535,
+   "sell": 0
+  },
+  {
+   "id": 7002,
+   "name_txt": 398,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1211,
+   "list_sprite": 1211,
+   "place_anim": 687,
+   "play_anim": 688,
+   "per_field_play": false,
+   "buy": 1123,
+   "sell": 560
+  },
+  {
+   "id": 7003,
+   "name_txt": 399,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1212,
+   "list_sprite": 1212,
+   "place_anim": 689,
+   "play_anim": 690,
+   "per_field_play": false,
+   "buy": 1500,
+   "sell": 750
+  },
+  {
+   "id": 7004,
+   "name_txt": 400,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1213,
+   "list_sprite": 1213,
+   "place_anim": 691,
+   "play_anim": 692,
+   "per_field_play": false,
+   "buy": 1600,
+   "sell": 800
+  },
+  {
+   "id": 7005,
+   "name_txt": 401,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1214,
+   "list_sprite": 1214,
+   "place_anim": 693,
+   "play_anim": 694,
+   "per_field_play": false,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 7006,
+   "name_txt": 402,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1215,
+   "list_sprite": 1215,
+   "place_anim": 695,
+   "play_anim": 696,
+   "per_field_play": false,
+   "buy": 1300,
+   "sell": 650
+  },
+  {
+   "id": 7007,
+   "name_txt": 403,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1216,
+   "list_sprite": 1216,
+   "place_anim": 697,
+   "play_anim": 698,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7008,
+   "name_txt": 404,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1217,
+   "list_sprite": 1217,
+   "place_anim": 699,
+   "play_anim": 700,
+   "per_field_play": false,
+   "buy": 1400,
+   "sell": 700
+  },
+  {
+   "id": 7009,
+   "name_txt": 405,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1218,
+   "list_sprite": 1218,
+   "place_anim": 701,
+   "play_anim": 702,
+   "per_field_play": false,
+   "buy": 1800,
+   "sell": 900
+  },
+  {
+   "id": 7010,
+   "name_txt": 406,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1205,
+   "list_sprite": 1200,
+   "place_anim": 703,
+   "play_anim": 704,
+   "per_field_play": false,
+   "buy": 1600,
+   "sell": 800
+  },
+  {
+   "id": 7011,
+   "name_txt": 407,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1206,
+   "list_sprite": 1201,
+   "place_anim": 705,
+   "play_anim": 706,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7012,
+   "name_txt": 408,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1219,
+   "list_sprite": 1219,
+   "place_anim": 707,
+   "play_anim": 708,
+   "per_field_play": false,
+   "buy": 1126,
+   "sell": 563
+  },
+  {
+   "id": 7013,
+   "name_txt": 409,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1220,
+   "list_sprite": 1220,
+   "place_anim": 709,
+   "play_anim": 710,
+   "per_field_play": false,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 7014,
+   "name_txt": 410,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1221,
+   "list_sprite": 1221,
+   "place_anim": 711,
+   "play_anim": 712,
+   "per_field_play": false,
+   "buy": 1400,
+   "sell": 700
+  },
+  {
+   "id": 7015,
+   "name_txt": 411,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1207,
+   "list_sprite": 1202,
+   "place_anim": 713,
+   "play_anim": 714,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7016,
+   "name_txt": 412,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1222,
+   "list_sprite": 1222,
+   "place_anim": 715,
+   "play_anim": 716,
+   "per_field_play": false,
+   "buy": 1300,
+   "sell": 650
+  },
+  {
+   "id": 7017,
+   "name_txt": 413,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1223,
+   "list_sprite": 1223,
+   "place_anim": 717,
+   "play_anim": 718,
+   "per_field_play": false,
+   "buy": 2600,
+   "sell": 1300
+  },
+  {
+   "id": 7018,
+   "name_txt": 414,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1224,
+   "list_sprite": 1224,
+   "place_anim": 296,
+   "play_anim": 297,
+   "per_field_play": false,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 7019,
+   "name_txt": 415,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1225,
+   "list_sprite": 1225,
+   "place_anim": 298,
+   "play_anim": 299,
+   "per_field_play": false,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 7020,
+   "name_txt": 416,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1226,
+   "list_sprite": 1226,
+   "place_anim": 300,
+   "play_anim": 301,
+   "per_field_play": false,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 7021,
+   "name_txt": 417,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1227,
+   "list_sprite": 1227,
+   "place_anim": 302,
+   "play_anim": 303,
+   "per_field_play": false,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 7022,
+   "name_txt": 418,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1228,
+   "list_sprite": 1228,
+   "place_anim": 304,
+   "play_anim": 305,
+   "per_field_play": false,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 7023,
+   "name_txt": 419,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1229,
+   "list_sprite": 1229,
+   "place_anim": 306,
+   "play_anim": 307,
+   "per_field_play": false,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 7024,
+   "name_txt": 420,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1230,
+   "list_sprite": 1230,
+   "place_anim": 308,
+   "play_anim": 309,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7025,
+   "name_txt": 421,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1231,
+   "list_sprite": 1231,
+   "place_anim": 310,
+   "play_anim": 311,
+   "per_field_play": false,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 7026,
+   "name_txt": 422,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1232,
+   "list_sprite": 1232,
+   "place_anim": 312,
+   "play_anim": 313,
+   "per_field_play": false,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 7027,
+   "name_txt": 423,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1233,
+   "list_sprite": 1233,
+   "place_anim": 314,
+   "play_anim": 315,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7028,
+   "name_txt": 424,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1234,
+   "list_sprite": 1234,
+   "place_anim": 316,
+   "play_anim": 317,
+   "per_field_play": false,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 7029,
+   "name_txt": 425,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1235,
+   "list_sprite": 1235,
+   "place_anim": 318,
+   "play_anim": 319,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7030,
+   "name_txt": 426,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1236,
+   "list_sprite": 1236,
+   "place_anim": 320,
+   "play_anim": 321,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7031,
+   "name_txt": 427,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1237,
+   "list_sprite": 1237,
+   "place_anim": 322,
+   "play_anim": 323,
+   "per_field_play": false,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 7032,
+   "name_txt": 428,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1238,
+   "list_sprite": 1238,
+   "place_anim": 324,
+   "play_anim": 325,
+   "per_field_play": false,
+   "buy": 900,
+   "sell": 450
+  },
+  {
+   "id": 7033,
+   "name_txt": 429,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1239,
+   "list_sprite": 1239,
+   "place_anim": 326,
+   "play_anim": 327,
+   "per_field_play": false,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 7034,
+   "name_txt": 430,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1240,
+   "list_sprite": 1240,
+   "place_anim": 328,
+   "play_anim": 329,
+   "per_field_play": false,
+   "buy": 220,
+   "sell": 110
+  },
+  {
+   "id": 7035,
+   "name_txt": 431,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1241,
+   "list_sprite": 1241,
+   "place_anim": 330,
+   "play_anim": 331,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7036,
+   "name_txt": 432,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1242,
+   "list_sprite": 1242,
+   "place_anim": 332,
+   "play_anim": 333,
+   "per_field_play": false,
+   "buy": 390,
+   "sell": 195
+  },
+  {
+   "id": 7037,
+   "name_txt": 433,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1243,
+   "list_sprite": 1243,
+   "place_anim": 334,
+   "play_anim": 335,
+   "per_field_play": false,
+   "buy": 360,
+   "sell": 180
+  },
+  {
+   "id": 7038,
+   "name_txt": 434,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1244,
+   "list_sprite": 1244,
+   "place_anim": 336,
+   "play_anim": 337,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7039,
+   "name_txt": 435,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1245,
+   "list_sprite": 1245,
+   "place_anim": 338,
+   "play_anim": 339,
+   "per_field_play": false,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 7040,
+   "name_txt": 436,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1246,
+   "list_sprite": 1246,
+   "place_anim": 340,
+   "play_anim": 341,
+   "per_field_play": false,
+   "buy": 880,
+   "sell": 440
+  },
+  {
+   "id": 7041,
+   "name_txt": 437,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1247,
+   "list_sprite": 1247,
+   "place_anim": 719,
+   "play_anim": 720,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7042,
+   "name_txt": 438,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1208,
+   "list_sprite": 1203,
+   "place_anim": 721,
+   "play_anim": 722,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7043,
+   "name_txt": 439,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1248,
+   "list_sprite": 1248,
+   "place_anim": 342,
+   "play_anim": 343,
+   "per_field_play": false,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 7044,
+   "name_txt": 440,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1249,
+   "list_sprite": 1249,
+   "place_anim": 344,
+   "play_anim": 345,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7045,
+   "name_txt": 441,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1250,
+   "list_sprite": 1250,
+   "place_anim": 346,
+   "play_anim": 347,
+   "per_field_play": false,
+   "buy": 390,
+   "sell": 195
+  },
+  {
+   "id": 7046,
+   "name_txt": 442,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1251,
+   "list_sprite": 1251,
+   "place_anim": 348,
+   "play_anim": 349,
+   "per_field_play": false,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 7047,
+   "name_txt": 443,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1252,
+   "list_sprite": 1252,
+   "place_anim": 350,
+   "play_anim": 351,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7048,
+   "name_txt": 444,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1253,
+   "list_sprite": 1253,
+   "place_anim": 352,
+   "play_anim": 353,
+   "per_field_play": false,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 7049,
+   "name_txt": 445,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1254,
+   "list_sprite": 1254,
+   "place_anim": 354,
+   "play_anim": 355,
+   "per_field_play": false,
+   "buy": 1224,
+   "sell": 612
+  },
+  {
+   "id": 7050,
+   "name_txt": 446,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1255,
+   "list_sprite": 1255,
+   "place_anim": 356,
+   "play_anim": 357,
+   "per_field_play": false,
+   "buy": 260,
+   "sell": 130
+  },
+  {
+   "id": 7051,
+   "name_txt": 447,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1209,
+   "list_sprite": 1204,
+   "place_anim": 723,
+   "play_anim": 724,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7052,
+   "name_txt": 448,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1256,
+   "list_sprite": 1256,
+   "place_anim": 358,
+   "play_anim": 359,
+   "per_field_play": false,
+   "buy": 360,
+   "sell": 180
+  },
+  {
+   "id": 7053,
+   "name_txt": 449,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1257,
+   "list_sprite": 1257,
+   "place_anim": 360,
+   "play_anim": 361,
+   "per_field_play": false,
+   "buy": 290,
+   "sell": 145
+  },
+  {
+   "id": 7054,
+   "name_txt": 450,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1258,
+   "list_sprite": 1258,
+   "place_anim": 362,
+   "play_anim": 363,
+   "per_field_play": false,
+   "buy": 170,
+   "sell": 85
+  },
+  {
+   "id": 7055,
+   "name_txt": 451,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1259,
+   "list_sprite": 1259,
+   "place_anim": 364,
+   "play_anim": 365,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7056,
+   "name_txt": 452,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1260,
+   "list_sprite": 1260,
+   "place_anim": 366,
+   "play_anim": 367,
+   "per_field_play": false,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 7057,
+   "name_txt": 453,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1261,
+   "list_sprite": 1261,
+   "place_anim": 368,
+   "play_anim": 369,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7058,
+   "name_txt": 454,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1262,
+   "list_sprite": 1262,
+   "place_anim": 370,
+   "play_anim": 371,
+   "per_field_play": false,
+   "buy": 380,
+   "sell": 190
+  },
+  {
+   "id": 7059,
+   "name_txt": 455,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1263,
+   "list_sprite": 1263,
+   "place_anim": 372,
+   "play_anim": 373,
+   "per_field_play": false,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 7060,
+   "name_txt": 456,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1264,
+   "list_sprite": 1264,
+   "place_anim": 374,
+   "play_anim": 375,
+   "per_field_play": false,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 7061,
+   "name_txt": 457,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1265,
+   "list_sprite": 1265,
+   "place_anim": 376,
+   "play_anim": 377,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7062,
+   "name_txt": 548,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1266,
+   "list_sprite": 1266,
+   "place_anim": 725,
+   "play_anim": 726,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7063,
+   "name_txt": 549,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1267,
+   "list_sprite": 1267,
+   "place_anim": 727,
+   "play_anim": 728,
+   "per_field_play": false,
+   "buy": 1600,
+   "sell": 800
+  },
+  {
+   "id": 7064,
+   "name_txt": 550,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1268,
+   "list_sprite": 1268,
+   "place_anim": 378,
+   "play_anim": 379,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7065,
+   "name_txt": 551,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1269,
+   "list_sprite": 1269,
+   "place_anim": 380,
+   "play_anim": 381,
+   "per_field_play": false,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 7066,
+   "name_txt": 552,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1270,
+   "list_sprite": 1270,
+   "place_anim": 382,
+   "play_anim": 383,
+   "per_field_play": false,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 7067,
+   "name_txt": 584,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1381,
+   "list_sprite": 1360,
+   "place_anim": 906,
+   "play_anim": 907,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7068,
+   "name_txt": 585,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1383,
+   "list_sprite": 1361,
+   "place_anim": 908,
+   "play_anim": 909,
+   "per_field_play": false,
+   "buy": 1800,
+   "sell": 900
+  },
+  {
+   "id": 7069,
+   "name_txt": 586,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1386,
+   "list_sprite": 1362,
+   "place_anim": 910,
+   "play_anim": 911,
+   "per_field_play": false,
+   "buy": 877,
+   "sell": 439
+  },
+  {
+   "id": 7070,
+   "name_txt": 587,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1389,
+   "list_sprite": 1363,
+   "place_anim": 912,
+   "play_anim": 913,
+   "per_field_play": false,
+   "buy": 550,
+   "sell": 275
+  },
+  {
+   "id": 7071,
+   "name_txt": 588,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1393,
+   "list_sprite": 1364,
+   "place_anim": 914,
+   "play_anim": 915,
+   "per_field_play": false,
+   "buy": 1300,
+   "sell": 650
+  },
+  {
+   "id": 7072,
+   "name_txt": 589,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1396,
+   "list_sprite": 1365,
+   "place_anim": 916,
+   "play_anim": 917,
+   "per_field_play": false,
+   "buy": 1100,
+   "sell": 550
+  },
+  {
+   "id": 7073,
+   "name_txt": 590,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1398,
+   "list_sprite": 1366,
+   "place_anim": 918,
+   "play_anim": 919,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7074,
+   "name_txt": 591,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1400,
+   "list_sprite": 1367,
+   "place_anim": 920,
+   "play_anim": 921,
+   "per_field_play": false,
+   "buy": 1400,
+   "sell": 700
+  },
+  {
+   "id": 7075,
+   "name_txt": 592,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1407,
+   "list_sprite": 1368,
+   "place_anim": 922,
+   "play_anim": 923,
+   "per_field_play": false,
+   "buy": 1080,
+   "sell": 540
+  },
+  {
+   "id": 7076,
+   "name_txt": 593,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1410,
+   "list_sprite": 1369,
+   "place_anim": 924,
+   "play_anim": 925,
+   "per_field_play": false,
+   "buy": 2140,
+   "sell": 1070
+  },
+  {
+   "id": 7998,
+   "name_txt": 594,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1413,
+   "list_sprite": 1370,
+   "place_anim": 926,
+   "play_anim": 927,
+   "per_field_play": false,
+   "buy": 65535,
+   "sell": 0
+  },
+  {
+   "id": 7078,
+   "name_txt": 595,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1415,
+   "list_sprite": 1371,
+   "place_anim": 928,
+   "play_anim": 929,
+   "per_field_play": false,
+   "buy": 2060,
+   "sell": 1030
+  },
+  {
+   "id": 7079,
+   "name_txt": 596,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1418,
+   "list_sprite": 1372,
+   "place_anim": 930,
+   "play_anim": 931,
+   "per_field_play": false,
+   "buy": 4600,
+   "sell": 2400
+  },
+  {
+   "id": 7080,
+   "name_txt": 597,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1421,
+   "list_sprite": 1373,
+   "place_anim": 932,
+   "play_anim": 933,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7081,
+   "name_txt": 598,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1426,
+   "list_sprite": 1374,
+   "place_anim": 934,
+   "play_anim": 935,
+   "per_field_play": false,
+   "buy": 2000,
+   "sell": 1000
+  },
+  {
+   "id": 7082,
+   "name_txt": 599,
+   "type": 4,
+   "size": "large",
+   "icon_sprite": 1431,
+   "list_sprite": 1375,
+   "place_anim": 936,
+   "play_anim": 937,
+   "per_field_play": false,
+   "buy": 1300,
+   "sell": 650
+  },
+  {
+   "id": 7083,
+   "name_txt": 600,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1433,
+   "list_sprite": 1376,
+   "place_anim": 938,
+   "play_anim": 939,
+   "per_field_play": false,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 7084,
+   "name_txt": 601,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1435,
+   "list_sprite": 1377,
+   "place_anim": 940,
+   "play_anim": 941,
+   "per_field_play": false,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 7085,
+   "name_txt": 602,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1437,
+   "list_sprite": 1378,
+   "place_anim": 942,
+   "play_anim": 943,
+   "per_field_play": false,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 7086,
+   "name_txt": 603,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1439,
+   "list_sprite": 1379,
+   "place_anim": 944,
+   "play_anim": 945,
+   "per_field_play": false,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 7087,
+   "name_txt": 626,
+   "type": 3,
+   "size": "small",
+   "icon_sprite": 1442,
+   "list_sprite": 1380,
+   "place_anim": 946,
+   "play_anim": 947,
+   "per_field_play": false,
+   "buy": 820,
+   "sell": 410
+  }
+ ],
+ "deco": {
+  "category_types": [
+   5,
+   6,
+   7
+  ],
+  "category_icon_elems": [
+   274,
+   275,
+   276
+  ],
+  "equip_ram": [
+   "0x18000d88 hat (part kind 4)",
+   "0x18000d8a glasses (kind 6)",
+   "0x18000d8c accessory (kind 8)"
+  ]
+ },
+ "worn_items": [
+  {
+   "id": 8001,
+   "name_txt": 458,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1450,
+   "icon": 1528,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8002,
+   "name_txt": 459,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1451,
+   "icon": 1529,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8003,
+   "name_txt": 460,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1452,
+   "icon": 1530,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8004,
+   "name_txt": 461,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1453,
+   "icon": 1531,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8005,
+   "name_txt": 462,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1454,
+   "icon": 1532,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8006,
+   "name_txt": 463,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1455,
+   "icon": 1533,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8007,
+   "name_txt": 464,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1456,
+   "icon": 1534,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8008,
+   "name_txt": 465,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1457,
+   "icon": 1535,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8009,
+   "name_txt": 466,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1458,
+   "icon": 1536,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8010,
+   "name_txt": 467,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1459,
+   "icon": 1537,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8011,
+   "name_txt": 468,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1460,
+   "icon": 1538,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8012,
+   "name_txt": 469,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1461,
+   "icon": 1539,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8013,
+   "name_txt": 470,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1462,
+   "icon": 1540,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8014,
+   "name_txt": 471,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1463,
+   "icon": 1541,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8015,
+   "name_txt": 472,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1464,
+   "icon": 1542,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 8016,
+   "name_txt": 473,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1465,
+   "icon": 1543,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8017,
+   "name_txt": 474,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1466,
+   "icon": 1544,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8018,
+   "name_txt": 475,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1467,
+   "icon": 1545,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8019,
+   "name_txt": 476,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1468,
+   "icon": 1546,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 8020,
+   "name_txt": 477,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1469,
+   "icon": 1547,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8021,
+   "name_txt": 478,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1470,
+   "icon": 1548,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8022,
+   "name_txt": 479,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1471,
+   "icon": 1549,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8023,
+   "name_txt": 480,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1472,
+   "icon": 1550,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8024,
+   "name_txt": 481,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1473,
+   "icon": 1551,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8025,
+   "name_txt": 482,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1474,
+   "icon": 1552,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 8026,
+   "name_txt": 483,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1475,
+   "icon": 1553,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8027,
+   "name_txt": 484,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1476,
+   "icon": 1554,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8028,
+   "name_txt": 485,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1477,
+   "icon": 1555,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 8029,
+   "name_txt": 486,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1478,
+   "icon": 1556,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8030,
+   "name_txt": 487,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1479,
+   "icon": 1557,
+   "buy": 1100,
+   "sell": 550
+  },
+  {
+   "id": 8031,
+   "name_txt": 488,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1480,
+   "icon": 1558,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8032,
+   "name_txt": 489,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1481,
+   "icon": 1559,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8033,
+   "name_txt": 490,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1482,
+   "icon": 1560,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8034,
+   "name_txt": 491,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1483,
+   "icon": 1561,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8035,
+   "name_txt": 492,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1484,
+   "icon": 1562,
+   "buy": 900,
+   "sell": 450
+  },
+  {
+   "id": 8036,
+   "name_txt": 493,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1485,
+   "icon": 1563,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8037,
+   "name_txt": 494,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1486,
+   "icon": 1564,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8038,
+   "name_txt": 495,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1487,
+   "icon": 1565,
+   "buy": 1500,
+   "sell": 750
+  },
+  {
+   "id": 8039,
+   "name_txt": 496,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1488,
+   "icon": 1566,
+   "buy": 100,
+   "sell": 50
+  },
+  {
+   "id": 8040,
+   "name_txt": 497,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1489,
+   "icon": 1567,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8041,
+   "name_txt": 498,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1490,
+   "icon": 1568,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8042,
+   "name_txt": 499,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1491,
+   "icon": 1569,
+   "buy": 900,
+   "sell": 450
+  },
+  {
+   "id": 8043,
+   "name_txt": 500,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1492,
+   "icon": 1570,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8044,
+   "name_txt": 501,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1493,
+   "icon": 1571,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 8045,
+   "name_txt": 502,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1494,
+   "icon": 1572,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8046,
+   "name_txt": 503,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1495,
+   "icon": 1573,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8047,
+   "name_txt": 504,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1496,
+   "icon": 1574,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8048,
+   "name_txt": 505,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1497,
+   "icon": 1575,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8049,
+   "name_txt": 506,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1498,
+   "icon": 1576,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8050,
+   "name_txt": 507,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1499,
+   "icon": 1577,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8051,
+   "name_txt": 508,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1500,
+   "icon": 1578,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8052,
+   "name_txt": 509,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1501,
+   "icon": 1579,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8053,
+   "name_txt": 510,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1502,
+   "icon": 1580,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8054,
+   "name_txt": 511,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1503,
+   "icon": 1581,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8055,
+   "name_txt": 512,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1504,
+   "icon": 1582,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8056,
+   "name_txt": 513,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1505,
+   "icon": 1583,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8057,
+   "name_txt": 514,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1506,
+   "icon": 1584,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8058,
+   "name_txt": 515,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1507,
+   "icon": 1585,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8059,
+   "name_txt": 516,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1508,
+   "icon": 1586,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8060,
+   "name_txt": 517,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1509,
+   "icon": 1587,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8061,
+   "name_txt": 518,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1510,
+   "icon": 1588,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8062,
+   "name_txt": 519,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1511,
+   "icon": 1589,
+   "buy": 200,
+   "sell": 100
+  },
+  {
+   "id": 8063,
+   "name_txt": 520,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1512,
+   "icon": 1590,
+   "buy": 770,
+   "sell": 385
+  },
+  {
+   "id": 8064,
+   "name_txt": 521,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1513,
+   "icon": 1591,
+   "buy": 280,
+   "sell": 140
+  },
+  {
+   "id": 8065,
+   "name_txt": 522,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1514,
+   "icon": 1592,
+   "buy": 560,
+   "sell": 280
+  },
+  {
+   "id": 8066,
+   "name_txt": 523,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1515,
+   "icon": 1593,
+   "buy": 330,
+   "sell": 165
+  },
+  {
+   "id": 8067,
+   "name_txt": 524,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1516,
+   "icon": 1594,
+   "buy": 3776,
+   "sell": 1888
+  },
+  {
+   "id": 8068,
+   "name_txt": 525,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1517,
+   "icon": 1595,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8069,
+   "name_txt": 526,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1518,
+   "icon": 1596,
+   "buy": 330,
+   "sell": 165
+  },
+  {
+   "id": 8070,
+   "name_txt": 527,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1519,
+   "icon": 1597,
+   "buy": 420,
+   "sell": 210
+  },
+  {
+   "id": 8071,
+   "name_txt": 528,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1520,
+   "icon": 1598,
+   "buy": 700,
+   "sell": 350
+  },
+  {
+   "id": 8072,
+   "name_txt": 529,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1521,
+   "icon": 1599,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8073,
+   "name_txt": 530,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1522,
+   "icon": 1600,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8074,
+   "name_txt": 531,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1523,
+   "icon": 1601,
+   "buy": 550,
+   "sell": 275
+  },
+  {
+   "id": 8075,
+   "name_txt": 532,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1524,
+   "icon": 1602,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 8076,
+   "name_txt": 533,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1525,
+   "icon": 1603,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8077,
+   "name_txt": 534,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1526,
+   "icon": 1604,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 8078,
+   "name_txt": 535,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1527,
+   "icon": 1605,
+   "buy": 460,
+   "sell": 230
+  },
+  {
+   "id": 8079,
+   "name_txt": 553,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1610,
+   "icon": 1611,
+   "buy": 330,
+   "sell": 165
+  },
+  {
+   "id": 8080,
+   "name_txt": 554,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1612,
+   "icon": 1613,
+   "buy": 440,
+   "sell": 220
+  },
+  {
+   "id": 8081,
+   "name_txt": 555,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1614,
+   "icon": 1615,
+   "buy": 1050,
+   "sell": 525
+  },
+  {
+   "id": 8082,
+   "name_txt": 556,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1616,
+   "icon": 1617,
+   "buy": 880,
+   "sell": 440
+  },
+  {
+   "id": 8083,
+   "name_txt": 557,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1618,
+   "icon": 1619,
+   "buy": 780,
+   "sell": 390
+  },
+  {
+   "id": 8084,
+   "name_txt": 558,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1620,
+   "icon": 1621,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8085,
+   "name_txt": 559,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1606,
+   "icon": 1607,
+   "buy": 1400,
+   "sell": 700
+  },
+  {
+   "id": 8086,
+   "name_txt": 560,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1608,
+   "icon": 1609,
+   "buy": 1000,
+   "sell": 500
+  },
+  {
+   "id": 8087,
+   "name_txt": 604,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1622,
+   "icon": 1623,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8088,
+   "name_txt": 605,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1624,
+   "icon": 1625,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8089,
+   "name_txt": 606,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1626,
+   "icon": 1627,
+   "buy": 1100,
+   "sell": 550
+  },
+  {
+   "id": 8090,
+   "name_txt": 607,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1628,
+   "icon": 1629,
+   "buy": 400,
+   "sell": 200
+  },
+  {
+   "id": 8091,
+   "name_txt": 608,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1630,
+   "icon": 1631,
+   "buy": 600,
+   "sell": 300
+  },
+  {
+   "id": 8092,
+   "name_txt": 609,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1632,
+   "icon": 1633,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 8093,
+   "name_txt": 610,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1634,
+   "icon": 1635,
+   "buy": 310,
+   "sell": 155
+  },
+  {
+   "id": 8094,
+   "name_txt": 611,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1636,
+   "icon": 1637,
+   "buy": 900,
+   "sell": 450
+  },
+  {
+   "id": 8095,
+   "name_txt": 612,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1638,
+   "icon": 1639,
+   "buy": 500,
+   "sell": 250
+  },
+  {
+   "id": 8096,
+   "name_txt": 613,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1640,
+   "icon": 1641,
+   "buy": 800,
+   "sell": 400
+  },
+  {
+   "id": 8097,
+   "name_txt": 614,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1642,
+   "icon": 1643,
+   "buy": 100,
+   "sell": 50
+  },
+  {
+   "id": 8098,
+   "name_txt": 615,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1644,
+   "icon": 1645,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8099,
+   "name_txt": 616,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1646,
+   "icon": 1647,
+   "buy": 0,
+   "sell": 1040
+  },
+  {
+   "id": 8100,
+   "name_txt": 617,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1648,
+   "icon": 1649,
+   "buy": 0,
+   "sell": 1040
+  },
+  {
+   "id": 8101,
+   "name_txt": 618,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1650,
+   "icon": 1651,
+   "buy": 0,
+   "sell": 666
+  },
+  {
+   "id": 8102,
+   "name_txt": 619,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1652,
+   "icon": 1653,
+   "buy": 0,
+   "sell": 666
+  },
+  {
+   "id": 8103,
+   "name_txt": 620,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1654,
+   "icon": 1655,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8104,
+   "name_txt": 621,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1656,
+   "icon": 1657,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8105,
+   "name_txt": 622,
+   "type": 6,
+   "slot": 1,
+   "sprite": 1658,
+   "icon": 1659,
+   "buy": 260,
+   "sell": 130
+  },
+  {
+   "id": 8106,
+   "name_txt": 623,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1660,
+   "icon": 1661,
+   "buy": 300,
+   "sell": 150
+  },
+  {
+   "id": 8107,
+   "name_txt": 624,
+   "type": 5,
+   "slot": 0,
+   "sprite": 1662,
+   "icon": 1663,
+   "buy": 1200,
+   "sell": 600
+  },
+  {
+   "id": 8108,
+   "name_txt": 625,
+   "type": 7,
+   "slot": 2,
+   "sprite": 1664,
+   "icon": 1665,
+   "buy": 360,
+   "sell": 180
+  }
+ ],
+ "equip_sets": [
+  {
+   "hat": 8001,
+   "glasses": 0,
+   "accessory": 8002,
+   "guests": [
+    9000,
+    9001
+   ]
+  },
+  {
+   "hat": 8003,
+   "glasses": 0,
+   "accessory": 8004,
+   "guests": [
+    9002,
+    9003
+   ]
+  },
+  {
+   "hat": 8005,
+   "glasses": 0,
+   "accessory": 8006,
+   "guests": [
+    9004,
+    9005
+   ]
+  },
+  {
+   "hat": 8101,
+   "glasses": 0,
+   "accessory": 8102,
+   "guests": [
+    9020,
+    9021
+   ]
+  },
+  {
+   "hat": 8085,
+   "glasses": 0,
+   "accessory": 8086,
+   "guests": [
+    9015,
+    9016
+   ]
+  },
+  {
+   "hat": 8099,
+   "glasses": 0,
+   "accessory": 8100,
+   "guests": [
+    9018,
+    9019
+   ]
+  },
+  {
+   "hat": 8013,
+   "glasses": 0,
+   "accessory": 8014,
+   "guests": [
+    9012,
+    9013
+   ]
+  }
+ ],
+ "planet_chr_by_rank": {
+  "romtype_class0(romtype1/5)": [
+   23,
+   24,
+   24,
+   24,
+   26,
+   26,
+   27,
+   27,
+   27,
+   27,
+   28
+  ],
+  "romtype_class1(romtype2/6)": [
+   23,
+   25,
+   25,
+   25,
+   26,
+   26,
+   27,
+   27,
+   27,
+   27,
+   28
+  ],
+  "romtype_class2(romtype3/4)": [
+   2,
+   11,
+   11,
+   11,
+   12,
+   12,
+   13,
+   13,
+   13,
+   13,
+   14
+  ]
+ },
+ "planet_models": {
+  "2": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1519,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1524,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1524,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1524,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 222,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1524,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1525,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "11": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 246,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "12": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 247,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "13": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 248,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "14": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1612,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1614,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1616,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1482,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 249,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "23": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 252,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "24": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 253,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "25": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 254,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "26": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 255,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "27": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 256,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  },
+  "28": {
+   "1": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1488,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "2": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 3
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "3": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "4": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 2
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "15": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 1
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ],
+   "19": [
+    {
+     "kind": 0,
+     "sprite": 257,
+     "x": 0,
+     "y": 0,
+     "frame": 4
+    },
+    {
+     "kind": 0,
+     "sprite": 231,
+     "x": 0,
+     "y": 0,
+     "frame": 0
+    },
+    {
+     "kind": 4,
+     "sprite": 1526,
+     "x": 0,
+     "y": -20,
+     "frame": 0
+    },
+    {
+     "kind": 6,
+     "sprite": 1464,
+     "x": 0,
+     "y": -8,
+     "frame": 0
+    },
+    {
+     "kind": 8,
+     "sprite": 1451,
+     "x": 0,
+     "y": 10,
+     "frame": 0
+    }
+   ]
+  }
+ },
+ "space_view": {
+  "bg_anim_elem": {
+   "elem": 712,
+   "type": "anim",
+   "x": 64,
+   "y": 64,
+   "anim": 191
+  },
+  "stars_overlay_elem": {
+   "elem": 713,
+   "type": "anim",
+   "x": 64,
+   "y": 64,
+   "anim": 192
+  },
+  "planet_awake_elem": {
+   "elem": 714,
+   "type": "anim",
+   "x": 90,
+   "y": 92,
+   "anim": 194
+  },
+  "planet_asleep_elem": {
+   "elem": 715,
+   "type": "anim",
+   "x": 90,
+   "y": 92,
+   "anim": 195
+  },
+  "dead_tama_star_elems": [
+   {
+    "elem": 720,
+    "type": "sprite",
+    "x": 30,
+    "y": 28,
+    "sprite": 1107
+   },
+   {
+    "elem": 721,
+    "type": "sprite",
+    "x": 58,
+    "y": 56,
+    "sprite": 1107
+   },
+   {
+    "elem": 722,
+    "type": "sprite",
+    "x": 92,
+    "y": 26,
+    "sprite": 1107
+   },
+   {
+    "elem": 723,
+    "type": "sprite",
+    "x": 22,
+    "y": 68,
+    "sprite": 1107
+   },
+   {
+    "elem": 724,
+    "type": "sprite",
+    "x": 44,
+    "y": 104,
+    "sprite": 1107
+   }
+  ],
+  "star_cursor_elem": {
+   "elem": 716,
+   "type": "anim",
+   "x": 30,
+   "y": 28,
+   "anim": 193
+  }
+ },
+ "rank": {
+  "goal_txt_by_rank": [
+   132,
+   133,
+   134,
+   135,
+   136,
+   135,
+   135,
+   135,
+   135,
+   135
+  ],
+  "rankup_txt_by_rank": [
+   0,
+   142,
+   143,
+   144,
+   145,
+   146,
+   147,
+   148,
+   149,
+   150,
+   151
+  ]
+ },
+ "travel": {
+  "souvenir_source": "rwdata 0x180006e6",
+  "meter_ram": "0x18000d13 (TamaData+0x1b), max 60, cost 60",
+  "destinations": [
+   {
+    "index": 0,
+    "item": 9901,
+    "min_rank": 3,
+    "anim": 2150,
+    "npc_chara": [
+     167,
+     168
+    ],
+    "souvenirs": [
+     8001,
+     8002
+    ]
+   },
+   {
+    "index": 1,
+    "item": 9902,
+    "min_rank": 3,
+    "anim": 2151,
+    "npc_chara": [
+     169,
+     170
+    ],
+    "souvenirs": [
+     8003,
+     8004
+    ]
+   },
+   {
+    "index": 2,
+    "item": 9903,
+    "min_rank": 4,
+    "anim": 2152,
+    "npc_chara": [
+     171,
+     172
+    ],
+    "souvenirs": [
+     8005,
+     8006
+    ]
+   },
+   {
+    "index": 3,
+    "item": 9910,
+    "min_rank": 5,
+    "anim": 2159,
+    "npc_chara": [
+     186,
+     187
+    ],
+    "souvenirs": [
+     8101,
+     8102
+    ]
+   },
+   {
+    "index": 4,
+    "item": 9908,
+    "min_rank": 6,
+    "anim": 2157,
+    "npc_chara": [
+     182,
+     183
+    ],
+    "souvenirs": [
+     8085,
+     8086
+    ]
+   },
+   {
+    "index": 5,
+    "item": 9909,
+    "min_rank": 7,
+    "anim": 2158,
+    "npc_chara": [
+     184,
+     185
+    ],
+    "souvenirs": [
+     8099,
+     8100
+    ]
+   },
+   {
+    "index": 6,
+    "item": 9907,
+    "min_rank": 7,
+    "anim": 2156,
+    "npc_chara": [
+     179,
+     180
+    ],
+    "souvenirs": [
+     8013,
+     8014
+    ]
+   }
+  ]
+ }
+}

@@ -5,7 +5,7 @@ pub(crate) mod evolve;
 pub mod family;
 pub mod home;
 pub mod hunt;
-pub mod minigame;
+pub mod mini;
 pub mod motion;
 pub mod pet;
 pub mod progress;
@@ -331,7 +331,7 @@ impl Game {
                     self.draw_chr(d, chr, anim, eyes, mouth);
                 }
                 Look::Sprite { id, frame } => {
-                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, None);
+                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, (d.palette > 0).then_some((id, d.palette as usize)));
                 }
                 Look::None => {}
             }

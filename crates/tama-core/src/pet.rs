@@ -186,6 +186,9 @@ pub struct Pet {
     /// Looks inherited from a breeding partner (drawn instead of the own character's eyes).
     #[serde(default)]
     pub looks: Option<u16>,
+    /// Times each lab game was played (picks its fixed layouts in turn).
+    #[serde(default)]
+    pub mini_plays: [u8; 7],
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -308,6 +311,7 @@ impl Pet {
             weather_day: 0,
             in_area2: false,
             hunt_used: [0; 3],
+            mini_plays: [0; 7],
             grazing: Default::default(),
             graves: Vec::new(),
             adults_raised: [0; 3],

@@ -117,6 +117,9 @@ pub(crate) enum Action {
     BreedWith(u16),
     Graves,
     Sitter,
+    MiniGames,
+    LabGame(u8),
+    PlayLab(u8, u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -164,6 +167,10 @@ pub(crate) enum Scene {
     Breed { cands: Vec<u16>, idx: usize },
     /// Grave records (lab menu COLLECTION).
     Graves { idx: usize },
+    /// Points earned, then `then` (lab game result screen).
+    Points { points: u32, then: Box<Scene> },
+    /// A mini-game: lab game index and difficulty (None for play-together games).
+    Mini { session: crate::mini::Session, lab: Option<(u8, u8)> },
     FoodCategory { idx: usize },
     FoodList { cat: u8, items: Vec<u16>, idx: usize },
     Confirm { cat: u8, items: Vec<u16>, idx: usize, yes: bool },
@@ -270,6 +277,9 @@ impl Game {
                 }
             }
             Scene::Card { kind, items, idx } => self.update_card(kind, items, idx, pressed),
+            Scene::Points { points, then } => {
+                if pressed_any(pressed) { *then } else { Scene::Points { points, then } }
+            }
             Scene::Message { text, then } => {
                 if pressed_any(pressed) { *then } else { Scene::Message { text, then } }
             }
@@ -311,6 +321,17 @@ impl Game {
                     idx = (idx + n - 1) % n;
                 }
                 if pressed & C != 0 { self.open(Action::Lab) } else { Scene::Graves { idx } }
+            }
+            Scene::Mini { mut session, lab } => {
+                if pressed & C != 0 && matches!(session.phase, crate::mini::Phase::Play) {
+                    self.sfx(2, 100);
+                    self.after_mini(None, lab)
+                } else {
+                    match session.update(pressed, &self.data, &mut self.sounds) {
+                        Some(r) => self.after_mini(Some(r), lab),
+                        None => Scene::Mini { session, lab },
+                    }
+                }
             }
             Scene::Missions { mut idx } => {
                 if pressed & (A | UP) != 0 {
@@ -752,6 +773,11 @@ impl Game {
                 self.draw_card(*kind, items, *idx);
                 true
             }
+            Scene::Points { points, .. } => {
+                self.draw_list(&[], 0, Some(0xb6));
+                self.draw_digits(*points, 64, 80);
+                true
+            }
             Scene::Message { text, .. } => {
                 self.draw_list(&[], 0, Some(*text));
                 true
@@ -775,6 +801,21 @@ impl Game {
             }
             Scene::Graves { idx } => {
                 self.draw_grave(*idx);
+                true
+            }
+            Scene::Mini { session, .. } => {
+                self.screen.rect(0, 0, 128, 128, [0, 0, 0]);
+                let mut draws = Vec::new();
+                session.draws(&mut draws);
+                self.draw_list_of(&draws, None);
+                for h in session.hud() {
+                    match h {
+                        crate::mini::Hud::Sprite { id, frame, x, y } => {
+                            self.screen.blit(id, frame, x, y, 64, false, None);
+                        }
+                        crate::mini::Hud::Number { n, x, y } => self.draw_digits(n, x, y),
+                    }
+                }
                 true
             }
         };
@@ -822,13 +863,22 @@ impl Game {
         }
     }
 
+    /// Number in the 16×16 digit font (sprite 19: frames 0–9), 10 px apart, centred on (x, y).
+    pub(crate) fn draw_digits(&mut self, n: u32, x: i32, y: i32) {
+        let s = n.to_string();
+        let w = s.len() as i32 * 10;
+        for (i, b) in s.bytes().enumerate() {
+            self.screen.blit(19, (b - b'0') as u16, x - w / 2 + 5 + i as i32 * 10, y, 64, false, None);
+        }
+    }
+
     /// Draw motion-script output with the food placeholder replaced.
     fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
         for d in draws {
             match d.look {
                 crate::motion::Look::Sprite { id, frame } => {
                     let id = if id == FOOD_PLACEHOLDER { food.unwrap_or(id) } else { id };
-                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, None);
+                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, (d.palette > 0).then_some((id, d.palette as usize)));
                 }
                 crate::motion::Look::Chr { chr, anim, eyes, mouth } => {
                     self.draw_chr(d, chr, anim, eyes, mouth);
