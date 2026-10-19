@@ -6,13 +6,20 @@
   body { margin: 0; background: #222; display: grid; place-items: center; height: 100vh; gap: 12px; }
   canvas { width: min(90vw, 512px); image-rendering: pixelated; }
   button { font-size: 20px; width: 64px; }
+  pre { color: #ccc; margin: 0; }
 </style>
 <canvas id="c"></canvas>
 <div><button data-b="0">A</button> <button data-b="1">B</button> <button data-b="2">C</button></div>
+<pre id="s"></pre>
 <script type="module">
   import init, { Tama } from "./pkg/tama_web.js";
   await init();
-  const game = new Tama();
+  // ?speed=60 runs the pet clock 60x faster for testing.
+  const speed = Number(new URLSearchParams(location.search).get("speed")) || 1;
+  const localSecs = () => Date.now() / 1000 - new Date().getTimezoneOffset() * 60;
+  const t0 = localSecs(), wall0 = performance.now();
+  const game = new Tama(Date.now() >>> 0);
+  game.advance_to(t0);
   const w = Tama.width(), h = Tama.height(), tickMs = Tama.tick_ms();
   const c = document.getElementById("c");
   c.width = w; c.height = h;
@@ -25,7 +32,10 @@
     acc += now - last; last = now;
     const n = Math.floor(acc / tickMs);
     acc -= n * tickMs;
-    if (n) game.step(n);
+    if (n) {
+      game.advance_to(t0 + (now - wall0) / 1000 * speed);
+      document.getElementById("s").textContent = game.status();
+    }
     ctx.putImageData(new ImageData(new Uint8ClampedArray(game.framebuffer()), w, h), 0, 0);
     requestAnimationFrame(frame);
   }
