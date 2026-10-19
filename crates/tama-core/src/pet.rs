@@ -33,6 +33,8 @@ pub mod req {
     pub const NAP: u8 = 0x1a;
     pub const REDU_CM: u8 = 0x1b;
     pub const NEWYEAR: u8 = 0x07;
+    /// DODODO: the 13th of each month at 17:00 (rank ≥ 6); unanswered by 17:15 it turns bad.
+    pub const DODODO: u8 = 0x1c;
     pub const METEOR: u8 = 0x1e;
     pub const SHOOTINGSTAR: u8 = 0x1f;
     pub const UFO: u8 = 0x20;
@@ -263,7 +265,7 @@ fn calendar_events(t: u64) -> Vec<u8> {
     ev
 }
 
-pub const EVENTS: [u8; 7] = [req::NEWYEAR, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
+pub const EVENTS: [u8; 8] = [req::NEWYEAR, req::DODODO, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
 
 fn no_color() -> u8 {
     NO_COLOR
@@ -582,6 +584,7 @@ impl Pet {
         match id {
             req::NEWYEAR => self.points = (self.points + 1000).min(99_999),
             req::XMAS => self.add_gokigen(20),
+            req::DODODO => self.add_gokigen(10),
             _ => {}
         }
         self.mark_done(id);
@@ -596,8 +599,7 @@ impl Pet {
             if self.cond == Cond::Normal {
                 self.raise(req::INJURY);
             }
-            // ponytail: the original also removes one of each placed decoration (`FUN_10016900`);
-            // add it with decoration placement.
+            self.lose_field_toys();
         }
         self.mark_done(req::METEOR);
     }
@@ -634,10 +636,34 @@ impl Pet {
         self.last = Some(now);
     }
 
+    /// DODODO (`FUN_10012c90`): raised on the 13th at 17:00 for an awake pet at rank ≥ 6; still
+    /// unanswered at 17:15 it becomes DODODO_IGNORE: mood −10, an injury, and this field's
+    /// outside toys are lost.
+    fn dododo(&mut self, t: u64, awake: bool) {
+        let (_, _, d) = date(t);
+        let min = t % DAY / 60;
+        if d != 13 || !(17 * 60..18 * 60).contains(&min) {
+            return;
+        }
+        if min < 17 * 60 + 15 {
+            if awake && self.rank >= 6 && self.def.stage >= 3 && !self.was_raised(req::DODODO) {
+                self.raise(req::DODODO);
+            }
+        } else if self.is_pending(req::DODODO) {
+            self.add_gokigen(-10);
+            if self.cond == Cond::Normal {
+                self.raise(req::INJURY);
+            }
+            self.lose_field_toys();
+            self.mark_done(req::DODODO);
+        }
+    }
+
     /// One simulation step of `dt` ≤ 60 s starting at `t` (`care_tick` 0x100134bc).
     pub fn tick(&mut self, t: u64, dt: u32) {
         let sleeping = self.is_sleeping_at(t);
         let nap = self.is_done(req::NAP);
+        self.dododo(t, !sleeping && !nap);
         let awake = !sleeping && !nap;
 
         if self.cond != Cond::Dead && (self.def.stage != 3 || self.age < 86_400 || awake) {
@@ -1272,6 +1298,32 @@ pub(crate) mod tests {
         p.finish_meteor(false);
         assert_eq!((p.gokigen, p.cond), (5, Cond::Injury));
         assert!(!p.is_pending(req::METEOR) && p.is_pending(req::INJURY));
+    }
+
+    #[test]
+    fn dododo_on_the_13th_at_five_and_its_penalty() {
+        let thirteenth = 20_800 * DAY; // 2026-12-13
+        assert_eq!(date(thirteenth).2, 13);
+        let mut p = Pet::new(KID(), 1);
+        p.rank = 6;
+        p.gokigen = 15;
+        p.field = 1;
+        p.give(7001, 1);
+        p.toys[1][0][0] = 7001;
+        p.advance_to(thirteenth + 16 * 3600 + 59 * 60);
+        p.cond = Cond::Normal;
+        p.advance_to(thirteenth + 17 * 3600 + 2 * 60);
+        assert!(p.is_pending(req::DODODO));
+        let mut answered = p.clone();
+        answered.finish_event(req::DODODO);
+        answered.advance_to(thirteenth + 17 * 3600 + 20 * 60);
+        assert_eq!(answered.toys[1][0][0], 7001);
+        p.advance_to(thirteenth + 17 * 3600 + 20 * 60);
+        assert!(!p.is_pending(req::DODODO));
+        assert_eq!(p.toys[1][0][0], 0);
+        assert_eq!(p.count(7001), 0);
+        assert!(p.was_raised(req::INJURY) || p.cond == Cond::Injury);
+        assert!(answered.gokigen > p.gokigen);
     }
 
     #[test]

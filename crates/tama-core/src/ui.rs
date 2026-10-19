@@ -55,6 +55,7 @@ mod script {
     /// After eating: COLOR, LOVE, IMMUNITY, HAPPY, REDU_CM (same order as `req::EFFECTS`).
     pub const EFFECTS: [u16; 5] = [0x622, 0x623, 0x624, 0x625, 0x626];
     pub const SHOOTINGSTAR: u16 = 0x6ac;
+    pub const DODODO: u16 = 0x64a;
     pub const UFO: u16 = 0x6ae;
     pub const SANTA: u16 = 0x6af;
     pub const EVE: u16 = 0x6b0;
@@ -532,6 +533,11 @@ impl Game {
         let sleeping = p.is_sleeping_at(now);
         let hour = now % 86_400 / 3600;
         let busy = [req::ONAKA, req::GOKIGEN, req::SOWASOWA].iter().any(|&q| p.is_pending(q));
+        // DODODO only lasts 15 minutes and does not wait for care calls.
+        if p.is_pending(req::DODODO) && !sleeping && p.cond == Cond::Normal {
+            self.scene = self.play(&[script::DODODO], (0, OnPress::Event(req::DODODO)), None, Scene::Home);
+            return;
+        }
         if p.def.stage < 3 || p.cond != Cond::Normal || busy {
             return;
         }

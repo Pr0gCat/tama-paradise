@@ -58,6 +58,18 @@ impl Pet {
         Some(removed)
     }
 
+    /// A bad event wrecks this field's outside toys: each placed one is lost (`FUN_10016900`).
+    pub fn lose_field_toys(&mut self) {
+        for area in 0..2 {
+            for s in 0..SLOTS {
+                let id = std::mem::take(&mut self.toys[self.field as usize][area][s]);
+                if id != 0 {
+                    self.give(id, -1);
+                }
+            }
+        }
+    }
+
     pub fn remove_toy(&mut self, field: u8, area: u8, slot: usize) -> Option<u16> {
         let s = &mut self.toys[field as usize][area as usize][slot];
         (*s != 0).then(|| std::mem::take(s))
