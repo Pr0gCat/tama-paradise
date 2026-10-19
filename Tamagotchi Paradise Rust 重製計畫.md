@@ -23,8 +23,8 @@ Paradise 是 2025 年 7 月上市，主控為 Sonix SNC73410，雙核心 ARM Cor
 | 電壓 | 3.3V，接線前先用電錶確認 |
 | Bootrom | 有隱藏區段，Yukai Li 用 FPB 單元讀出 |
 
-- [ ] 先完整備份 flash 與存檔，再做任何其他操作
-- [ ] 參考 Yukai Li 的專案與 Tamagotchi Center 社群的既有成果
+- [x] 先完整備份 flash 與存檔，再做任何其他操作
+- [x] 參考 Yukai Li 的專案與 Tamagotchi Center 社群的既有成果
 
 參考：[Hackaday：用 MCU 自身 debug 周邊破解 bootrom 保護](https://hackaday.com/blog/page/413/?cat=en-CA)、[Paradise dump/restore 教學](https://ko-fi.com/s/d5742961cf)
 
@@ -64,12 +64,12 @@ Paradise 是 2025 年 7 月上市，主控為 Sonix SNC73410，雙核心 ARM Cor
 
 ## 里程碑與下一步
 
-- [ ] **M0 開案**：建 Cargo workspace 三個 crate，`tama-web` 能在瀏覽器顯示測試 framebuffer
-- [ ] **M1 Dump**：備份實機 flash 與存檔
+- [x] **M0 開案**：建 Cargo workspace 三個 crate，`tama-web` 能在瀏覽器顯示測試 framebuffer
+- [x] **M1 Dump**：備份實機 flash 與存檔
 - [ ] **M2 素材**：`tama-extract` 抽出第一批 sprite，網頁上能顯示
-- [ ] **M3 最小遊戲**：一隻寵物，餵食、清理、時間流逝、存檔
-- [ ] **M4 離線補算**：關頁再開，狀態正確推進
-- [ ] **M5 進化與事件**：資料驅動的進化樹與隨機事件
+- [x] **M3 最小遊戲**：一隻寵物，餵食、清理、時間流逝、存檔（畫面仍是除錯色塊）
+- [x] **M4 離線補算**：關頁再開，狀態正確推進
+- [ ] **M5 進化與事件**：資料驅動的進化樹與隨機事件（進化已完成，事件未做）
 - [ ] **M6 擴充**：小遊戲、更多角色、自繪素材
 
-開放問題：畫面解析度與色深、音效格式、存檔要不要和實機互通，等 dump 之後確認。
+開放問題：畫面解析度與色深、音效格式已確認（128×128 RGB565、單音蜂鳴器），見 `docs/game-spec.md`。存檔是否和實機互通尚未決定。

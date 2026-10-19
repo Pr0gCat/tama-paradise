@@ -4,6 +4,7 @@
 //! The platform supplies `now`; the simulation advances in ≤60 s chunks like the original.
 
 use crate::data::{CharDef, Item, KIND_MEAL, KIND_SNACK};
+use serde::{Deserialize, Serialize};
 
 /// Request ids (EM_REQ_*), same numbering as the firmware.
 pub mod req {
@@ -51,7 +52,7 @@ pub const CHUNK: u64 = 60;
 pub const MAX_CHUNKS: u64 = 1440;
 const DAY: u64 = 86_400;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Cond {
     Normal,
     Cold,
@@ -61,13 +62,13 @@ pub enum Cond {
     Dead,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeathCause {
     Illness,
     Hunger,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pet {
     pub def: CharDef,
     pub cond: Cond,

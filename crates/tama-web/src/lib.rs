@@ -14,6 +14,16 @@ impl Tama {
         Ok(Tama(Game::new(data, seed)))
     }
 
+    /// Restore from a string made by `save()`. Advance afterwards to catch up offline time.
+    pub fn load(data: &str, save: &str) -> Result<Tama, JsError> {
+        let data = Data::from_json(data).map_err(|e| JsError::new(&e.to_string()))?;
+        Game::load(data, save).map(Tama).map_err(|e| JsError::new(&e.to_string()))
+    }
+
+    pub fn save(&self) -> String {
+        self.0.save()
+    }
+
     pub fn width() -> usize {
         tama_core::WIDTH
     }

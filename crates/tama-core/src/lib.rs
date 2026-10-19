@@ -1,8 +1,9 @@
 //! Pure game logic: button input + wall-clock time in, framebuffer out.
 
 pub mod data;
-mod evolve;
+pub(crate) mod evolve;
 pub mod pet;
+pub mod save;
 
 use data::{Data, KIND_MEAL};
 use pet::{Cond, Pet};
@@ -31,6 +32,10 @@ impl Game {
     pub fn new(data: Data, seed: u32) -> Self {
         let mut pet = Pet::new(data.character(1000).expect("egg 1000 in data"), seed);
         pet.field = data::attr_to_field(data.rom_type).unwrap_or(0);
+        Game::with_pet(data, pet)
+    }
+
+    fn with_pet(data: Data, pet: Pet) -> Self {
         let mut g = Game { data, pet, fb: vec![0; WIDTH * HEIGHT * 4] };
         g.render();
         g

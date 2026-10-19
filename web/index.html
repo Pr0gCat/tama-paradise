@@ -14,20 +14,37 @@
 <script type="module">
   import init, { Tama } from "./pkg/tama_web.js";
   await init();
-  // ?speed=60 runs the pet clock 60x faster for testing.
-  const speed = Number(new URLSearchParams(location.search).get("speed")) || 1;
+  const params = new URLSearchParams(location.search);
+  // ?speed=60 runs the pet clock 60x faster for testing (kept in its own save slot).
+  const speed = Number(params.get("speed")) || 1;
+  const KEY = speed === 1 ? "tama-save" : "tama-save-speed";
+  const store = {
+    get() { try { return localStorage.getItem(KEY); } catch { return null; } },
+    set(v) { try { localStorage.setItem(KEY, v); } catch {} },
+  };
+  if (params.has("reset")) store.set("");
   const localSecs = () => Date.now() / 1000 - new Date().getTimezoneOffset() * 60;
   const t0 = localSecs(), wall0 = performance.now();
   const data = await (await fetch("game.json")).text();
-  const game = new Tama(data, Date.now() >>> 0);
-  game.advance_to(t0);
+  let game;
+  const saved = store.get();
+  if (saved) {
+    try { game = Tama.load(data, saved); } catch (e) { console.warn("save ignored:", e); }
+  }
+  game ??= new Tama(data, Date.now() >>> 0);
+  game.advance_to(t0); // catches up the time the page was closed (max 24 h)
+  const save = () => store.set(game.save());
+  addEventListener("pagehide", save);
+  document.addEventListener("visibilitychange", () => document.hidden && save());
+  setInterval(save, 10_000);
   const w = Tama.width(), h = Tama.height(), tickMs = Tama.tick_ms();
   const c = document.getElementById("c");
   c.width = w; c.height = h;
   const ctx = c.getContext("2d");
   const keys = { a: 0, s: 1, d: 2 };
-  document.querySelectorAll("button").forEach(el => el.onclick = () => game.press(+el.dataset.b));
-  addEventListener("keydown", e => e.key in keys && game.press(keys[e.key]));
+  const press = b => { game.press(b); save(); };
+  document.querySelectorAll("button").forEach(el => el.onclick = () => press(+el.dataset.b));
+  addEventListener("keydown", e => e.key in keys && press(keys[e.key]));
   let last = performance.now(), acc = 0;
   function frame(now) {
     acc += now - last; last = now;
