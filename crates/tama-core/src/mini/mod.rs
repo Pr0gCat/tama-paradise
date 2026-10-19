@@ -134,6 +134,8 @@ pub mod lab05;
 pub mod lab06;
 pub mod together01;
 pub mod together04;
+pub mod together06;
+pub mod together07;
 
 use crate::data::{Data, MiniData};
 use crate::motion::{Draw, Node};

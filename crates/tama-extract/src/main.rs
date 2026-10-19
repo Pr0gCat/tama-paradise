@@ -494,6 +494,9 @@ fn main() {
                     w.chunks(3).map(|o| [o[0] as i16, o[1] as i16, o[2] as i16]).collect()
                 })
                 .collect(),
+            together07_maps: (0..3)
+                .map(|m| (0..19).map(|r| String::from_utf8_lossy(&dump[xip(0x1009_c7a8) + m * 0x156 + r * 18..][..18]).into_owned()).collect())
+                .collect(),
             together01_commands: words(0x100a_10c2, 60).chunks(20).map(|s| std::array::from_fn(|i| [s[2 * i] as u8, s[2 * i + 1] as u8])).collect(),
             together04_cards: words(0x1009_1ece, 30).chunks(3).map(|c| std::array::from_fn(|i| c[i] as u8)).collect(),
             together04_pet_slot: words(0x1009_1f94, 5).into_iter().map(|w| w as u8).collect(),

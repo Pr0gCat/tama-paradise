@@ -263,6 +263,10 @@ pub struct MiniData {
     /// Game 06: `[level*3 + n]` courses of objects `[x distance, y, type]` (type 0 obstacle, 9 coin), sorted by x.
     #[serde(default)]
     pub lab06_courses: Vec<Vec<[i16; 3]>>,
+    /// Play-together game 07: 3 fields of 19 rows × 18 cells ('w' wall, 'S' start, 'T' shirotama,
+    /// 'G' bump creature, ' ' floor), XIP 0x1009c7a8.
+    #[serde(default)]
+    pub together07_maps: Vec<Vec<String>>,
     /// Together game 01 (FLAGS): 3 sequences × 10 commands `[feint 1..4, answer 1..4]` (XIP 0x100a10c2).
     #[serde(default)]
     pub together01_commands: Vec<[[u8; 2]; 10]>,

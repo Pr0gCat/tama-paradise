@@ -50,7 +50,7 @@ const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3
 /// Play-together menu (09-minigames-together §2.1): title and game number.
 const TOGETHER_GAMES: [(u16, u8); 4] = [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7)];
 /// Play-together games playable so far.
-const TOGETHER_IMPLEMENTED: &[u8] = &[4, 1];
+const TOGETHER_IMPLEMENTED: &[u8] = &[4, 1, 6, 7];
 /// Games playable so far.
 const IMPLEMENTED: &[u8] = &[0, 1, 2, 3, 4, 5, 6];
 
@@ -248,6 +248,11 @@ impl Game {
                     // Each together game registers here: game number → constructor (n = play count).
                     4 => Box::new(crate::mini::together04::Together04::new(mini.together04_cards.clone(), mini.together04_pet_slot.clone(), n)),
                     1 => Box::new(crate::mini::together01::Together01::new(mini.together01_commands.get(n % 3).copied().unwrap_or([[1, 4]; 10]))),
+                    6 => Box::new(crate::mini::together06::Together06::new()),
+                    7 => Box::new(crate::mini::together07::Together07::new(
+                        mini.together07_maps.get(n % 3).cloned().unwrap_or_default(),
+                        self.pet.field,
+                    )),
                     _ => return self.open(Action::Together),
                 };
                 Scene::Mini { session: crate::mini::Session::together(game), lab: None }
