@@ -416,7 +416,7 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 設定存在 `Pet`：`volume`（預設 2）、`brightness`（1）、`date_order`（0）、`clock_offset`。音量在 `Game::take_sounds` 依 0/30/60/100 % 縮放（0 = 不出聲）；亮度由網頁以 canvas `brightness()` 濾鏡套用（背光 duty 15/30/45/55 映到 0.67–1.0，ponytail：螢幕上保持可讀）。
 - DATE/TIME：瀏覽器時鐘不能改，所以存成相對平台時鐘的位移；寫入時 `last` 同時改成新時間（不補跑）。C 單按回上一欄（原版 C 連按兩下、按住 C 時 A = −1，重製省略；UP/DN 可加減）。
 - 星球層閒置時鐘：200 frames 沒輸入時畫 0xfc–0x10d。
-- DELETE（0x6f）只在冷開機（換電池）出現；網頁沒有冷開機，RESET ALL 對應網址參數 `?reset`。
+- DELETE（0x6f）只在冷開機（換電池）出現；網頁用網址參數 `?reset`（有存檔時）當冷開機：CONTINUE → CORRECTTIME → HOME（年欄取消回 DELETE）；RESET ALL → 「REALLY DELETE?」預設 NO → YES 全部清掉 → 新遊戲 LANGUAGE。C 無作用。
 
 ---
 

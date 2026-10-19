@@ -82,7 +82,6 @@
     get() { try { return localStorage.getItem(KEY); } catch { return null; } },
     set(v) { try { localStorage.setItem(KEY, v); } catch {} },
   };
-  if (params.has("reset")) store.set("");
   const localSecs = () => Date.now() / 1000 - new Date().getTimezoneOffset() * 60;
   // ?hours=N shifts the clock for testing (debug only).
   const shift = params.has("debug") ? (Number(params.get("hours")) || 0) * 3600 : 0;
@@ -94,6 +93,8 @@
     try { game = Tama.load(data, saved); } catch (e) { console.warn("save ignored:", e); }
   }
   game ??= new Tama(data, Date.now() >>> 0);
+  // ?reset = the original's cold start (new battery): CONTINUE or RESET ALL.
+  if (params.has("reset") && saved) game.begin_delete();
   game.advance_to(t0); // catches up the time the page was closed (max 24 h)
   const save = () => store.set(game.save());
   // ?debug: window.tama.get() returns the save as an object, window.tama.set(obj) replaces the game.

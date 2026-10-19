@@ -104,7 +104,11 @@ impl Game {
             | Action::Brightness
             | Action::DateTime
             | Action::DateOrder
-            | Action::SetDateOrder(_) => self.open_system(a),
+            | Action::SetDateOrder(_)
+            | Action::Delete
+            | Action::Continue
+            | Action::ResetAllAsk
+            | Action::ResetAll => self.open_system(a),
             Action::SettingsAtTime => self.settings_at_time(),
             Action::Lab => Scene::Menu {
                 items: vec![

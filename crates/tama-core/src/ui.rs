@@ -211,6 +211,11 @@ pub(crate) enum Action {
     DateTime,
     DateOrder,
     SetDateOrder(u8),
+    /// DELETE (cold start with a save): CONTINUE (set the clock), RESET ALL (asks first).
+    Delete,
+    Continue,
+    ResetAllAsk,
+    ResetAll,
     /// INFORMATION submenu (cursor on MISSION when coming back from it), USER INFO, and its
     /// edit menu.
     Info,
@@ -458,10 +463,12 @@ pub(crate) enum Scene {
         level: u8,
         idle: u16,
     },
-    /// SETTINGS → TIME → DATE/TIME: year, month, day, hour 1–12, minute, AM/PM; field `pos`.
+    /// SETTINGS → TIME → DATE/TIME (or CORRECTTIME after DELETE's CONTINUE, `boot`): year,
+    /// month, day, hour 1–12, minute, AM/PM; field `pos`.
     Clock {
         vals: [u16; 6],
         pos: u8,
+        boot: bool,
     },
     /// INFORMATION → USER INFO: planet, days and points; egg-bang day; birthday.
     UserInfo {
@@ -593,7 +600,7 @@ impl Game {
             Scene::EvolvePoints { t } => self.update_evolve_points(t, pressed),
             Scene::UserInfo { page } => self.update_user_info(page, pressed),
             Scene::Level { bright, level, idle } => self.update_level(bright, level, idle, pressed),
-            Scene::Clock { vals, pos } => self.update_clock(vals, pos, pressed),
+            Scene::Clock { vals, pos, boot } => self.update_clock(vals, pos, boot, pressed),
             Scene::LabResult { stars, points, nodes, t } => self.update_lab_result(stars, points, nodes, t, pressed),
             Scene::Dying { node } => self.update_dying(node),
             Scene::Graveyard { nodes } => self.update_graveyard(nodes),

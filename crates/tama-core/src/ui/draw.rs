@@ -204,7 +204,7 @@ impl Game {
                 self.draw_level(*bright, *level);
                 true
             }
-            Scene::Clock { vals, pos } => {
+            Scene::Clock { vals, pos, .. } => {
                 self.draw_clock(vals, *pos);
                 true
             }

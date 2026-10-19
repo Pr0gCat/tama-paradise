@@ -56,6 +56,11 @@ impl Tama {
         self.0.advance_to(now as u64);
     }
 
+    /// The cold-start DELETE menu (CONTINUE / RESET ALL).
+    pub fn begin_delete(&mut self) {
+        self.0.begin_delete();
+    }
+
     /// SETTINGS → BRIGHTNESS level 0–3 (the original's backlight).
     pub fn brightness(&self) -> u8 {
         self.0.brightness()

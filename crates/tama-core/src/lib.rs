@@ -360,6 +360,11 @@ impl Game {
         sounds.into_iter().map(|(id, v)| (id, (v as u32 * master / 100) as u8)).collect()
     }
 
+    /// DELETE: what the original shows on a cold start with a save (CONTINUE / RESET ALL).
+    pub fn begin_delete(&mut self) {
+        self.scene = self.open(ui::Action::Delete);
+    }
+
     /// BRIGHTNESS level 0–3 (the original's backlight), for the platform to apply.
     pub fn brightness(&self) -> u8 {
         self.pet.brightness

@@ -24,6 +24,10 @@ pub(crate) const CLOCK_IDLE: u16 = 200;
 /// Sound level 0–3 → master volume % (`snd_set_master` 0x10030bb4).
 pub(crate) const MASTER_VOLUME: [u32; 4] = [0, 30, 60, 100];
 const YEARS: (u16, u16) = (2025, 2079);
+/// DELETE texts: CONTINUE, RESET ALL, REALLY DELETE?
+const CONTINUE: u16 = 80;
+const RESET_ALL: u16 = 81;
+const REALLY_DELETE: u16 = 83;
 
 mod elem {
     /// SOUND: background, speaker chick, level bar (frame = level), mute cross.
@@ -76,7 +80,25 @@ impl Game {
                 self.time_menu(1)
             }
             Action::SettingsTimeDisplay => self.time_menu(1),
-            Action::DateTime => {
+            // DELETE (`delete_menu_tick` 0x10038d24): C does nothing.
+            Action::Delete => Scene::Menu {
+                items: vec![(CONTINUE, Some(Action::Continue)), (RESET_ALL, Some(Action::ResetAllAsk))],
+                idx: 0,
+                back: Some(Action::Delete),
+            },
+            Action::ResetAllAsk => {
+                Scene::Ask { text: REALLY_DELETE, yes: false, on_yes: Action::ResetAll, back: Action::Delete }
+            }
+            // Everything goes (language, birthday, planet, settings too), then the new-game setup.
+            Action::ResetAll => {
+                let (seed, held) = (self.rand(), self.held);
+                *self = Game::new(self.data.clone(), seed);
+                // The confirming key is still down; it must not also answer the LANGUAGE menu.
+                self.held = held;
+                self.begin_intro();
+                std::mem::replace(&mut self.scene, Scene::Home)
+            }
+            Action::DateTime | Action::Continue => {
                 let now = self.pet.last.unwrap_or(0);
                 let (y, m, d) = date(now);
                 let h = (now % 86_400 / 3600) as u16;
@@ -88,7 +110,8 @@ impl Game {
                     (now % 3600 / 60) as u16,
                     h / 12,
                 ];
-                Scene::Message { text: SET_DATE_TIME, then: Box::new(Scene::Clock { vals, pos: 0 }) }
+                let boot = a == Action::Continue;
+                Scene::Message { text: SET_DATE_TIME, then: Box::new(Scene::Clock { vals, pos: 0, boot }) }
             }
             _ => Scene::Home,
         }
@@ -154,7 +177,7 @@ impl Game {
     /// DATE/TIME (`settings_clock_update` 0x1004f7d8): year, month, day, hour, minute, AM/PM in
     /// turn; B/PUSH confirms a field, C goes back one (leaves from the year). The new time
     /// starts without catching up the pet (`last_tick` is set too).
-    pub(super) fn update_clock(&mut self, mut vals: [u16; 6], pos: u8, pressed: u8) -> Scene {
+    pub(super) fn update_clock(&mut self, mut vals: [u16; 6], pos: u8, boot: bool, pressed: u8) -> Scene {
         let p = pos as usize;
         let (lo, hi) = match p {
             0 => YEARS,
@@ -171,15 +194,15 @@ impl Game {
         vals[p] = stepped;
         if pressed & C != 0 {
             self.sfx(2, 100);
-            return if p == 0 { self.time_menu(0) } else { Scene::Clock { vals, pos: pos - 1 } };
+            return if p == 0 { self.clock_exit(boot, false) } else { Scene::Clock { vals, pos: pos - 1, boot } };
         }
         if pressed & (B | PUSH) == 0 {
-            return Scene::Clock { vals, pos };
+            return Scene::Clock { vals, pos, boot };
         }
         self.sfx(1, 100);
         vals[2] = vals[2].min(days_in_month(vals[0], vals[1]));
         if p < 5 {
-            return Scene::Clock { vals, pos: pos + 1 };
+            return Scene::Clock { vals, pos: pos + 1, boot };
         }
         let day = days_from_civil(vals[0] as i64, vals[1] as u32, vals[2] as u32);
         let hour = (vals[3] % 12 + 12 * vals[5]) as i64;
@@ -187,7 +210,17 @@ impl Game {
         let now = self.pet.last.unwrap_or(0) as i64;
         self.pet.clock_offset += t - now;
         self.pet.last = Some(t as u64);
-        self.time_menu(0)
+        self.clock_exit(boot, true)
+    }
+
+    /// Leaving the clock editor: DATE/TIME back to the TIME menu; CORRECTTIME back to DELETE when
+    /// cancelled, else on to HOME.
+    fn clock_exit(&mut self, boot: bool, done: bool) -> Scene {
+        match (boot, done) {
+            (false, _) => self.time_menu(0),
+            (true, false) => self.open(Action::Delete),
+            (true, true) => Scene::Home,
+        }
     }
 
     pub(super) fn draw_clock(&mut self, vals: &[u16; 6], pos: u8) {
@@ -318,6 +351,41 @@ mod tests {
         g.frame(NOON, 0);
         assert_eq!(g.pet.last, Some(t), "the platform's clock is shifted from now on");
         assert_eq!(g.pet.onaka, onaka, "no catch-up");
+    }
+
+    #[test]
+    fn delete_continues_or_resets_everything() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.points = 500;
+        g.pet.lang = 3;
+        g.scene = g.open(Action::Delete);
+        press(&mut g, C);
+        assert!(matches!(g.scene, Scene::Menu { .. }), "no way out");
+        press(&mut g, A); // RESET ALL
+        press(&mut g, B);
+        press(&mut g, B); // NO is selected
+        assert_eq!(g.pet.points, 500);
+        assert!(matches!(&g.scene, Scene::Menu { idx: 0, .. }));
+        press(&mut g, A);
+        press(&mut g, B);
+        press(&mut g, A); // YES
+        g.frame(NOON, B);
+        g.frame(NOON, B); // still held
+        g.frame(NOON, 0);
+        assert_eq!((g.pet.points, g.pet.lang, g.pet.def.id), (0, 1, 1000));
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items.len() == 9), "LANGUAGE");
+
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.scene = g.open(Action::Continue);
+        press(&mut g, B); // the notice
+        press(&mut g, C);
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == CONTINUE), "back to DELETE");
+        press(&mut g, B);
+        press(&mut g, B);
+        for _ in 0..6 {
+            press(&mut g, B);
+        }
+        assert!(matches!(g.scene, Scene::Home));
     }
 
     #[test]
