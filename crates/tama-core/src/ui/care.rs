@@ -28,7 +28,7 @@ impl Game {
     /// End credits at planet rank 10, with their song (melody 0x54).
     pub(crate) fn credits(&mut self, then: Scene) -> Scene {
         self.sfx(0x54, 100);
-        let script = if self.lang == 1 { script::CREDITS_EN } else { script::CREDITS };
+        let script = if self.pet.lang == 1 { script::CREDITS_EN } else { script::CREDITS };
         Scene::Credits { node: Node::new(script), then: Box::new(then) }
     }
 

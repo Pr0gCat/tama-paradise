@@ -65,8 +65,6 @@ pub struct Game {
     draws: Vec<Draw>,
     scene: Scene,
     pub level: Level,
-    /// String table index (`data::LANGS`), 1 = English.
-    pub lang: u8,
     /// Sounds started since the last `take_sounds`: (melody id, volume 0–100).
     sounds: Vec<(u16, u8)>,
     /// Minute of the last calendar-event check.
@@ -122,7 +120,6 @@ impl Game {
             draws: Vec::new(),
             scene: Scene::Home,
             level: Level::Pet,
-            lang: 1,
             sounds: Vec::new(),
             event_minute: 0,
             push_frames: 0,

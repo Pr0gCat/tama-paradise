@@ -200,6 +200,9 @@ pub(crate) enum Action {
     Settings,
     EditBirthday,
     EditPlanetName,
+    /// New-game setup: the language list and a chosen language.
+    IntroLanguage,
+    IntroLang(u8),
     ConnectPlaydate,
     ConnectGifts,
     GiftItem(u16),
@@ -456,7 +459,7 @@ impl Game {
         let s = self
             .data
             .strings
-            .get(self.lang as usize)
+            .get(self.pet.lang as usize)
             .or_else(|| self.data.strings.get(1))
             .and_then(|t| t.get(id as usize))
             .cloned()

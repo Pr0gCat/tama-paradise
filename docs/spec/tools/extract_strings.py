@@ -7,7 +7,7 @@ usage: python3 -I extract_strings.py DUMP.bin cjk_charset.txt OUT.csv
 Glyph code -> text:
   1..0x1e0   : char code stored in font 1 glyph table (data pack table 1, font #1, u16 per glyph;
                Shift-JIS for Japanese/full-width, ASCII for Latin). Accented Latin glyphs only carry
-               their base letter there, so accents are lost (marked with U+0301 after the letter).
+               their base letter there; ACCENTED (read off the font sprite's pixels) gives the letter.
   >= 0x1e1   : cjk_charset[code - 0x1e1] (2350 Hangul, Zhuyin, circled ideographs, ~6800 Hanzi)
   0xf000     : newline, 0xf001: page break, other 0xf0xx: control/placeholder -> {Fxxx}
 """
@@ -46,6 +46,10 @@ def tables(buf):
         yield [h[h[i + 1]:h[i + 2]] for i in range(n)]         # h[1..n+1] = offsets (+ end)
 
 
+# Accented capitals and signs of font sprite 17 (glyph code -> character), read off the pixels.
+ACCENTED = dict(zip(range(400, 430), 'ÀÁÂÃÄÆÇÉÈÊËÎÏÓÒÔÕÖŒÙÚÛÜŸÍÌÑ¿¡º'))
+
+
 def decode(s, gm, cjk):
     out = []
     for c in s:
@@ -55,8 +59,7 @@ def decode(s, gm, cjk):
         elif c >= 0xf000: out.append('{F%03X}' % (c & 0xfff))
         elif c >= 0x1e1: out.append(cjk[c - 0x1e1] if c - 0x1e1 < len(cjk) else '{%04X}' % c)
         else:
-            ch = gm.get(c, '{%04X}' % c)
-            out.append(ch + '́' if 0x18e <= c < 0x1e1 and ch.isalpha() else ch)  # accented Latin
+            out.append(ACCENTED.get(c) or gm.get(c, '{%04X}' % c))
     return ''.join(out)
 
 
@@ -66,7 +69,8 @@ def main():
     gm = glyph_map(buf)
     tbls = list(tables(buf))
     assert len(tbls) == 9 and all(len(t) == len(tbls[0]) for t in tbls)
-    # self-check: string 0 is "information" in every Latin table, 정보/信息 in ko/zh
+    # self-check: language names (0x58 FRANÇAIS, 0x5b ESPAÑOL, 0x5a PORTUGUÊS), 정보/信息 in ko/zh
+    assert [decode(tbls[1][i], gm, cjk) for i in (0x58, 0x5a, 0x5b)] == ['FRANÇAIS', 'PORTUGUÊS', 'ESPAÑOL']
     assert decode(tbls[8][0], gm, cjk) == '정보' and decode(tbls[7][0], gm, cjk) == '信息'
     with open(sys.argv[3], 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)

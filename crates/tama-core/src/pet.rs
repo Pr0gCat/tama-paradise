@@ -216,6 +216,9 @@ pub struct Pet {
     /// Planet name as font glyph codes (`0x18000c58`, up to 8), set in SETTINGS.
     #[serde(default)]
     pub planet_name: Vec<u16>,
+    /// Language (`data::LANGS` index; the firmware keeps it in 0x18000c6a bits 9–12).
+    #[serde(default = "english")]
+    pub lang: u8,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -244,6 +247,10 @@ pub struct Pet {
 }
 
 pub const NO_COLOR: u8 = 0x1f;
+
+fn english() -> u8 {
+    1
+}
 
 fn no_color() -> u8 {
     NO_COLOR
@@ -309,6 +316,7 @@ impl Pet {
             together_plays: [0; 8],
             birthday: None,
             planet_name: Vec::new(),
+            lang: 1,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,

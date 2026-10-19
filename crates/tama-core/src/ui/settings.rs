@@ -5,17 +5,36 @@ use super::*;
 /// New-game setup texts: NAME YOUR PLANET, and the goal naming it.
 const INTRO_NAME: u16 = 100;
 const INTRO_GOAL: u16 = 101;
+/// Language names, Japanese first (0x56–0x5e, in `data::LANGS` order).
+const LANGUAGE_NAMES: u16 = 0x56;
 
 /// Days in each month (February allows the 29th).
 const MONTH_DAYS: [u8; 12] = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 impl Game {
     /// New-game setup (after the language and clock): name the planet, then the birthday.
+    /// New-game setup in the firmware's order (`FUN_10038250`..`FUN_10039034`): LANGUAGE, then
+    /// BIRTHDAY, then PLANET NAME (the clock comes from the platform).
     pub fn begin_intro(&mut self) {
         // The first-start jingle (PSID_INITIAL_LOGO `FUN_10038250`).
         self.sfx(SND_FIRST_START, 100);
-        let then = Scene::PlanetName { chars: [crate::screen::SPACE; 8], pos: 0, intro: true };
-        self.scene = Scene::Message { text: INTRO_NAME, then: Box::new(then) };
+        self.scene = self.open(Action::IntroLanguage);
+    }
+
+    pub(super) fn open_intro(&mut self, a: Action) -> Scene {
+        match a {
+            // LANGUAGE (`FUN_10038c24`): a ring menu of the nine language names.
+            Action::IntroLanguage => Scene::Menu {
+                items: (0..9u8).map(|i| (LANGUAGE_NAMES + i as u16, Some(Action::IntroLang(i)))).collect(),
+                idx: self.pet.lang as usize,
+                back: Some(Action::IntroLanguage),
+            },
+            Action::IntroLang(i) => {
+                self.pet.lang = i;
+                Scene::Birthday { m: 1, d: 1, pos: 0, intro: true }
+            }
+            _ => Scene::Home,
+        }
     }
 
     pub(super) fn update_planet_name(
@@ -42,9 +61,8 @@ impl Game {
                 let len = chars.iter().rposition(|&c| c != crate::screen::SPACE).map_or(0, |i| i + 1);
                 self.pet.planet_name = chars[..len].to_vec();
                 if intro {
-                    // "MAKE <planet> PROSPEROUS!", then the birthday.
-                    let next = Scene::Birthday { m: 1, d: 1, pos: 0, intro: true };
-                    return Scene::Message { text: INTRO_GOAL, then: Box::new(next) };
+                    // "MAKE <planet> PROSPEROUS!", then the game starts.
+                    return Scene::Message { text: INTRO_GOAL, then: Box::new(Scene::Home) };
                 }
                 return self.open(Action::Settings);
             }
@@ -70,7 +88,8 @@ impl Game {
         } else if pressed & (B | PUSH) != 0 {
             self.pet.birthday = Some((m, d));
             if intro {
-                Scene::Home
+                let name = Scene::PlanetName { chars: [crate::screen::SPACE; 8], pos: 0, intro: true };
+                Scene::Message { text: INTRO_NAME, then: Box::new(name) }
             } else {
                 self.open(Action::Settings)
             }
@@ -107,13 +126,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_game_names_the_planet_then_asks_the_birthday() {
+    fn new_game_asks_language_then_birthday_then_planet_name() {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         g.begin_intro();
         let press = |g: &mut Game, b: u8| {
             g.frame(86_400 * 3 + 12 * 3600, b);
             g.frame(86_400 * 3 + 12 * 3600, 0);
         };
+        assert!(matches!(&g.scene, Scene::Menu { idx: 1, .. }), "LANGUAGE, English selected");
+        press(&mut g, C);
+        assert!(matches!(&g.scene, Scene::Menu { .. }), "no way out of the setup");
+        press(&mut g, A); // FRANÇAIS
+        press(&mut g, B);
+        assert_eq!(g.pet.lang, 2);
+        press(&mut g, B); // month
+        press(&mut g, B); // day
+        assert_eq!(g.pet.birthday, Some((1, 1)));
         press(&mut g, B); // NAME YOUR PLANET
         press(&mut g, C);
         assert!(matches!(g.scene, Scene::PlanetName { intro: true, .. }), "no way back");
@@ -124,9 +152,6 @@ mod tests {
         assert_eq!(g.pet.planet_name, vec![318]);
         assert!(matches!(g.scene, Scene::Message { text: INTRO_GOAL, .. }));
         press(&mut g, B);
-        press(&mut g, B);
-        press(&mut g, B);
-        assert_eq!(g.pet.birthday, Some((1, 1)));
         assert!(matches!(g.scene, Scene::Home));
     }
 }

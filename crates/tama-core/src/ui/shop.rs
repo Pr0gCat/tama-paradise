@@ -317,6 +317,7 @@ impl Game {
                 idx: 0,
                 back: Some(Action::Lab),
             },
+            Action::IntroLanguage | Action::IntroLang(_) => self.open_intro(a),
             Action::EditPlanetName => {
                 let mut chars = [crate::screen::SPACE; 8];
                 for (c, &g) in chars.iter_mut().zip(&self.pet.planet_name) {
