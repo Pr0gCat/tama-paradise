@@ -513,11 +513,11 @@
 | 2 | 角色動畫：54 個動畫編號各自的用途（睡覺、吃飯、開心…）、動畫如何隨時間換幀、部件型別 16/17 的顯示條件（idle 姿勢已解出） | 角色動作 | `chara_draw_parts` 0x100075c4 的呼叫者 |
 | 3 | ~~cond = 1 的意義~~ **已解 [確認]**：託給保母（HELP_SITTER `FUN_1004d304` 設 cond=1，300 點）；19:00 結束並 gokigen −5，或在保母畫面按鍵 → END TAMA SITTING? 提前結束 | 小 | 01-care §5、08-care-ui §2.18 |
 | 4 | ~~玩家如何回應 EVOL_SUPPORT~~ **已解 [確認]**：細胞層（HOME 狀態 0x1a）任意鍵 → EVENT_EVOL_SUPPORT 0x4b（4 個 dominant 區域 icon 逐一吸收）→ EVENT_EVOLUTION 0x4c `req_done(0x13)` | 嬰兒期進化 | 02-evolution §2.4、08-care-ui §2.17 |
-| 5 | ~~Gender 欄位的用途~~ 已解：def+0x10 是旗標，bit0 可吃別人、bit1 可被吃、bit2 不可結婚（`FUN_1008b53c` HOW PLAY 5/6 與結婚判斷）[確認]；第二 ID 60000 系列仍未查 | 外觀、配對 | 搜尋讀取 0x18000cfe 的程式 |
+| 5 | ~~Gender 欄位的用途~~ 已解：def+0x10 是旗標，bit0 可吃別人、bit1 可被吃、bit2 不可結婚（`FUN_1008b53c` HOW PLAY 5/6 與結婚判斷）[確認]；第二 ID（`g_tama_chara_id2` 0x18000cfe）只在產生 Lab QR 時讀取（`FUN_10017f44`）：第 1 代 = 自己的 TamaID，之後的世代 = 60000（或配對時 50% 取伴侶），用來讓手機 App 判斷外觀來源；遊戲本身不讀 [確認] | 外觀、配對 | — |
 | 6 | ~~急救、臨終畫面的觸發與互動~~ **已解 [確認]**：急救 0x54 = 寵物層狀態 0x19 任意鍵；臨終 0x49 / 墓碑 0x4a 由 HOME 路由自動進入；大往生的前代會救回臨終寵物一次；墓碑頁按住 C + A → NEW EGG。tween 曲線與急救暫停逾時秒數 [未解] | 死亡流程 UI | 08-care-ui §2.13–2.16 |
 | 7 | 文字插入碼：0xF003 = 星球名（字串 101「MAKE {F003} PROSPEROUS!」，新遊戲取名後顯示）[確認，重製已代入]；英文表只用到 0xF003，其餘 0xF002–0xF00B 與歐語重音字形對照未查 | 在地化 | 字串繪製函式 |
 | 8 | 天氣值 0/1 的畫面、轉盤縮放的確切按鍵對應 | UI | HOME 場景 state machine 0x10039eb8 |
-| 9 | Lab QR payload 格式 | Lab 功能 | QRUID 相關函式 |
+| 9 | Lab QR payload（`FUN_10017f44` 0x10017f44，呼叫者 0x10042548 一帶）：`"%s%s%s"` = device_rand(0x18000c54)、QRUID1(0x1800168c，6 碼)、QRUID2(0x18001690，7 碼) 的 36 進位字串，再接 romtype(2 碼)、TamaID、第二 ID(4 碼)、顏色(1，0x1f→16)、planet rank(1)、朋友數(1)、亂數 % 0xb640(3)，全部 36 進位；之後用 flash 資產 1–3 的金鑰算 64 B 驗證值（`FUN_10069de0`）一起編成 QR [確認]。驗證演算法與金鑰用途未解，且需要 Tamagotchi Lab App 才能驗證——屬手機 App 互通，不是遊戲內容 | Lab App 互通 | `FUN_10069de0`、資產 1–3 |
 | 10 | 多數音效 ID 的觸發場景 | 音效 | 資料表裡的 sound id 欄位 |
 | 11 | ~~每日 +50 點屬於哪個畫面~~ **已解 [確認]**：LABOMENU→BOOK→MICROSCOPE→LAB CODE 輸入「NO DATA」碼（碼表 0x100a1660 的 29–59 筆）時每天一次 | 小 | 05-content §2.2、§2.4a |
 
