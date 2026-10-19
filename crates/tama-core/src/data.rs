@@ -197,6 +197,23 @@ pub struct Data {
 pub struct MiniData {
     /// Game 00: `[level*3 + n]` boards of rows × 6 holes (non-zero = a baby wakes), 24 rows read.
     pub lab00_boards: Vec<Vec<[i16; 6]>>,
+    /// Game 03: `[level*2 + n]` layouts of 76 rows `[lane, kind]` (lane −1 = empty), XIP 0x10093984.
+    #[serde(default)]
+    pub lab03_layouts: Vec<Vec<[i8; 2]>>,
+    /// Game 04: launch angle index `[level*3 + n][round]` (XIP 0x1009bb5c).
+    #[serde(default)]
+    pub lab04_launch: Vec<[u8; 5]>,
+    /// Game 04: prize brick 1–15 `[level*5 + n][round]` (XIP 0x10091d30).
+    #[serde(default)]
+    pub lab04_prize_brick: Vec<[u8; 5]>,
+    /// Game 04: prize character (ChrID) by play count (XIP 0x10093320).
+    #[serde(default)]
+    pub lab04_prize_chr: Vec<u16>,
+    /// 1024-step sine, Q12 (XIP 0x1009a968), and tan for 12-bit angles 0..=0x400, Q12 (XIP 0x1009cbd4).
+    #[serde(default)]
+    pub sin_q12: Vec<i16>,
+    #[serde(default)]
+    pub tan_q12: Vec<i32>,
 }
 
 impl Data {

@@ -64,7 +64,7 @@ impl Lab00 {
 }
 
 impl MiniGame for Lab00 {
-    fn update(&mut self, pressed: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
+    fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         for n in self.hole_nodes.iter_mut().chain([&mut self.bottle, &mut self.bg]) {
             n.tick(&data.motions);
             n.take_sounds(sounds);
@@ -180,7 +180,7 @@ mod tests {
         let mut s = Vec::new();
         for i in 0..frames {
             let p = if i == 0 { pressed } else { 0 };
-            g.update(p, &d, &mut s);
+            g.update(p, 0, &d, &mut s);
         }
     }
 
@@ -206,7 +206,7 @@ mod tests {
         let d = crate::evolve::tests::data();
         let mut r = None;
         for _ in 0..60 {
-            r = r.or(g.update(0, &d, &mut Vec::new()));
+            r = r.or(g.update(0, 0, &d, &mut Vec::new()));
         }
         assert_eq!(r, Some(1));
     }

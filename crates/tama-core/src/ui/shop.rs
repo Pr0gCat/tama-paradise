@@ -48,7 +48,7 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
 /// Games playable so far.
-const IMPLEMENTED: &[u8] = &[0];
+const IMPLEMENTED: &[u8] = &[0, 3, 4];
 
 impl Game {
     /// Run a menu action and return the scene it opens.
@@ -185,10 +185,18 @@ impl Game {
             Action::PlayLab(g, level) => {
                 let n = self.pet.mini_plays[g as usize];
                 self.pet.mini_plays[g as usize] = n.wrapping_add(1);
+                let (mini, l, n) = (&self.data.mini, level as usize, n as usize);
                 let game: Box<dyn crate::mini::MiniGame> = match g {
+                    3 => Box::new(crate::mini::lab03::Lab03::new(mini.lab03_layouts.get(l * 2 + n % 2).cloned().unwrap_or_default())),
+                    4 => Box::new(crate::mini::lab04::Lab04::new(
+                        l,
+                        mini.lab04_launch.get(l * 3 + n % 3).copied().unwrap_or([1; 5]),
+                        mini.lab04_prize_brick.get(l * 5 + n % 5).copied().unwrap_or([1; 5]),
+                        mini.lab04_prize_chr.get(n % 49).copied().unwrap_or(0),
+                    )),
                     _ => {
                         let boards = &self.data.mini.lab00_boards;
-                        let board = boards.get(level as usize * 3 + n as usize % 3).cloned().unwrap_or_default();
+                        let board = boards.get(l * 3 + n % 3).cloned().unwrap_or_default();
                         Box::new(crate::mini::lab00::Lab00::new(board))
                     }
                 };
