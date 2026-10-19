@@ -106,8 +106,11 @@ impl Screen {
                 let Some((f, sprite)) = glyph(fonts, c) else { continue };
                 let w = self.sprites.get(&sprite).map_or(16, |s| s.w as i32);
                 let pal = (palette > 0).then_some((sprite, palette));
-                // Glyph codes start at 1; frame 0 of the font sprite is glyph 1.
-                self.blit(sprite, c - 1, x + w / 2, y, 64, false, pal);
+                // Glyph codes start at 1; frame 0 of the font sprite is glyph 1. Narrow glyphs
+                // (negative width adjust, e.g. "I") sit mid-cell, so shift them by half the adjust
+                // to keep the gaps on both sides even.
+                let shift = f.adj.get(c as usize).copied().unwrap_or(0) as i32 / 2;
+                self.blit(sprite, c - 1, x + w / 2 + shift, y, 64, false, pal);
                 x += advance(f, c);
             }
             y += fonts.get(1).map_or(12, |f| f.line_height as i32 + 2);
