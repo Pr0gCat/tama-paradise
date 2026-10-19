@@ -257,6 +257,10 @@ impl Game {
 
     pub(crate) fn draw_support(&mut self, pet: &Node, round: u8, t: u16, busy: bool) {
         self.draw_field_bg();
+        // The baby's script draws the cell background, so the icons go on top of it.
+        let mut draws = Vec::new();
+        pet.draws(64, 64, &mut draws);
+        self.draw_list_of(&draws, None);
         let icon = AREA_ICONS[(self.pet.dominant_field() as usize).min(2)];
         for (r, &k) in SUPPORT_ORDER.iter().enumerate() {
             let e = self.ui_elem(elem::SUPPORT_ICONS[k]);
@@ -270,9 +274,6 @@ impl Game {
             let alpha = (64 - 64 * p.0 / p.1) as u8;
             self.screen.blit(icon, 0, x, y, alpha, false, None);
         }
-        let mut draws = Vec::new();
-        pet.draws(64, 64, &mut draws);
-        self.draw_list_of(&draws, None);
     }
 
     /// Graves after a death: the earlier graves stand still (frame 1 = old age).
