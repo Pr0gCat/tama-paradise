@@ -57,6 +57,8 @@ mod script {
     pub const SHOOTINGSTAR: u16 = 0x6ac;
     pub const DODODO: u16 = 0x64a;
     pub const RANK_UP: u16 = 0xc4;
+    pub const CREDITS: u16 = 0x16;
+    pub const CREDITS_EN: u16 = 0x17;
     /// Birthday cake; role 1 = a grazing tama of this field.
     pub const BIRTHDAY: u16 = 0x6b2;
     pub const UFO: u16 = 0x6ae;
@@ -224,6 +226,8 @@ pub(crate) enum Scene {
     Graves { idx: usize, back: Action },
     /// SETSUBI: choosing a slot for `toy` (0 = choosing a toy to put away).
     Setsubi { toy: u16, field: u8, area: u8, idx: usize },
+    /// End credits (`FUN_10058a0c`): any key or the end of the script goes on to `then`.
+    Credits { node: Node, then: Box<Scene> },
     /// Page 0: rank; page 1: the next goal.
     PlanetLv { page: u8 },
     HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
@@ -422,6 +426,9 @@ impl Game {
                     Scene::PlanetLv { page: 0 }
                 } else if pressed & (B | PUSH) != 0 && page == 0 && self.pet.rank < 10 {
                     Scene::PlanetLv { page: 1 }
+                } else if pressed & (B | PUSH) != 0 && page == 0 {
+                    let menu = self.open(Action::SpaceMenu);
+                    self.credits(menu)
                 } else if pressed_any(pressed) {
                     self.open(Action::SpaceMenu)
                 } else {
@@ -506,6 +513,11 @@ impl Game {
                 }
             }
             Scene::Play(p) => self.update_play(p, pressed),
+            Scene::Credits { mut node, then } => {
+                node.tick(&self.data.motions);
+                node.take_sounds(&mut self.sounds);
+                if node.is_finished() || pressed_any(pressed) { *then } else { Scene::Credits { node, then } }
+            }
             Scene::Effects { cat, idx } => match self.pet.complete_effect() {
                 Some(id) => {
                     let k = req::EFFECTS.iter().position(|&r| r == id).unwrap_or(0);
@@ -544,13 +556,21 @@ impl Game {
         };
     }
 
+    /// End credits at planet rank 10, with their song (melody 0x54).
+    pub(crate) fn credits(&mut self, then: Scene) -> Scene {
+        self.sfx(0x54, 100);
+        let script = if self.lang == 1 { script::CREDITS_EN } else { script::CREDITS };
+        Scene::Credits { node: Node::new(script), then: Box::new(then) }
+    }
+
     /// Rank-up and mission-clear notices when the pet is back at HOME.
     pub(crate) fn check_notices(&mut self) {
         if let Some((old, r)) = self.pet.take_rank_up() {
             // The planet hops from its old look to the new one (anim 0xc4), then CONGRATS.
             let text = if r < 10 { 0x8e + r as u16 - 1 } else { 0x97 };
             self.planet_ranks = Some([old, r]);
-            let then = Scene::Message { text, then: Box::new(Scene::Home) };
+            let after = if r >= 10 { self.credits(Scene::Home) } else { Scene::Home };
+            let then = Scene::Message { text, then: Box::new(after) };
             self.scene = self.play(&[script::RANK_UP], (0, OnPress::None), None, then);
         } else if !self.pet.claim_missions().is_empty() {
             self.sfx(1, 100);
@@ -897,6 +917,12 @@ impl Game {
             }
             Scene::Prompt { wake, yes } => {
                 self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(if *wake { text::WAKE_UP } else { text::TIME_TO_SLEEP }));
+                true
+            }
+            Scene::Credits { node, .. } => {
+                let mut draws = Vec::new();
+                node.draws(64, 64, &mut draws);
+                self.draw_list_of(&draws, None);
                 true
             }
             Scene::Play(p) => {

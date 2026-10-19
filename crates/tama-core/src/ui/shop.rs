@@ -598,4 +598,22 @@ mod tests {
         assert!(matches!(g.scene, super::Scene::Play(_)), "rank-up animation");
         assert_eq!(g.planet_ranks, Some([1, 4]));
     }
+
+    #[test]
+    fn rank_ten_rolls_the_credits() {
+        let mut g = game();
+        g.pet.rank = 10;
+        g.frame(NOON, 0);
+        for _ in 0..400 {
+            if !matches!(g.scene, super::Scene::Play(_)) {
+                break;
+            }
+            g.frame(NOON, 0);
+        }
+        g.frame(NOON, B); // CONGRATS! LV. 10 NOW!
+        assert!(matches!(g.scene, super::Scene::Credits { .. }));
+        g.frame(NOON, 0);
+        press(&mut g, B);
+        assert!(matches!(g.scene, super::Scene::Home));
+    }
 }
