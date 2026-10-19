@@ -262,6 +262,8 @@
       const t = t0 + (now - wall0) / 1000 * speed;
       for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
       document.getElementById("s").textContent = game.status();
+      // Backlight duty 15/30/45/55 % (`backlight_set` 0x10003b74), kept readable on a monitor.
+      c.style.filter = `brightness(${0.55 + 0.45 * [15, 30, 45, 55][game.brightness()] / 55})`;
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
       const req = game.take_connect();
       if (req) connect(req);

@@ -10,7 +10,7 @@ mod calendar;
 mod care;
 mod sim;
 
-pub use calendar::{date, EVENTS};
+pub use calendar::{date, days_from_civil, EVENTS};
 
 /// Request ids (EM_REQ_*), same numbering as the firmware.
 pub mod req {
@@ -224,6 +224,16 @@ pub struct Pet {
     /// Language (`data::LANGS` index; the firmware keeps it in 0x18000c6a bits 9–12).
     #[serde(default = "english")]
     pub lang: u8,
+    /// SETTINGS (`0x18000bec`): sound level 0–3, brightness 0–3, date order 0–2, and the
+    /// remake's offset from the platform clock set under DATE/TIME (seconds).
+    #[serde(default = "two")]
+    pub volume: u8,
+    #[serde(default = "one")]
+    pub brightness: u8,
+    #[serde(default)]
+    pub date_order: u8,
+    #[serde(default)]
+    pub clock_offset: i64,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -255,6 +265,14 @@ pub const NO_COLOR: u8 = 0x1f;
 
 fn english() -> u8 {
     1
+}
+
+fn one() -> u8 {
+    1
+}
+
+fn two() -> u8 {
+    2
 }
 
 fn no_color() -> u8 {
@@ -324,6 +342,10 @@ impl Pet {
             play_days: 0,
             planet_name: Vec::new(),
             lang: 1,
+            volume: 2,
+            brightness: 1,
+            date_order: 0,
+            clock_offset: 0,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,

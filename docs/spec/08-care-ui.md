@@ -329,6 +329,95 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 音效總結：0 = 翻頁/游標/轉輪加減、1 = 確定、2 = 取消/離開、0xb = 灰項（此處不會出現）。全部 vol 100。
 - 重製對照：星球名 = `Pet::planet_name`；Gotchi 點數 = `Pet::points`；生日 = `Pet::birthday`（`Option<(月,日)>`）；**play_days（c98）與初始設定日期（c0c）目前 `Pet` 沒有對應欄位**（`Pet::days` 是寵物年齡天數，不是 play_days）。字串 169–184（「TIMES YOU FED FOOD」等）不屬於 USER INFO，而是 MISSION 場景（0x39）用的表 `0x100a4ce0`。
 
+### 2.20 LABOMENU → SETTINGS（0x37）與其子畫面（0x44–0x47）、DELETE（0x6f）[確認]
+
+按鍵位元（06-system）：A=1、B=2、C=4、P（轉盤按壓）=8、DN=0x40、UP=0x80。`fade_in` = `fade_set(0,0x20,0,4,0)`、`fade_out` = `fade_set(0,0,1,4,0)`。設定值全部在 **`settings` = save+0x04 = `0x18000bec`**：bits0–2 亮度、bits3–4 音量、bits5–6 日期順序（03-save §3.1；`save_init_defaults` 設 bits0–4 = 0x11 → **亮度 1、音量 2、日期順序 0**）。
+
+**2.20.1 PSID_LABOMENU_SETTING（0x37；init 0x1001fff8、update 0x1002006c、tick `settings_menu_tick` 0x10047174、exit 0x1001ffbc）**
+
+- init：ctx 0x2c B；layer `FUN_1000a158(0x1e,0x1e,0x1e,0x1e,0)`；`DAT_18001cbb &= 0x7f`、`DAT_18001cbc &= ~1`；亮度 0x20；預設 next = 0。
+- 兩個清單（都 `listmenu_create(layer,0,style 0,flags 0,n,items,bg 6)`，粉紅格子背景，每頁 4 列 → 不出現箭頭）：
+
+| 清單 | 表 | # | 文字（en / ja） | value | 灰 |
+|---|---|---|---|---|---|
+| 主選單（state 1000） | `0x10093ffc`，3 項 | 0 | 28「SOUND」（サウンドせってい） | 0x46 SETSOUNDLEVEL | 0 |
+| | | 1 | 27「BRIGHTNESS」（あかるさせってい） | 0x47 SETCONTRAST | 0 |
+| | | 2 | 26「TIME」（じかんせってい） | 0（→ 子選單） | 0 |
+| TIME 子選單（state 2000） | `0x10091fa4`，2 項 | 0 | 29「DATE/TIME」（にちじへんこう） | 0x45 SETTING_DATETIME | 0 |
+| | | 1 | 30「DISPLAY」（ひょうじへんこう） | 0x44 SETTING_DATETIMEDISP | 0 |
+
+- **沒有** EDIT BIRTHDAY / EDIT PLANET NAME（那兩項在 USER INFO 的編輯選單，§2.19.3）、**沒有** LANGUAGE（語言只在新遊戲 0x71 問）、**沒有** DELETE/RESET（見 2.20.6）。重製 SETTINGS 目前的三項都不是韌體的內容。
+- 初始游標（state 0，依上一個場景 `FUN_10002780`）：0x45 → 子選單游標 0；0x44 → 子選單游標 1；0x46 → 主選單 0；0x47 → 主選單 1；其他（從 LABOMENU 0x2a 進來）→ 主選單 0。
+- 主選單：確定 0/1 → `scene_set_next(value)` → 0x7fe0；確定 2 → 游標歸 0、`fade_out` → 立刻建子選單並 `fade_in`；C（取消）→ next 0x2a LABOMENU → 0x7fe0。
+- 子選單：確定 → `scene_set_next(value)` → 0x7fe0；C → 主選單、**游標 2（TIME）**，`fade_out` 後重建。
+- 0x7fe0 → `fade_out` → 0x7ff0 done。輸入、音效（0 移動 / 1 確定 / 2 取消）全由 `listmenu`（§2.19.1）處理。
+
+**2.20.2 PSID_SETTING_DATETIMEDISP（0x44；init 0x10030c88、tick 0x1004f5a4）——日期顯示順序**
+
+- init：layer `(0x28,10,1,1,1)`、亮度 0x20、**next = 上一個場景**（從 SETTINGS 來就回 0x37 → 子選單游標 1）。
+- state 1000/0：訊息框 `msgbox_create(layer,0,style 0,palette 0,text 97)`「PICK DATE\nORDER ON\nCLOCK\nSCREEN」（とけいがめんで ひょうじする ひづけのじゅんばんを えらんでね）+ `fade_in`。訊息框（`msgbox_create` 0x10025140，callback 0x100252d4）：元件 0x9d（sprite 54 白色全螢幕框，(64,64)，palette = 參數 4）、文字 0x9e（(64,64)，寬 80，多行）；**前 20 frames 不收鍵**，之後任一鍵 A/B/C/P（mask 0xf）或總計 200 frames 到 → 關閉並播音效 1；等待期間每 frame `idle_reset`（不會進省電）。關閉 → `fade_out`。
+- state 2/3：`listmenu(style 0, flags 0, 3 項 0x1009bb2c, bg 6)`：31「2026/01/23」、32「23/01/2026」、33「01/23/2026」（各語言字串相同），**游標固定從 0 開始**（不指向目前設定）。確定 idx → `settings bits5–6 = idx`；C → 不變。兩者都 `fade_out` → 0x7fe0 → `fade_set(0xff, 目前亮度, 1, 4, 0)` → done。
+- 值的意義（`space_clock_update` 0x1006a074，HOME_SPACE 閒置時鐘的 10 格日期 0x104–0x10d，x = 37 + 9·i，y=42，sprite 0x77 frame = 數字+1，`/` = frame 0xb）：0 = YYYY/MM/DD（年 0–3、`/` 4、月 5–6、`/` 7、日 8–9）；1 = DD/MM/YYYY（日 0–1、`/` 2、月 3–4、`/` 5、年 6–9）；2 = MM/DD/YYYY（月 0–1、日 3–4、年 6–9）。整個韌體只有這裡讀 bits5–6。
+- **沒有 12/24 小時制設定**：時鐘永遠 12 小時制（`space_clock_update`：時 0 → 12、>12 → −12；時 ≥ 12 時 AM/PM 元件（sprite 118，2 palette）`+10 |= 0x200` 換 palette 1 [推測 = 顯示 PM]）。
+
+**2.20.3 PSID_SETTING_DATETIME（0x45；init 0x10030d9c、tick `settings_clock_update` 0x1004f7d8、UI `datetime_build` 0x1000a978）——設定日期時間**
+
+同一組函式也是 PSID_CORRECTTIME（0x70），差別只在離開目標。
+- state 4000：`msgbox_create(layer,0,0,palette 1,text 95)`「SET CURRENT\nDATE/TIME」（いまのひづけと じこくをせってい してね），規則同上。
+- 0xfa1/0 建 UI（全部元件座標）：
+
+| 元件 | 內容 | 座標 |
+|---|---|---|
+| 0x79 | sprite 55 背景 | (64,64) |
+| 0x7b / 0x7c | sprite 59 深藍標題條 / 標題文字（目前欄位名，`0x100a4d12[欄]` = 235「YEAR」、236「MONTH」、237「DATE」、238「HOUR」、239「MINUTE」、240「AM/PM」） | (64,12) / (64,10) |
+| 0x7d / 0x7e | sprite 68 palette 1 框 / 年 `%04d` | (64,31) / (64,30) |
+| 0x7f / 0x80 | sprite 68 palette 0 / 月 `%02d` | (64,50) / (64,49) |
+| 0x81 / 0x82 | sprite 68 palette 3 / 日 `%02d` | (64,69) / (64,68) |
+| 0x83 | sprite 71 palette 2（96×24 膠囊）時間列 | (64,89) |
+| 0x84 / 0x85 / 0x86 | 時 `%02d`（寬 32）/ sprite 19 frame 15「:」/ 分 `%02d`（寬 32） | (36,88) / (48,89) / (70,88) |
+| 0x87 / 0x88 | AM/PM 轉輪（空格式，只當數值）/ sprite 45（2 frames：AM、PM），每 frame `frame = 轉輪值`、可見度跟著轉輪閃爍 | (94,89) |
+| 0x89 / 0x8a / 0x8b | sprite 96 按鍵提示 frame 4「+」（按住 C 時 5「−」）/ 1「OK」/ 3「←」 | (24,114) / (64,114) / (104,114) |
+
+  年月日垂直排列，**不受日期順序設定影響**。
+- 6 個 `numspin`（§2.19.3 的轉輪，全部循環、閃爍）：年 2025..2079、月 1..12、日 1..31（之後改成當月天數）、時 1..12、分 0..59、AM/PM 0..1。初值 = `g_rtc_now`（0x18001bec）：時12 = `h % 12 == 0 ? 12 : h % 12`、AM/PM = `h / 12`。
+- 欄位順序 年 → 月 → 日 → 時 → 分 → AM/PM（`ctx+0x84`）。每欄開始時只有該欄轉輪啟動（閃爍），標題換字。轉輪輸入：A（含連發）+1、按住 C 時 A −1、UP +1、DN −1（音效 0）；B/P 確定（音效 1）；**C 連按兩下**取消（音效 2）。
+  - 確定：存值、把日的範圍改成 `1..days_in_month(年, 月)` 並夾住目前日值；不是最後一欄 → 下一欄。
+  - 取消：欄 > 0 → 回上一欄（目前欄轉輪保留已改的數字）；**欄 0（年）取消 → 不寫入離開**：0x45 → 0x37（子選單游標 0）；0x70 → **0x6f DELETE**。
+  - AM/PM 確定 → 寫入：`rt_flags(0x18001be8) |= 0x40`（暫停補跑）；`hour = (時12 % 12) + 12·AM/PM`，**秒 = 0**；`rtc_set` 0x10006af8；`g_rtc_now` 與 `last_tick_time`（save+0x18 = 0x18000c00）都設成新時間（不補跑照顧時間）；`care_resync_sleep_reqs` 0x1000f508；依 `day % 10` 改 save+0 bit5/6（半價日）；清 save+0 bit7（時鐘遺失）；next：0x45 → 0x37、0x70 → 0x1c HOME。0x7fe0 清 `rt_flags bit6` → `fade_set(0xff,目前亮度,1,4,0)` → done。
+
+**2.20.4 PSID_SETTING_SETSOUNDLEVEL（0x46；init 0x10031068、tick 0x1004fcf4）——音量**
+
+- init：ctx 0x38 B；layer `(10,0x1e,0x1e,0x1e,0)`；亮度 0 → state 0 `fade_in`；鏡頭歸零、`FUN_1007bd00(0x40)`、縮放 1.0；next = 0x37（回主選單游標 0）。
+- 元件：0x28b sprite 141 粉紅格子 (64,64)；0x28c sprite 189（擴音器小雞 + 頂端空白音量框）(64,64)；0x28d sprite 192 音量條 (64,32)，**frame = 音量 0..3**；0x28e sprite 100 紅色「×」(64,29)，callback 0x1007fd9c 每 frame：音量 0 → 顯示（`+0x9c` 設 0x6400），否則隱藏（設 0）[推測：+0x9c 為不透明度]。
+- 輸入（state 1000，**不收轉盤**）：**A → −1（下限 0）**、**B → +1（上限 3）**：更新條、立刻套用 `snd_set_master(level)`、播音效 0（用新音量試聽）、閒置計數歸零。**C 或 200 frames 沒按 A/B** → 寫 `settings bits3–4 = level`、播音效 1 → `fade_out` → done。沒有「取消」：改動一律保存。
+- 套用：`snd_set_master` 0x10030bb4：0/1/2/3 → `g_snd_master`（0x18000704）= 0 / 30 / 60 / 100。播放引擎 `FUN_10090a80` 每個音符：輸出振幅 ∝ 音符音量 × 呼叫端 vol(≤100)/100 × `g_snd_master`/100（浮點相乘再 ÷100）。開機 `system_boot` 0x1006ac00 從 settings 套用；`FUN_100539dc` 某段暫時設 0 後再還原。
+
+**2.20.5 PSID_SETTING_SETCONTRAST（0x47；init 0x10030ea8、tick 0x1004fee4）——亮度（實際是背光，不是 LCD 對比）**
+
+- init 同 0x46（ctx 0x38，next = 0x37 → 主選單游標 1）。元件：0x288 sprite 141 (64,64)；0x289 sprite 190（燈泡小雞 + 亮度框）(64,64)；0x28a sprite 191 亮度條 (64,32)，frame = 亮度 0..3。
+- 輸入完全同 0x46：A −1（≥0）、B +1（≤3）、音效 0、立刻套用；C 或 200 frames → `settings bits0–2 = level`、音效 1、`fade_out`。
+- 套用 `backlight_set` 0x10003b74(level)：背光開著（`0x18005d1c bit0`）時 PWM 通道 2（P0.7 背光）duty = 表 `0x10091e6c[level]` = **15 / 30 / 45 / 55**（表後 4 個 65/80/95/290 設定畫面用不到）；背光關 → 0；level 存 `0x18005d1c bits1–3`。開機 STARTUP 結束時 `backlight_set(settings & 7)`。**沒有寫任何 LCD 暫存器**。
+
+**2.20.6 PSID_DELETE（0x6f；init 0x1000b9f8、tick `delete_menu_tick` 0x10038d24）——冷開機後的 CONTINUE / RESET ALL**
+
+- **不是從 SETTINGS 進入**。進入路徑：冷開機（換電池 / reset，wake reason 非待機喚醒 → `rt_flags bit3`）→ STARTUP 0x6c → INITIAL_LOGO 0x6d（`FUN_10038250`：播音效 60、等播完；**若存檔已開始（save+0 bit0）→ 0x6f，否則 → 0x71 LANGUAGE 新遊戲**；logo 期間一直按住 B+C 且沒按 A/P → 0x6e ROM_VER）。另外 CORRECTTIME（0x70）在年欄取消也回到這裡。場景 flag 4：閒置 600 frames → 關機。
+- state 1000：`listmenu(style 0, flags 0x100, 2 項 0x100a059c, bg 6)` + `fade_in`：0 = 80「CONTINUE」（つづきから）、1 = 81「RESET ALL」（データをけす）；游標 0。**flags 0x100 = C 無效**（不能取消；listmenu flags：0x100 停用 C、0x200 確定/取消不播音效、0x400 灰項也可確定、0x2000 不建背景）。確定 → `fade_out` → 刪選單。
+- CONTINUE → `rtc_read(&g_rtc_now)`、next 0x70 CORRECTTIME（重設時鐘；確定後 → HOME，年欄取消 → 回 0x6f）；若版本區 `0x18001cb2 == 0xffff` → 清 save+0 bit7、直接 next 0x1c HOME。
+- RESET ALL → state 2000：`yesno_create(layer,0,0,text 83,style 2)`「REALLY\nDELETE?」（ほんとうにけす？），**游標預設 NO**（`FUN_1002f304(d,1)`）+ `fade_in`。版面（`choice` 樣式表 0x10093e76）：背景 0x19a（sprite 141）、問題框 0xcc（sprite 61，(64,20)）、問題文字 0xcb（(12,18)，兩行）、選項文字 0xcd/0xce（x=20，y=53/79）= 255「YES」/ 256「NO」、底條 0xd0/0xd1（sprite 65，(64,53)/(64,79)）、游標 0xd3（sprite 90 frame 1，(8,53)，列距 26）。輸入同 listmenu（A/UP 下一項、DN 上一項、B/P 確定、C 取消；音效 0/1/2）。
+  - NO 或 C → 回 state 1000（重建選單，游標回 CONTINUE）。
+  - YES → `save_init_defaults`（PRAM 0x89a8：**RAM 存檔影像 0xffc B 全清 0** 後設預設：settings 0x11、play_days 1、初始道具 7998、初始區域；RTC 基準 2026-01-01 12:00）→ `save_commit(1)`（兩個 slot 都寫）→ `rtc_restart` 0x1002a25c → **`NVIC_SystemReset`**（0x10069ca8：寫 AIRCR 0x05FA0004）。
+  - **什麼都不保留**：語言（save+0x82 bits9–12）、生日、星球名、設定（音量/亮度/日期順序回預設）、時間、寵物、道具全部清掉。flash 上的 ghost / DLC 槽本身不擦，但存檔裡的參照（dlc_mask 等）已清 [推測]。重開機後存檔 bit0 = 0 → STARTUP → INITIAL_LOGO → **0x71 LANGUAGE → 0x72 DATETIME → 0x73 BIRTHDAY → 0x74 PLANETNAME**（新遊戲流程，06-system）。
+- 重製對照：重製沒有冷開機，CONTINUE/RESET ALL 畫面只在「模擬換電池」時才有意義；若要提供「刪除存檔」，韌體的唯一入口就是這個畫面。
+
+
+**2.20.7 重製對照**
+
+- SETTINGS = SOUND / BRIGHTNESS / TIME（DATE/TIME、DISPLAY），重製另在最後加語言項（顯示目前語言名）。EDIT BIRTHDAY / EDIT PLANET NAME 只在 USER INFO。`ui/system.rs`。
+- 設定存在 `Pet`：`volume`（預設 2）、`brightness`（1）、`date_order`（0）、`clock_offset`。音量在 `Game::take_sounds` 依 0/30/60/100 % 縮放（0 = 不出聲）；亮度由網頁以 canvas `brightness()` 濾鏡套用（背光 duty 15/30/45/55 映到 0.67–1.0，ponytail：螢幕上保持可讀）。
+- DATE/TIME：瀏覽器時鐘不能改，所以存成相對平台時鐘的位移；寫入時 `last` 同時改成新時間（不補跑）。C 單按回上一欄（原版 C 連按兩下、按住 C 時 A = −1，重製省略；UP/DN 可加減）。
+- 星球層閒置時鐘：200 frames 沒輸入時畫 0xfc–0x10d。
+- DELETE（0x6f）只在冷開機（換電池）出現；網頁沒有冷開機，RESET ALL 對應網址參數 `?reset`。
+
 ---
 
 ## 3. 資料表與格式
@@ -559,6 +648,28 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 10093e5a listmenu_styles l
 10093e9a listmenu_bgs l
 10091190 month_days l
+10047174 settings_menu_tick f
+1004f5a4 datefmt_tick f
+1004f7d8 settings_clock_update f
+1000a978 datetime_build f
+1004fcf4 soundlevel_tick f
+1004fee4 brightness_tick f
+10030bb4 snd_set_master f
+10003b74 backlight_set f
+10038d24 delete_menu_tick f
+10038250 initial_logo_tick f
+10025140 msgbox_create f
+10025264 msgbox_done f
+1002f304 choice_set_cursor f
+10069ca8 sys_reset f
+10093ffc settings_items l
+10091fa4 settings_time_items l
+1009bb2c datefmt_items l
+100a059c delete_items l
+100a4d12 datetime_titles l
+10091e6c backlight_duty l
+10093e76 choice_styles l
+18000704 g_snd_master l
 ```
 
 ---

@@ -308,9 +308,15 @@ impl Game {
     /// A number in a text element, right-aligned against the bar, "G" or "/" after it
     /// (p[7] = font palette set).
     pub(crate) fn draw_number_elem(&mut self, id: u16, n: u32) {
+        let glyphs = self.digits(n);
+        self.draw_right_elem(id, &glyphs);
+    }
+
+    pub(crate) fn draw_right_elem(&mut self, id: u16, glyphs: &[u16]) {
         let e = self.ui_elem(id);
         // ponytail: the text box format (p[5], p[8..10]) is not decoded; x + 4 lines up with the art.
-        self.draw_number_right(n, e.x as i32 + 4, e.y as i32, e.p[7].max(0) as usize);
+        let w = crate::screen::Screen::text_width(&self.data.fonts, glyphs);
+        self.screen.text(&self.data.fonts, glyphs, e.x as i32 + 4 - w, e.y as i32, false, e.p[7].max(0) as usize);
     }
 
     /// Text centred in a text element.
@@ -757,7 +763,7 @@ mod tests {
             g.frame(NOON, 0);
             sounds.extend(g.take_sounds());
         }
-        assert!(sounds.contains(&(24, 100)), "three stars");
+        assert!(sounds.iter().any(|s| s.0 == 24), "three stars");
         assert!(matches!(&g.scene, Scene::LabResult { nodes, .. } if nodes.len() == 3));
         for _ in 0..RESULT_WAIT {
             g.frame(NOON, 0);

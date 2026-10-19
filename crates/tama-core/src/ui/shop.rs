@@ -97,6 +97,15 @@ impl Game {
                 Scene::Home,
             ),
             Action::CleanPoop => self.start_poop_clean(),
+            Action::Settings
+            | Action::SettingsTime
+            | Action::SettingsTimeDisplay
+            | Action::Volume
+            | Action::Brightness
+            | Action::DateTime
+            | Action::DateOrder
+            | Action::SetDateOrder(_) => self.open_system(a),
+            Action::SettingsAtTime => self.settings_at_time(),
             Action::Lab => Scene::Menu {
                 items: vec![
                     (t::INFORMATION, Some(Action::Info)),
@@ -316,7 +325,6 @@ impl Game {
             | Action::IntroLang(_)
             | Action::Language
             | Action::SetLang(_)
-            | Action::Settings
             | Action::UserEdit
             | Action::Info
             | Action::InfoFromMissions
@@ -917,9 +925,9 @@ mod tests {
     }
 
     #[test]
-    fn edit_birthday_in_settings() {
+    fn edit_birthday_from_user_info() {
         let mut g = game();
-        g.scene = g.open(super::super::Action::Settings);
+        g.scene = g.open(super::super::Action::UserEdit);
         press(&mut g, B); // EDIT BIRTHDAY
         for _ in 0..3 {
             press(&mut g, crate::input::A); // month 4

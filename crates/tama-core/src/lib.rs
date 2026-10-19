@@ -83,8 +83,8 @@ pub struct Game {
     pub(crate) roles: [Option<u16>; 4],
     /// The pet's look before an evolution (chr 0xdb, EVENT_EVOLUTION), drawn with its palette.
     pub(crate) old_chr: Option<u16>,
-    /// The menu the birthday and planet-name editors return to (SETTINGS or USER INFO's).
-    pub(crate) edit_from: ui::Action,
+    /// Frames without input (the planet level's idle clock).
+    idle: u16,
     /// Planet ranks shown for planet roles 0 and 1 (rank-up: old, new).
     pub(crate) planet_ranks: Option<[u8; 2]>,
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
@@ -136,7 +136,7 @@ impl Game {
             zoom: ui::zoom_stop(Level::Pet),
             roles: [None; 4],
             old_chr: None,
-            edit_from: ui::Action::Settings,
+            idle: 0,
             calls_heard: 0,
             planet_ranks: None,
             connect: None,
@@ -149,10 +149,13 @@ impl Game {
 
     /// One 20 fps frame: `now` = local wall-clock seconds, `held` = `input` bits held this frame.
     pub fn frame(&mut self, now: u64, held: u8) {
+        // DATE/TIME shifts the platform's clock.
+        let now = now.saturating_add_signed(self.pet.clock_offset);
         // Buttons act on the press edge; dial bits are already one-frame pulses.
         let dial = input::UP | input::DOWN;
         let pressed = (held & !self.held & !dial) | (held & dial);
         self.held = held;
+        self.idle = if held != 0 { 0 } else { self.idle.saturating_add(1) };
         self.frame_count = self.frame_count.wrapping_add(1);
         self.pet.advance_to(now);
         self.call_alarm();
@@ -260,6 +263,7 @@ impl Game {
     /// Advance the pet to local wall-clock seconds `now` and redraw.
     /// A pending evolution completes here, as the original does when the pet is on screen.
     pub fn advance_to(&mut self, now: u64) {
+        let now = now.saturating_add_signed(self.pet.clock_offset);
         self.pet.advance_to(now);
         if self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO) {
             self.pet.evolve(&self.data);
@@ -346,8 +350,19 @@ impl Game {
 
     /// Sounds to play since the last call, oldest first. The buzzer is single-voice, so a
     /// platform may play only the last one.
+    /// Volumes are scaled by the SOUND level; level 0 plays nothing.
     pub fn take_sounds(&mut self) -> Vec<(u16, u8)> {
-        std::mem::take(&mut self.sounds)
+        let master = ui::MASTER_VOLUME[self.pet.volume.min(3) as usize];
+        let sounds = std::mem::take(&mut self.sounds);
+        if master == 0 {
+            return Vec::new();
+        }
+        sounds.into_iter().map(|(id, v)| (id, (v as u32 * master / 100) as u8)).collect()
+    }
+
+    /// BRIGHTNESS level 0–3 (the original's backlight), for the platform to apply.
+    pub fn brightness(&self) -> u8 {
+        self.pet.brightness
     }
 
     /// Sprite indexes the screen tried to draw that have not been added yet.
@@ -461,7 +476,13 @@ impl Game {
 
     fn render_home(&mut self) {
         match self.level {
-            Level::Space => return self.draw_space(),
+            Level::Space => {
+                self.draw_space();
+                if self.idle > ui::CLOCK_IDLE && matches!(self.scene, Scene::Home) {
+                    self.draw_idle_clock();
+                }
+                return;
+            }
             Level::Cell => self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [250, 220, 230]),
             _ => {
                 // The world layer scales with the real zoom (1× field, 2× pet); the camera moves
@@ -544,7 +565,7 @@ mod tests {
         g.take_sounds();
         g.pet.raise(pet::req::ONAKA);
         g.frame(t, 0);
-        assert!(g.take_sounds().contains(&(ui::SND_CALL, 100)));
+        assert!(g.take_sounds().iter().any(|s| s.0 == ui::SND_CALL));
         g.frame(t, 0);
         assert!(!g.take_sounds().contains(&(ui::SND_CALL, 100)), "only when the call starts");
     }

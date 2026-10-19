@@ -200,6 +200,14 @@ impl Game {
                 self.draw_lab_result(*stars, *points, nodes, *t);
                 true
             }
+            Scene::Level { bright, level, .. } => {
+                self.draw_level(*bright, *level);
+                true
+            }
+            Scene::Clock { vals, pos } => {
+                self.draw_clock(vals, *pos);
+                true
+            }
             Scene::UserInfo { page } => {
                 self.draw_user_info(*page);
                 true

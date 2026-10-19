@@ -16,6 +16,17 @@ pub fn date(t: u64) -> (i64, u32, u32) {
     (yoe + era * 400 + (m <= 2) as i64, m, d)
 }
 
+/// Days since 1970-01-01 of a calendar date (Howard Hinnant's days_from_civil).
+pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (m as i64 + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d as i64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
 /// Calendar events of the day (`FUN_10083984`); the player's birthday is added by `raise_calendar`.
 pub(super) fn calendar_events(t: u64) -> Vec<u8> {
     let (_, m, d) = date(t);

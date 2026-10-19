@@ -56,6 +56,11 @@ impl Tama {
         self.0.advance_to(now as u64);
     }
 
+    /// SETTINGS → BRIGHTNESS level 0–3 (the original's backlight).
+    pub fn brightness(&self) -> u8 {
+        self.0.brightness()
+    }
+
     /// One-line pet status for the page.
     pub fn status(&self) -> String {
         let p = &self.0.pet;

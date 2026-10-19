@@ -15,6 +15,8 @@ mod event;
 mod hunt;
 mod settings;
 mod shop;
+mod system;
+pub(crate) use system::{CLOCK_IDLE, MASTER_VOLUME};
 
 pub(crate) use connect::PLAYDATE_ANIM;
 pub(crate) use decor::PET_FOCUS;
@@ -200,6 +202,15 @@ pub(crate) enum Action {
     Connect,
     /// Lab menu SETTINGS and its birthday editor.
     Settings,
+    /// SETTINGS → TIME submenu (cursor on DATE/TIME, on DISPLAY), back to SETTINGS on TIME.
+    SettingsTime,
+    SettingsTimeDisplay,
+    SettingsAtTime,
+    Volume,
+    Brightness,
+    DateTime,
+    DateOrder,
+    SetDateOrder(u8),
     /// INFORMATION submenu (cursor on MISSION when coming back from it), USER INFO, and its
     /// edit menu.
     Info,
@@ -441,6 +452,17 @@ pub(crate) enum Scene {
         nodes: Vec<Node>,
         t: u16,
     },
+    /// SETTINGS → SOUND / BRIGHTNESS: level 0–3, `idle` frames without A/B.
+    Level {
+        bright: bool,
+        level: u8,
+        idle: u16,
+    },
+    /// SETTINGS → TIME → DATE/TIME: year, month, day, hour 1–12, minute, AM/PM; field `pos`.
+    Clock {
+        vals: [u16; 6],
+        pos: u8,
+    },
     /// INFORMATION → USER INFO: planet, days and points; egg-bang day; birthday.
     UserInfo {
         page: u8,
@@ -570,6 +592,8 @@ impl Game {
             Scene::Memories { pet, icons, t } => self.update_memories(pet, icons, t),
             Scene::EvolvePoints { t } => self.update_evolve_points(t, pressed),
             Scene::UserInfo { page } => self.update_user_info(page, pressed),
+            Scene::Level { bright, level, idle } => self.update_level(bright, level, idle, pressed),
+            Scene::Clock { vals, pos } => self.update_clock(vals, pos, pressed),
             Scene::LabResult { stars, points, nodes, t } => self.update_lab_result(stars, points, nodes, t, pressed),
             Scene::Dying { node } => self.update_dying(node),
             Scene::Graveyard { nodes } => self.update_graveyard(nodes),

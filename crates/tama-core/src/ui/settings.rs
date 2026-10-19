@@ -80,26 +80,22 @@ impl Game {
                 back: Some(Action::Lab),
             },
             Action::UserInfo => Scene::UserInfo { page: 0 },
-            Action::Settings | Action::UserEdit => {
-                self.edit_from = a;
-                let mut items =
-                    vec![(EDIT_BIRTHDAY, Some(Action::EditBirthday)), (EDIT_PLANET_NAME, Some(Action::EditPlanetName))];
-                let back = if a == Action::UserEdit {
-                    Action::UserInfo
-                } else {
-                    // The remake also lets the language change later; the item shows its name.
-                    items.push((LANGUAGE_NAMES + self.pet.lang as u16, Some(Action::Language)));
-                    Action::Lab
-                };
-                Scene::Menu { items, idx: 0, back: Some(back) }
-            }
+            // USER INFO's edit menu (RW data 0x18000708).
+            Action::UserEdit => Scene::Menu {
+                items: vec![
+                    (EDIT_BIRTHDAY, Some(Action::EditBirthday)),
+                    (EDIT_PLANET_NAME, Some(Action::EditPlanetName)),
+                ],
+                idx: 0,
+                back: Some(Action::UserInfo),
+            },
             _ => Scene::Home,
         }
     }
 
     /// Back from an editor to the menu it was opened from.
     fn edit_done(&mut self) -> Scene {
-        self.open(self.edit_from)
+        self.open(Action::UserEdit)
     }
 
     /// USER INFO (`FUN_10047f10`): A / UP next page, DOWN previous, B the edit menu, C back.
@@ -288,7 +284,7 @@ mod tests {
         press(&mut g, DOWN); // にほんご
         press(&mut g, B);
         assert_eq!(g.pet.lang, 0);
-        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[2].0 == 0x56), "shows the new name");
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[3].0 == 0x56), "shows the new name");
     }
 
     #[test]
