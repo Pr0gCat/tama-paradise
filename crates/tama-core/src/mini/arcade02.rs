@@ -295,7 +295,11 @@ impl Arcade02 {
     /// devices lay head to head.
     // ponytail: the friend's half is drawn without its desk details and not rotated.
     fn view(&self) -> i32 {
-        if self.cross.1 < 0.0 { 128 } else { 0 }
+        if self.cross.1 < 0.0 {
+            128
+        } else {
+            0
+        }
     }
 }
 
@@ -397,7 +401,10 @@ impl MiniGame for Arcade02 {
     fn hud(&self) -> Vec<Hud> {
         match self.st {
             St::Intro => Vec::new(),
-            St::Panel(ref p) => vec![Hud::Sprite { id: 0x8cb, frame: 0, x: 64 + p.dx(), y: 44 }, Hud::Number { n: self.score as u32, x: 64 + p.dx(), y: 44 }],
+            St::Panel(ref p) => vec![
+                Hud::Sprite { id: 0x8cb, frame: 0, x: 64 + p.dx(), y: 44 },
+                Hud::Number { n: self.score as u32, x: 64 + p.dx(), y: 44 },
+            ],
             _ => {
                 let mut h = Vec::new();
                 if self.view() == 0 {

@@ -60,12 +60,17 @@ impl Game {
                 team.sort_by_key(|&i| i != 0);
                 let roster = self.pet.hunt_roster();
                 for (r, &i) in team.iter().enumerate() {
-                    self.roles[r] = roster.get(i).and_then(|m| m.tama).and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
+                    self.roles[r] =
+                        roster.get(i).and_then(|m| m.tama).and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
                 }
                 match self.pet.hunt(&self.data, now, kind, team) {
                     Ok(r) => {
                         let f = self.pet.field as usize;
-                        let then = if r.result < 2 { Scene::HuntEggs { items: r.items, t: 0, peach: false } } else { Scene::Home };
+                        let then = if r.result < 2 {
+                            Scene::HuntEggs { items: r.items, t: 0, peach: false }
+                        } else {
+                            Scene::Home
+                        };
                         let trip = TRIP[f][kind as usize & 1][r.result as usize];
                         self.play(&[DEPART, trip, HOME[f][r.result as usize]], (0, super::OnPress::None), None, then)
                     }
@@ -106,7 +111,12 @@ impl Game {
                 self.sfx(1, 100);
                 if picked.len() == 3 {
                     let team = [picked[0] as u8, picked[1] as u8, picked[2] as u8];
-                    return Scene::Ask { text: t::BRING_THEM, yes: true, on_yes: Action::HuntGo { kind, team }, back: Action::HuntKind(kind) };
+                    return Scene::Ask {
+                        text: t::BRING_THEM,
+                        yes: true,
+                        on_yes: Action::HuntGo { kind, team },
+                        back: Action::HuntKind(kind),
+                    };
                 }
             }
         }
@@ -156,7 +166,7 @@ impl Game {
         let egg = EGG[self.pet.field as usize % 3];
         if peach {
             if t < 30 {
-                self.screen.blit(egg, (t / 10) as u16, 64, 64, 64, false, None);
+                self.screen.blit(egg, t / 10, 64, 64, 64, false, None);
             } else {
                 self.screen.blit(PEACH_SPRITE, 0, 64, 64, 64, false, None);
             }
@@ -185,7 +195,10 @@ mod tests {
     fn hunt_from_the_field_menu() {
         let mut d = crate::evolve::tests::data();
         d.hunt_finds = (0..24).map(|i| [0, 5056 + i, i]).collect();
-        d.items = (5056..5080).chain([crate::hunt::GOLDEN_PEACH]).map(|id| Item { id, kind: 1, ..Default::default() }).collect();
+        d.items = (5056..5080)
+            .chain([crate::hunt::GOLDEN_PEACH])
+            .map(|id| Item { id, kind: 1, ..Default::default() })
+            .collect();
         let mut g = Game::new(d, 1);
         g.pet.def = g.data.character(2113).unwrap();
         g.pet.rank = 1;

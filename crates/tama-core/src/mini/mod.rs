@@ -89,7 +89,11 @@ fn atan_lookup(tan: &[i32], q: i32) -> i32 {
         if q == t {
             break;
         }
-        if q < t { hi = mid - 1 } else { lo = mid + 1 }
+        if q < t {
+            hi = mid - 1
+        } else {
+            lo = mid + 1
+        }
         mid = (hi + lo) >> 1;
         if hi - lo <= 0 {
             break;
@@ -115,7 +119,9 @@ pub(crate) mod tests {
         let mut d = crate::evolve::tests::data();
         let tau = std::f64::consts::TAU;
         d.mini.sin_q12 = (0..1024).map(|i| ((i as f64 * tau / 1024.0).sin() * 4096.0).round() as i16).collect();
-        d.mini.tan_q12 = (0..1025).map(|i| if i == 1024 { i32::MAX } else { ((i as f64 * tau / 4096.0).tan() * 4096.0) as i32 }).collect();
+        d.mini.tan_q12 = (0..1025)
+            .map(|i| if i == 1024 { i32::MAX } else { ((i as f64 * tau / 4096.0).tan() * 4096.0) as i32 })
+            .collect();
         d
     }
 
@@ -176,9 +182,18 @@ pub(crate) fn sprite(id: u16, frame: u16, x: i32, y: i32) -> Draw {
 /// Something a game draws besides its motion nodes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Hud {
-    Sprite { id: u16, frame: u16, x: i32, y: i32 },
+    Sprite {
+        id: u16,
+        frame: u16,
+        x: i32,
+        y: i32,
+    },
     /// A number in the 16×16 digit font (sprite 19), centred on (x, y).
-    Number { n: u32, x: i32, y: i32 },
+    Number {
+        n: u32,
+        x: i32,
+        y: i32,
+    },
 }
 
 /// A plain sprite draw (UI-element sprites placed by game code).
@@ -308,6 +323,10 @@ impl Session {
     }
 
     pub fn hud(&self) -> Vec<Hud> {
-        if matches!(self.phase, Phase::Play) { self.game.hud() } else { Vec::new() }
+        if matches!(self.phase, Phase::Play) {
+            self.game.hud()
+        } else {
+            Vec::new()
+        }
     }
 }

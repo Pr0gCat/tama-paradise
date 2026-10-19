@@ -320,9 +320,18 @@ impl MiniGame for Together04 {
             for i in 0..3 {
                 let (x, y) = self.at[i + 1];
                 push_sprite(out, CARD, self.face[i], x, y, 64);
-                for (on, palette) in [(self.pet_outline && i == self.pos, 1), (self.cursor_outline && i == self.cursor, 0)] {
+                for (on, palette) in
+                    [(self.pet_outline && i == self.pos, 1), (self.cursor_outline && i == self.cursor, 0)]
+                {
                     if on {
-                        out.push(Draw { look: Look::Sprite { id: OUTLINE, frame: 0 }, x, y, flip: false, alpha: 64, palette });
+                        out.push(Draw {
+                            look: Look::Sprite { id: OUTLINE, frame: 0 },
+                            x,
+                            y,
+                            flip: false,
+                            alpha: 64,
+                            palette,
+                        });
                     }
                 }
             }
@@ -362,7 +371,8 @@ impl MiniGame for Together04 {
 mod tests {
     use super::*;
 
-    const CARDS: [[u8; 3]; 10] = [[0, 0, 1], [1, 0, 1], [0, 1, 0], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 0]];
+    const CARDS: [[u8; 3]; 10] =
+        [[0, 0, 1], [1, 0, 1], [0, 1, 0], [0, 1, 0], [1, 0, 0], [0, 1, 1], [0, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 0]];
     const SLOTS: [u8; 5] = [1, 2, 0, 2, 1];
 
     fn game(n: usize) -> Together04 {

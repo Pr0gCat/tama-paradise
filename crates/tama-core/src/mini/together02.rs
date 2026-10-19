@@ -255,7 +255,8 @@ impl MiniGame for Together02 {
         };
         self.clock += STEP;
         for k in 0..3 {
-            self.at[k] = (self.ufo_x[k].value(&data.mini, self.clock) >> 16, self.ufo_y[k].value(&data.mini, self.clock) >> 16);
+            self.at[k] =
+                (self.ufo_x[k].value(&data.mini, self.clock) >> 16, self.ufo_y[k].value(&data.mini, self.clock) >> 16);
         }
         self.pet.tick(&data.motions);
         self.pet.take_sounds(sounds);

@@ -22,7 +22,13 @@ pub struct Screen {
 
 impl Default for Screen {
     fn default() -> Self {
-        Screen { sprites: HashMap::new(), fb: vec![0; WIDTH * HEIGHT * 4], wanted: BTreeSet::new(), off: (0, 0), zoom: 1.0 }
+        Screen {
+            sprites: HashMap::new(),
+            fb: vec![0; WIDTH * HEIGHT * 4],
+            wanted: BTreeSet::new(),
+            off: (0, 0),
+            zoom: 1.0,
+        }
     }
 }
 
@@ -39,7 +45,17 @@ impl Screen {
     /// Draw `frame` of sprite `id` centred on (cx, cy) with alpha 0–64 and optional flip.
     /// `palette` = (sprite, set) whose palette replaces the sprite's own set 0.
     /// Returns false if the sprite is not loaded yet.
-    pub fn blit(&mut self, id: u16, frame: u16, cx: i32, cy: i32, alpha: u8, flip: bool, palette: Option<(u16, usize)>) -> bool {
+    #[allow(clippy::too_many_arguments)] // mirrors the firmware's sprite draw call
+    pub fn blit(
+        &mut self,
+        id: u16,
+        frame: u16,
+        cx: i32,
+        cy: i32,
+        alpha: u8,
+        flip: bool,
+        palette: Option<(u16, usize)>,
+    ) -> bool {
         let (cx, cy) = (cx + self.off.0, cy + self.off.1);
         let Some(s) = self.sprites.get(&id) else {
             self.wanted.insert(id);
@@ -57,7 +73,8 @@ impl Screen {
         // Zoom scales positions and sizes about the screen centre (HOME zoom between layers).
         let k = self.zoom;
         let (dw, dh) = ((w as f32 * k).round() as i32, (h as f32 * k).round() as i32);
-        let (x0, y0) = (64 + ((cx - 64) as f32 * k).round() as i32 - dw / 2, 64 + ((cy - 64) as f32 * k).round() as i32 - dh / 2);
+        let (x0, y0) =
+            (64 + ((cx - 64) as f32 * k).round() as i32 - dw / 2, 64 + ((cy - 64) as f32 * k).round() as i32 - dh / 2);
         for py in y0.max(0)..(y0 + dh).min(HEIGHT as i32) {
             let y = (((py - y0) as f32 / k) as i32).min(h - 1);
             for px in x0.max(0)..(x0 + dw).min(WIDTH as i32) {
@@ -72,9 +89,8 @@ impl Screen {
                     None => s.rgba(0, idx),
                 };
                 let i = (py as usize * WIDTH + px as usize) * 4;
-                for ch in 0..3 {
-                    let d = self.fb[i + ch] as u32;
-                    self.fb[i + ch] = ((c[ch] as u32 * a + d * (64 - a)) / 64) as u8;
+                for (dst, &src) in self.fb[i..i + 3].iter_mut().zip(&c[..3]) {
+                    *dst = ((src as u32 * a + *dst as u32 * (64 - a)) / 64) as u8;
                 }
                 self.fb[i + 3] = 255;
             }

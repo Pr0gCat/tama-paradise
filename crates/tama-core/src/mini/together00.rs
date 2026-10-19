@@ -181,7 +181,14 @@ impl MiniGame for Together00 {
             let faded = 64 - (64 * self.fade.unwrap_or(0).min(ARROW_FADE) as u32 / ARROW_FADE as u32) as u8;
             for (side, x) in [(0u8, 24), (1, 104)] {
                 let alpha = if self.fade.is_some() && side != self.pick { faded } else { 64 };
-                out.push(Draw { look: Look::Sprite { id: ARROW, frame: 0 }, x, y: 104, flip: side == 1, alpha, palette: 0 });
+                out.push(Draw {
+                    look: Look::Sprite { id: ARROW, frame: 0 },
+                    x,
+                    y: 104,
+                    flip: side == 1,
+                    alpha,
+                    palette: 0,
+                });
             }
         }
         if let Some(t) = self.panel {
@@ -196,8 +203,14 @@ impl MiniGame for Together00 {
         match (self.state, self.panel) {
             (0x65, _) => Vec::new(),
             // ponytail: the score box fades out and the panel numbers fade in; Hud has no alpha, so they swap.
-            (_, Some(_)) => vec![Hud::Number { n: self.score as u32, x: 24, y: 104 }, Hud::Number { n: self.miss as u32, x: 104, y: 104 }],
-            _ => vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.score as u32, x: 14, y: 11 }],
+            (_, Some(_)) => vec![
+                Hud::Number { n: self.score as u32, x: 24, y: 104 },
+                Hud::Number { n: self.miss as u32, x: 104, y: 104 },
+            ],
+            _ => vec![
+                Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 },
+                Hud::Number { n: self.score as u32, x: 14, y: 11 },
+            ],
         }
     }
 

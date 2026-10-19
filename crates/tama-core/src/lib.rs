@@ -15,17 +15,17 @@ pub mod screen;
 pub mod shop;
 pub mod social;
 pub mod sprite;
-pub mod world;
 mod ui;
+pub mod world;
 
 use data::{Data, PART_BODY, PART_DIRT, PART_EYES, PART_MOUTH};
 use motion::{Draw, Look, Node, KEEP};
 use pet::{status, Pet};
+use screen::Screen;
+pub use screen::{HEIGHT, WIDTH};
+use sprite::Sprite;
 pub use ui::Level;
 use ui::Scene;
-pub use screen::{HEIGHT, WIDTH};
-use screen::Screen;
-use sprite::Sprite;
 
 /// Sprite with the 16 pet body colour palettes; set n = colour n (game-spec §8).
 const COLOR_PALETTES: u16 = 206;
@@ -151,10 +151,10 @@ impl Game {
             self.pet.weather_day = now / 86_400;
             self.pet.roll_weather(&self.data, now);
         }
-        if matches!(self.scene, Scene::Home) {
-            if self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO) {
-                self.pet.evolve(&self.data);
-            }
+        if matches!(self.scene, Scene::Home)
+            && (self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO))
+        {
+            self.pet.evolve(&self.data);
         }
         self.push_frames = if held & input::PUSH != 0 { self.push_frames.saturating_add(1) } else { 0 };
         // Holding the dial button for more than 13 frames opens the lab menu (08-care-ui §2.2.3).
@@ -342,7 +342,9 @@ impl Game {
     /// Draw one character pose (`chara_draw_pose` 0x100075c4).
     pub(crate) fn draw_chr(&mut self, d: &Draw, chr: u16, anim: u16, eyes: i16, mouth: i16) -> bool {
         let (chr_id, is_pet, face) = self.resolve_chr(chr);
-        let Some(parts) = self.data.model(chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else { return false };
+        let Some(parts) = self.data.model(chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else {
+            return false;
+        };
         let p = &self.pet;
         let color = p.body_color();
         let pal = (is_pet && p.def.stage > 1 && color < 16).then_some((COLOR_PALETTES, color as usize));
@@ -351,15 +353,35 @@ impl Game {
         for part in parts {
             let frame = match part.kind {
                 PART_BODY => part.frame,
-                PART_EYES if face => if eyes == KEEP { part.frame } else { eyes as u16 },
-                PART_MOUTH if face => if mouth == KEEP { part.frame } else { mouth as u16 },
+                PART_EYES if face => {
+                    if eyes == KEEP {
+                        part.frame
+                    } else {
+                        eyes as u16
+                    }
+                }
+                PART_MOUTH if face => {
+                    if mouth == KEEP {
+                        part.frame
+                    } else {
+                        mouth as u16
+                    }
+                }
                 PART_DIRT if dirty => part.frame,
                 // Planet outfits: the worn item's sprite (item +4) replaces the placeholder.
                 4 | 6 | 8 if chr == motion::PLANET || (motion::PLANET_ROLE..motion::ROLE).contains(&chr) => {
                     let worn = self.pet.equip[(part.kind / 2 - 2) as usize];
                     let Some(item) = self.data.item(worn) else { continue };
                     let x = if d.flip { -part.x } else { part.x } as i32;
-                    drawn |= self.screen.blit(item.eat_sprite, part.frame, d.x + x, d.y + part.y as i32, d.alpha, part.flip ^ d.flip, None);
+                    drawn |= self.screen.blit(
+                        item.eat_sprite,
+                        part.frame,
+                        d.x + x,
+                        d.y + part.y as i32,
+                        d.alpha,
+                        part.flip ^ d.flip,
+                        None,
+                    );
                     continue;
                 }
                 // 0x10 is never drawn.
@@ -442,7 +464,15 @@ impl Game {
                     self.draw_chr(d, chr, anim, eyes, mouth);
                 }
                 Look::Sprite { id, frame } => {
-                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, (d.palette > 0).then_some((id, d.palette as usize)));
+                    self.screen.blit(
+                        id,
+                        frame,
+                        d.x,
+                        d.y,
+                        d.alpha,
+                        d.flip,
+                        (d.palette > 0).then_some((id, d.palette as usize)),
+                    );
                 }
                 Look::None => {}
             }

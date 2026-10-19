@@ -250,7 +250,11 @@ impl Lab01 {
             let mut off = p.osc.map_or(0, |t0| {
                 let i = ((self.t - t0) as i64 * ONE as i64 / (3 * ONE) as i64) as u32 & 0xffff;
                 let s = (f64::sin(std::f64::consts::TAU * (i >> 6) as f64 / 1024.0) * 4096.0).round() as i32;
-                if p.right { s * 512 } else { -s * 512 }
+                if p.right {
+                    s * 512
+                } else {
+                    -s * 512
+                }
             });
             if p.x + off < (16 - half) * ONE {
                 off = (16 - half) * ONE - p.x;
@@ -281,7 +285,19 @@ impl Lab01 {
                 };
                 if let Some(slot) = self.plats.iter_mut().find(|p| p.is_none()) {
                     let (x, y) = (x as i32 * ONE, (y - self.scroll) * ONE);
-                    *slot = Some(Plat { kind, x, y, stepped: 0, right, osc: None, offset: 0, fade: None, alpha: ONE, hit: None, rider: false });
+                    *slot = Some(Plat {
+                        kind,
+                        x,
+                        y,
+                        stepped: 0,
+                        right,
+                        osc: None,
+                        offset: 0,
+                        fade: None,
+                        alpha: ONE,
+                        hit: None,
+                        rider: false,
+                    });
                 }
             }
             self.next += 1;
@@ -313,7 +329,9 @@ impl Lab01 {
         if !self.falling {
             return;
         }
-        let hit = |p: &Option<Plat>| p.and_then(|p| p.hit).is_some_and(|(l, t, w)| l - 8 < bx && bx < l + w && t - h < top && top < t + 8);
+        let hit = |p: &Option<Plat>| {
+            p.and_then(|p| p.hit).is_some_and(|(l, t, w)| l - 8 < bx && bx < l + w && t - h < top && top < t + 8)
+        };
         let Some(i) = self.plats.iter().position(hit) else { return };
         let Some(p) = self.plats[i].as_mut() else { return };
         p.stepped = 3;
@@ -398,11 +416,24 @@ impl MiniGame for Lab01 {
         let v = (self.scroll >> 2) % 256;
         push_sprite(out, BACKGROUND, 0, 64, v + if v < 128 { 64 } else { -192 }, 64);
         push_sprite(out, BACKGROUND, 0, 64, v - 64, 64);
-        let frame = if !self.air { 0 } else if self.time < 1 && self.falling { 2 } else { 1 };
+        let frame = if !self.air {
+            0
+        } else if self.time < 1 && self.falling {
+            2
+        } else {
+            1
+        };
         push_sprite(out, PLAYER, frame, (self.px >> 16) + self.jitter, (96 * ONE - self.py) >> 16, 64);
         for p in self.plats.iter().flatten() {
             let frame = (p.stepped != 0) as u16;
-            push_sprite(out, PLAT_SPRITE[p.kind as usize], frame, (p.x + p.offset) >> 16, 128 - (p.y >> 16), (p.alpha >> 10) as u8);
+            push_sprite(
+                out,
+                PLAT_SPRITE[p.kind as usize],
+                frame,
+                (p.x + p.offset) >> 16,
+                128 - (p.y >> 16),
+                (p.alpha >> 10) as u8,
+            );
         }
         // Height gauge (`FUN_100245ec`): marker from y 120 (start) to 8 (goal).
         push_sprite(out, GAUGE, 0, 8, 64, 64);

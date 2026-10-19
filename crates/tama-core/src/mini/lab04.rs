@@ -371,7 +371,8 @@ impl MiniGame for Lab04 {
     }
 
     fn draws(&self, out: &mut Vec<Draw>) {
-        let sprite = |id, x, y, flip, alpha| Draw { look: Look::Sprite { id, frame: 0 }, x, y, flip, alpha, palette: 0 };
+        let sprite =
+            |id, x, y, flip, alpha| Draw { look: Look::Sprite { id, frame: 0 }, x, y, flip, alpha, palette: 0 };
         out.push(sprite(BG, 64, 64, false, 64));
         for (i, b) in self.bricks.iter().enumerate() {
             let (x, y) = brick_xy(i);
@@ -387,10 +388,19 @@ impl MiniGame for Lab04 {
             fx.draws(0, 0, out);
         }
         let prize = self.prize[self.round.min(ROUNDS - 1) as usize] as usize;
-        if let (Some(i), true) = (prize.checked_sub(1).filter(|&i| i < 15), self.shown.is_some() || self.revealed.is_some()) {
+        if let (Some(i), true) =
+            (prize.checked_sub(1).filter(|&i| i < 15), self.shown.is_some() || self.revealed.is_some())
+        {
             let (x, y) = brick_xy(i);
             let anim = PRIZE_ANIM[self.revealed.is_some() as usize];
-            out.push(Draw { look: Look::Chr { chr: self.chr, anim, eyes: KEEP, mouth: KEEP }, x, y, flip: false, alpha: 64, palette: 0 });
+            out.push(Draw {
+                look: Look::Chr { chr: self.chr, anim, eyes: KEEP, mouth: KEEP },
+                x,
+                y,
+                flip: false,
+                alpha: 64,
+                palette: 0,
+            });
         }
         out.push(sprite(BALL.0, self.ball.0 >> 16, (self.ball.1 >> 16) + BALL.1, self.ball_flip, 64));
         out.push(sprite(PADDLE.0, self.paddle >> 16, PADDLE_Y + PADDLE.1, self.paddle_flip, 64));
@@ -398,7 +408,9 @@ impl MiniGame for Lab04 {
 
     fn hud(&self) -> Vec<Hud> {
         match self.clock {
-            Some(s) => vec![Hud::Sprite { id: CLOCK, frame: 0, x: 120, y: 11 }, Hud::Number { n: s as u32, x: 120, y: 11 }],
+            Some(s) => {
+                vec![Hud::Sprite { id: CLOCK, frame: 0, x: 120, y: 11 }, Hud::Number { n: s as u32, x: 120, y: 11 }]
+            }
             None => Vec::new(),
         }
     }

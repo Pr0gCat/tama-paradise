@@ -63,7 +63,15 @@ impl Card {
     pub fn encode(&self) -> String {
         let body = format!(
             "{:02x}{:08x}{:08x}{:04x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-            self.rom_type, self.device_uid, self.chara_uid, self.tama, self.color, self.onaka, self.gokigen, self.love as u8, self.friendship
+            self.rom_type,
+            self.device_uid,
+            self.chara_uid,
+            self.tama,
+            self.color,
+            self.onaka,
+            self.gokigen,
+            self.love as u8,
+            self.friendship
         );
         let sum = body.bytes().fold(0u8, |a, b| a.wrapping_add(b));
         format!("{CODE_MAGIC}-{body}{sum:02x}").to_uppercase()
@@ -158,7 +166,14 @@ impl Pet {
     }
 
     fn remember_friend(&mut self, c: &Card, friendship: u8, result: u8) {
-        let rec = Friend { device_uid: c.device_uid, chara_uid: c.chara_uid, tama: c.tama, color: c.color, friendship, result };
+        let rec = Friend {
+            device_uid: c.device_uid,
+            chara_uid: c.chara_uid,
+            tama: c.tama,
+            color: c.color,
+            friendship,
+            result,
+        };
         self.friends.retain(|f| f.device_uid != c.device_uid);
         if self.friends.len() == FRIENDS_MAX {
             self.friends.remove(0);

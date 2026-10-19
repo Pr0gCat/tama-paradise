@@ -6,6 +6,12 @@
 use crate::data::{CharDef, Item, KIND_MEAL, KIND_SNACK};
 use serde::{Deserialize, Serialize};
 
+mod calendar;
+mod care;
+mod sim;
+
+pub use calendar::{date, EVENTS};
+
 /// Request ids (EM_REQ_*), same numbering as the firmware.
 pub mod req {
     pub const EVOLUTION: u8 = 0x01;
@@ -239,47 +245,6 @@ pub struct Pet {
 
 pub const NO_COLOR: u8 = 0x1f;
 
-/// Calendar date (year, month 1–12, day 1–31) of local seconds since 1970-01-01.
-pub fn date(t: u64) -> (i64, u32, u32) {
-    // Howard Hinnant's civil_from_days.
-    let z = (t / DAY) as i64 + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (yoe + era * 400 + (m <= 2) as i64, m, d)
-}
-
-/// Calendar events of the day (`FUN_10083984`). Birthdays are not implemented, so BIRTHDAY is never raised.
-fn calendar_events(t: u64) -> Vec<u8> {
-    let (_, m, d) = date(t);
-    let mut ev = Vec::new();
-    if (m, d) == (1, 1) {
-        ev.push(req::NEWYEAR);
-    }
-    if d % 10 == 9 {
-        ev.push(req::METEOR);
-    }
-    if d % 7 == 0 {
-        ev.push(req::SHOOTINGSTAR);
-    }
-    if (m, d) == (11, 23) {
-        ev.push(req::UFO);
-    }
-    match (m, d) {
-        (12, 1..=23) => ev.push(req::SANTA),
-        (12, 24) => ev.push(req::EVE),
-        (12, 25) => ev.push(req::XMAS),
-        _ => {}
-    }
-    ev
-}
-
-pub const EVENTS: [u8; 9] = [req::BIRTHDAY, req::NEWYEAR, req::DODODO, req::METEOR, req::SHOOTINGSTAR, req::UFO, req::SANTA, req::EVE, req::XMAS];
-
 fn no_color() -> u8 {
     NO_COLOR
 }
@@ -424,10 +389,8 @@ impl Pet {
                 self.cond = Cond::Dead;
                 self.add_grave();
             }
-            req::ONAKA => {
-                if self.death_by_hungry == 0 {
-                    self.death_by_hungry = DEATH_COUNTDOWN;
-                }
+            req::ONAKA if self.death_by_hungry == 0 => {
+                self.death_by_hungry = DEATH_COUNTDOWN;
             }
             _ => {}
         }
@@ -504,7 +467,7 @@ impl Pet {
             return;
         }
         self.cold += 1;
-        if self.cold % 5 == 0 {
+        if self.cold.is_multiple_of(5) {
             self.cold = 0;
             self.death_cause = DeathCause::Illness;
             match src {
@@ -548,396 +511,17 @@ impl Pet {
         }
     }
 
-    /// Sleep/wake requests by time of day (from `care_time_update`).
-    // The firmware evaluates this once per `care_time_update`; we run it per chunk so
-    // long offline catch-up follows the daily schedule instead of the state at wake-up.
-    fn schedule(&mut self, t: u64) {
-        if self.def.stage <= 2 || self.is_done(req::NAP) {
-            return;
-        }
-        let p = Self::period(t);
-        if p == 4 {
-            for id in [req::WAKE, req::SLEEP] {
-                if self.is_pending(id) {
-                    self.mark_done(id);
-                }
-            }
-            return;
-        }
-        if p == 3 && self.cond == Cond::Sitter {
-            self.cond = Cond::Normal;
-            self.add_gokigen(-5);
-        }
-        if !self.was_raised(req::WAKE) {
-            self.raise(req::WAKE);
-        }
-        if p != 0 && self.is_pending(req::WAKE) {
-            self.mark_done(req::WAKE);
-        }
-        if p == 3 && !self.was_raised(req::SLEEP) {
-            self.raise(req::SLEEP);
-        }
-    }
-
-    /// `care_day_change` 0x10013234; `t` is the new day.
-    fn day_change(&mut self, t: u64) {
-        if !self.is_done(req::OTEIRE) && self.cond != Cond::Dead {
-            self.yogore = (self.yogore + 1).min(3);
-        }
-        for id in [req::WAKE, req::SLEEP, req::OTEIRE].into_iter().chain(EVENTS) {
-            self.clear(id);
-        }
-        self.no_wake_today = false;
-        self.no_sleep_today = false;
-        self.lab_bonus = false;
-        self.hunt_used = [0; 3];
-        self.breeds_today = 0;
-        self.raise_calendar(t);
-    }
-
-    /// Today's calendar events, plus the player's birthday (`FUN_1006d904`: 2/29 falls on 3/1 in
-    /// other years).
-    fn raise_calendar(&mut self, t: u64) {
-        for id in calendar_events(t) {
-            self.raise(id);
-        }
-        let (y, m, d) = date(t);
-        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-        let bd = self.birthday.map(|(bm, bd)| if (bm, bd) == (2, 29) && !leap { (3, 1) } else { (bm as u32, bd as u32) });
-        if bd == Some((m, d)) {
-            self.raise(req::BIRTHDAY);
-        }
-    }
-
-    /// An event scene finished (`FUN_1003f1f0` / `FUN_1003efc4`): apply its reward.
-    pub fn finish_event(&mut self, id: u8) {
-        match id {
-            req::NEWYEAR => self.points = (self.points + 1000).min(99_999),
-            req::XMAS => self.add_gokigen(20),
-            req::DODODO => self.add_gokigen(10),
-            _ => {}
-        }
-        self.mark_done(id);
-    }
-
-    /// End of the meteor event game (`labo05_tick` 0xdad): ±10 mood; a hit also injures the pet.
-    pub fn finish_meteor(&mut self, survived: bool) {
-        if survived {
-            self.add_gokigen(10);
-        } else {
-            self.add_gokigen(-10);
-            if self.cond == Cond::Normal {
-                self.raise(req::INJURY);
-            }
-            self.lose_field_toys();
-        }
-        self.mark_done(req::METEOR);
-    }
-
-    /// Advance to wall-clock `now` (`care_time_update` 0x10012c90).
-    /// Catch-up is capped at 1440 chunks of 60 s plus one; older time is dropped.
-    pub fn advance_to(&mut self, now: u64) {
-        let Some(last) = self.last else {
-            self.last = Some(now);
-            self.raise_calendar(now);
-            return;
-        };
-        if now <= last {
-            self.last = Some(now);
-            return;
-        }
-        let mut t = last;
-        let mut dt = now - last;
-        let mut chunks = 0;
-        while dt > CHUNK && chunks < MAX_CHUNKS {
-            self.schedule(t);
-            self.tick(t, CHUNK as u32);
-            t += CHUNK;
-            dt -= CHUNK;
-            chunks += 1;
-        }
-        self.schedule(t);
-        self.tick(t, dt.min(CHUNK) as u32);
-        if now / DAY != last / DAY {
-            self.day_change(now);
-        }
-        self.last = Some(now);
-    }
-
-    /// DODODO (`FUN_10012c90`): raised on the 13th at 17:00 for an awake pet at rank ≥ 6; still
-    /// unanswered at 17:15 it becomes DODODO_IGNORE: mood −10, an injury, and this field's
-    /// outside toys are lost.
-    fn dododo(&mut self, t: u64, awake: bool) {
-        let (_, _, d) = date(t);
-        let min = t % DAY / 60;
-        if d != 13 || !(17 * 60..18 * 60).contains(&min) {
-            return;
-        }
-        if min < 17 * 60 + 15 {
-            if awake && self.rank >= 6 && self.def.stage >= 3 && !self.was_raised(req::DODODO) {
-                self.raise(req::DODODO);
-            }
-        } else if self.is_pending(req::DODODO) {
-            self.add_gokigen(-10);
-            if self.cond == Cond::Normal {
-                self.raise(req::INJURY);
-            }
-            self.lose_field_toys();
-            self.mark_done(req::DODODO);
-        }
-    }
-
-    /// One simulation step of `dt` ≤ 60 s starting at `t` (`care_tick` 0x100134bc).
-    pub fn tick(&mut self, t: u64, dt: u32) {
-        let sleeping = self.is_sleeping_at(t);
-        let nap = self.is_done(req::NAP);
-        self.dododo(t, !sleeping && !nap);
-        let awake = !sleeping && !nap;
-
-        if self.cond != Cond::Dead && (self.def.stage != 3 || self.age < 86_400 || awake) {
-            self.age = (self.age + dt).min(AGE_MAX);
-        }
-        if awake {
-            self.clean_timer = (self.clean_timer + dt).min(14_400);
-        }
-        if nap {
-            self.nap_timer += dt;
-            if self.nap_timer > 59 {
-                self.nap_timer = 0;
-                self.clear(req::NAP);
-            }
-        }
-
-        if self.death_remain > 0 {
-            self.death_remain = self.death_remain.saturating_sub(dt);
-            if self.death_remain == 0 {
-                // DYING then waits at 0 for the dying scene (`end_dying`).
-                if self.is_pending(req::DEATH) && !self.was_raised(req::DYING) {
-                    self.raise(req::DYING);
-                }
-            }
-        }
-
-        if matches!(self.cond, Cond::Death | Cond::Dying | Cond::Dead) {
-            return;
-        }
-
-        self.day_secs += dt;
-        if self.day_secs >= DAY as u32 {
-            self.day_secs -= DAY as u32;
-            self.days = (self.days + 1).min(999);
-        }
-        if self.death_by_cold > 0 {
-            self.death_by_cold = self.death_by_cold.saturating_sub(dt);
-            if self.death_by_cold == 0 {
-                self.death_cause = DeathCause::Illness;
-                self.raise(req::DEATH_DELAY);
-            }
-        }
-        if self.death_by_hungry > 0 {
-            self.death_by_hungry = self.death_by_hungry.saturating_sub(dt);
-            if self.death_by_hungry == 0 {
-                self.death_cause = DeathCause::Hunger;
-                self.raise(req::DEATH_DELAY);
-            }
-        }
-
-        if !awake {
-            return;
-        }
-
-        if self.is_pending(req::DEATH_DELAY) {
-            self.clear(req::DEATH_DELAY);
-            self.raise(req::DEATH);
-            return;
-        }
-
-        if self.cond == Cond::Sitter {
-            // The sitter keeps the pet fed; time only fills the UNCHI METER.
-            self.onaka_timer += dt;
-            let hungry = self.def.hungry_min as u32 * 60;
-            if hungry != 0 && self.onaka_timer >= hungry {
-                self.onaka_timer = 0;
-                self.hunger_drops += 1;
-                if self.hunger_drops >= 2 {
-                    self.hunger_drops = 0;
-                    self.unchi_meter = (self.unchi_meter + 1).min(60);
-                }
-            }
-            return;
-        }
-
-        self.onaka_timer += dt;
-        self.gokigen_timer += dt;
-
-        if self.is_pending(req::SOWASOWA) {
-            self.sowasowa_timer += dt;
-            if self.sowasowa_timer >= SOWASOWA_DELAY {
-                if self.unchi.len() < UNCHI_MAX {
-                    self.unchi.push(0);
-                }
-                self.raise(req::UNCHI);
-                self.clear(req::SOWASOWA);
-            }
-        }
-
-        let old_before = self.unchi.iter().filter(|&&a| a >= UNCHI_OLD).count();
-        for a in &mut self.unchi {
-            *a = (*a + dt as u16).min(UNCHI_OLD);
-        }
-        let old_after = self.unchi.iter().filter(|&&a| a >= UNCHI_OLD).count();
-        if old_before < UNCHI_MAX && old_after == UNCHI_MAX {
-            self.cold_up(ColdSource::Poop);
-        }
-
-        let misses_before = self.osewamiss;
-
-        let hungry = self.def.hungry_min as u32 * 60;
-        if hungry != 0 && self.onaka_timer >= hungry {
-            self.onaka_timer = 0;
-            if self.onaka > 0 {
-                self.add_onaka(-1);
-                self.hunger_drops += 1;
-                if self.hunger_drops >= 2 {
-                    self.hunger_drops = 0;
-                    self.sowasowa_timer = 0;
-                    self.raise(req::SOWASOWA);
-                }
-            }
-            if self.onaka == 0 {
-                self.raise(req::ONAKA);
-                self.raise(req::HOMETRG);
-            }
-        }
-        if self.is_pending(req::ONAKA) && self.onaka_timer >= CALL_TIMEOUT {
-            self.clear(req::ONAKA);
-            if self.def.stage > 2 {
-                self.add_mistake();
-            }
-        }
-
-        let happy = self.def.happy_min as u32 * 60;
-        if happy != 0 && self.gokigen_timer >= happy {
-            self.gokigen_timer = 0;
-            self.add_gokigen(-1);
-            if self.gokigen == 0 {
-                self.raise(req::GOKIGEN);
-                self.raise(req::HOMETRG);
-            }
-        }
-        if self.is_pending(req::GOKIGEN) && self.gokigen_timer >= CALL_TIMEOUT {
-            self.clear(req::GOKIGEN);
-            if self.def.stage > 2 {
-                self.add_mistake();
-            }
-        }
-
-        self.evolution_tick(dt);
-
-        if self.def.stage == 2 && !self.was_raised(req::COLD) && self.age > 600 {
-            self.raise(req::COLD);
-        }
-
-        if self.def.stage >= 3 && self.osewamiss > misses_before {
-            let r = self.rand100();
-            if self.osewamiss % 6 == 0 || r < self.def.disease as u32 {
-                self.cold_up(ColdSource::Mistake);
-            }
-        }
-    }
-
-    // ---- player actions -------------------------------------------------
-
     fn alive(&self) -> bool {
         !matches!(self.cond, Cond::Death | Cond::Dying | Cond::Dead)
     }
 
     /// Colour actually drawn: the chosen colour or the character's default.
     pub fn body_color(&self) -> u8 {
-        if self.color < 16 { self.color } else { self.def.color }
-    }
-
-    /// Special snack effects (`care_eat_item` 0x1001021c, ids 6002–6050; 05-content §2.3).
-    fn snack_effect(&mut self, id: u16) {
-        let cur = self.body_color();
-        let color = |c: u8, p: &mut Pet| {
-            p.next_color = c;
-            p.raise(req::COLOR);
-        };
-        match id {
-            6002..=6007 => color([0, 4, 6, 9, 11, 10][(id - 6002) as usize], self),
-            6008 | 6009 => {
-                let (lo, n) = if id == 6008 { (0, 9) } else { (9, 7) };
-                let mut c = lo + (self.rand100() % n) as u8;
-                if c == cur {
-                    c = lo + (c - lo + 1) % n as u8;
-                }
-                color(c, self);
-            }
-            6046 => color(6, self),
-            6049 => color(8, self),
-            6050 => color(14, self),
-            6010 => {
-                self.add_gokigen(20);
-                self.raise(req::HAPPY);
-            }
-            6011 if self.def.stage == 5 => self.raise(req::LOVE),
-            6012 => self.raise(req::IMMUNITY),
-            6013 => self.raise(req::DOSSARI),
-            6014 => {
-                self.status &= status::DIRTY;
-                self.nap_timer = 0;
-                self.raise(req::NAP);
-                self.mark_done(req::NAP);
-            }
-            6015 | 6047 => match self.rand100() % if self.def.stage == 5 { 3 } else { 2 } {
-                0 => {
-                    self.add_gokigen(20);
-                    self.raise(req::HAPPY);
-                }
-                1 => self.raise(req::IMMUNITY),
-                _ => self.raise(req::LOVE),
-            },
-            6016 => self.status = self.status & status::DIRTY | status::DANCE,
-            6017 => self.status = self.status & status::DIRTY | status::KIRAKIRA,
-            6048 => self.raise(req::REDU_CM),
-            _ => {}
+        if self.color < 16 {
+            self.color
+        } else {
+            self.def.color
         }
-    }
-
-    /// Complete one pending eating effect (`req_done` for COLOR/LOVE/IMMUNITY/HAPPY/REDU_CM).
-    /// Returns the effect completed, if any.
-    pub fn complete_effect(&mut self) -> Option<u8> {
-        let id = req::EFFECTS.into_iter().find(|&r| self.is_pending(r))?;
-        match id {
-            req::COLOR => {
-                self.color = self.next_color;
-                self.collect_mission(crate::progress::m::COLORS, self.color as u32);
-            }
-            req::LOVE => self.status = self.status & status::DIRTY | status::LOVE,
-            req::IMMUNITY => self.status = self.status & status::DIRTY | status::IMMUNITY,
-            req::HAPPY => self.status = self.status & status::DIRTY | status::HAPPY,
-            _ => self.miss_count = self.miss_count.saturating_sub(1),
-        }
-        self.mark_done(id);
-        Some(id)
-    }
-
-    /// Like (+1) / dislike (−1) of a food (`food_pref_bonus` 0x100171fc).
-    pub fn food_pref(&self, item: &Item) -> i32 {
-        let mut pref = 0;
-        if item.group != 0 && item.group == self.def.likes {
-            pref += 1;
-        } else if item.group != 0 && item.group == self.def.dislikes {
-            pref -= 1;
-        }
-        if self.def.stage > 4 && item.id == 5002 {
-            pref = -1;
-        }
-        if item.kind == KIND_SNACK && self.def.stage == 5 && item.snack_flag == 1 {
-            pref += 1;
-        }
-        pref
     }
 
     pub fn count(&self, id: u16) -> u8 {
@@ -956,169 +540,6 @@ impl Pet {
 
     /// Feed a meal or snack (`care_eat_item` 0x1001021c). Returns false if refused.
     // ponytail: special snacks (colour juices, HAPPY/LOVE/IMMUNITY, nap tea) not handled yet.
-    pub fn feed(&mut self, item: &Item) -> bool {
-        if self.cond != Cond::Normal
-            || !matches!(item.kind, KIND_MEAL | KIND_SNACK)
-            || (item.kind == KIND_MEAL && self.onaka == ONAKA_MAX)
-        {
-            return false;
-        }
-        let pref = self.food_pref(item);
-        self.add_onaka(item.onaka as i32);
-        self.log_food(item);
-        self.snack_effect(item.id);
-        if item.kind == KIND_SNACK {
-            self.add_gokigen(item.gokigen as i32 + pref);
-            self.count_mission(crate::progress::m::SNACKS, 1);
-        } else {
-            self.add_gokigen(pref);
-            self.count_mission(crate::progress::m::MEALS, 1);
-        }
-        true
-    }
-
-    /// Take the pet to the toilet while it is restless: no poop, mood +1.
-    pub fn toilet(&mut self) -> bool {
-        if !self.is_pending(req::SOWASOWA) {
-            return false;
-        }
-        self.clear(req::SOWASOWA);
-        self.count_mission(crate::progress::m::TOILET, 1);
-        self.add_gokigen(1);
-        true
-    }
-
-    /// Clean all poop (`care_clean_unchi` 0x100108d4). Returns how many were removed.
-    pub fn clean(&mut self) -> usize {
-        let n = self.unchi.len();
-        self.unchi.clear();
-        // Grazing tamas' poop adds a bonus by how long since the last cleaning (`FUN_100108d4`).
-        let k = (0..3).map(|f| self.grazing_in(f)).sum::<usize>().min(12);
-        let bonus = match self.clean_timer {
-            3600..=7199 => 2 * k,
-            7200..=14_399 => k,
-            _ => 0,
-        };
-        let reward = (n + bonus) as u32;
-        self.count_mission(crate::progress::m::CLEANINGS, 1);
-        self.count_mission(crate::progress::m::POOP_CLEANED, reward);
-        self.unchi_meter = (self.unchi_meter as u32 + reward).min(60) as u8;
-        self.clean_timer = 0;
-        self.clear(req::UNCHI);
-        n
-    }
-
-    /// One dose of medicine cures a cold.
-    pub fn medicine(&mut self) -> bool {
-        if self.cond != Cond::Cold {
-            return false;
-        }
-        self.mark_done(req::COLD);
-        self.add_gokigen(1);
-        self.cond = if self.is_pending(req::INJURY) { Cond::Injury } else { Cond::Normal };
-        self.death_by_cold = 0;
-        true
-    }
-
-    /// Grooming (OTEIRE): clears dirt.
-    pub fn groom(&mut self) {
-        if !self.alive() {
-            return;
-        }
-        self.status &= !status::DIRTY;
-        self.yogore = 0;
-        self.count_mission(crate::progress::m::GROOMED, 1);
-        self.add_gokigen(1);
-        self.mark_done(req::OTEIRE);
-    }
-
-    /// Mood reward from a care action (e.g. +1 after cleaning poop).
-    pub fn happy(&mut self, n: i32) {
-        self.add_gokigen(n);
-    }
-
-    /// Put the pet to bed when it asks to sleep ("TIME TO SLEEP?" YES).
-    pub fn put_to_bed(&mut self) -> bool {
-        if !self.is_pending(req::SLEEP) {
-            return false;
-        }
-        self.mark_done(req::SLEEP);
-        self.count_mission(crate::progress::m::PUT_TO_BED, 1);
-        self.status &= status::DIRTY;
-        true
-    }
-
-    /// Treat an injury (`req_done(INJURY)`): mood +1, back to normal (or cold).
-    pub fn treat_injury(&mut self) -> bool {
-        if self.cond != Cond::Injury {
-            return false;
-        }
-        self.clear(req::INJURY);
-        self.add_gokigen(1);
-        self.cond = if self.is_pending(req::COLD) { Cond::Cold } else { Cond::Normal };
-        true
-    }
-
-    /// Wake the pet when it is asking to get up.
-    pub fn wake(&mut self) -> bool {
-        if !self.is_pending(req::WAKE) {
-            return false;
-        }
-        self.mark_done(req::WAKE);
-        self.count_mission(crate::progress::m::WOKE_UP, 1);
-        true
-    }
-
-    /// Rescue during the DEATH window (`req_done(DEATH)`).
-    pub fn rescue(&mut self) -> bool {
-        if self.cond != Cond::Death {
-            return false;
-        }
-        self.mark_done(req::DEATH);
-        self.clear(req::DEATH);
-        self.cond = Cond::Normal;
-        self.death_remain = 0;
-        self.death_by_cold = 0;
-        self.cold = 0;
-        self.death_by_hungry = if self.onaka == 0 { DEATH_COUNTDOWN } else { 0 };
-        true
-    }
-
-    /// The ancestor who comes to save a dying pet (`FUN_1000af5c`): the first grave of an
-    /// old-age death whose spirit has not helped yet.
-    pub fn dying_ancestor(&self) -> Option<usize> {
-        self.graves.iter().position(|g| g.spirit)
-    }
-
-    /// End of the dying scene (`req_done(DYING, arg)`): saved by the ancestor in grave `saved`
-    /// (its spirit is used up, cond back to normal), or dead (dirt cleared, DEAD raised).
-    pub fn end_dying(&mut self, saved: Option<usize>) {
-        if self.cond != Cond::Dying {
-            return;
-        }
-        self.clear(req::DYING);
-        match saved {
-            Some(i) => {
-                if let Some(g) = self.graves.get_mut(i) {
-                    g.spirit = false;
-                }
-                self.cond = Cond::Normal;
-                self.death_remain = 0;
-            }
-            None => {
-                self.status &= !status::DIRTY;
-                self.raise(req::DEAD);
-            }
-        }
-    }
-
-    /// Take the pet back from the tama sitter early (HELP_SITTER, END TAMA SITTING? → YES).
-    pub fn end_sitter(&mut self) {
-        if self.cond == Cond::Sitter {
-            self.cond = Cond::Normal;
-        }
-    }
-
     /// Tama days ≥ 30 at death counts as old age (daiojo).
     pub fn daiojo(&self) -> bool {
         self.cond == Cond::Dead && self.days >= 30
@@ -1127,6 +548,7 @@ impl Pet {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::calendar::calendar_events;
     use super::*;
 
     pub(crate) fn def(id: u16, stage: u8, hungry_min: u16, happy_min: u16, disease: u8) -> CharDef {

@@ -94,7 +94,21 @@ impl Lab05 {
 
     fn with(rows: Vec<[[u8; 2]; 3]>, lives: u8, event: bool) -> Self {
         let bg = BACKGROUND.map(Node::new);
-        Lab05 { rows, event, frame: 0, score: 0, lives, hearts: lives, gloves: [None; 3], hurt: 0, meteors: Vec::new(), effects: Vec::new(), bg, end_wait: None, end_sound: false }
+        Lab05 {
+            rows,
+            event,
+            frame: 0,
+            score: 0,
+            lives,
+            hearts: lives,
+            gloves: [None; 3],
+            hurt: 0,
+            meteors: Vec::new(),
+            effects: Vec::new(),
+            bg,
+            end_wait: None,
+            end_sound: false,
+        }
     }
 
     pub fn result(&self) -> u8 {
@@ -167,7 +181,10 @@ impl MiniGame for Lab05 {
             // State 3000/3001: end jingle, then wait for it to finish.
             sounds.push((0x4a, 100));
             self.end_sound = true;
-            let len = data.melodies.get(0x4a).map_or(0, |m| m.notes.iter().map(|n| n[0] as u32).sum::<u32>() * m.ms_per_step as u32 / 50);
+            let len = data
+                .melodies
+                .get(0x4a)
+                .map_or(0, |m| m.notes.iter().map(|n| n[0] as u32).sum::<u32>() * m.ms_per_step as u32 / 50);
             self.end_wait = Some(len as u16);
             return None;
         }
@@ -189,7 +206,13 @@ impl MiniGame for Lab05 {
             if let Some(row) = self.rows.get((self.frame / ROW_EVERY - 1) as usize) {
                 for (l, &[present, speed]) in row.iter().enumerate() {
                     if present != 0 {
-                        self.meteors.push(Meteor { lane: Some(l), from: START[l], to: LAND[l], t: 0, len: FALL[(speed as usize).min(2)] });
+                        self.meteors.push(Meteor {
+                            lane: Some(l),
+                            from: START[l],
+                            to: LAND[l],
+                            t: 0,
+                            len: FALL[(speed as usize).min(2)],
+                        });
                         sounds.push((0x32, 100));
                     }
                 }

@@ -132,7 +132,14 @@ impl Game {
 
     /// Four icons of the dominant area fly into the baby, one per key press (or after 10 s),
     /// then it evolves (EVENT_EVOLUTION, `req_done(EVOL_SUPPORT)`).
-    pub(crate) fn update_support(&mut self, mut pet: Node, mut round: u8, mut t: u16, mut busy: bool, pressed: u8) -> Scene {
+    pub(crate) fn update_support(
+        &mut self,
+        mut pet: Node,
+        mut round: u8,
+        mut t: u16,
+        mut busy: bool,
+        pressed: u8,
+    ) -> Scene {
         pet.tick(&self.data.motions);
         pet.take_sounds(&mut self.sounds);
         t += 1;

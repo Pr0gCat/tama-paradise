@@ -145,12 +145,25 @@ struct Paddle {
 
 impl Paddle {
     fn new(base: f32, fwd: f32) -> Self {
-        Paddle { x: 64.0, base, fwd, prev: (64.0, base), charge: 0.0, full: false, smashing: false, tw: (0.0, 0.0, 0, 0) }
+        Paddle {
+            x: 64.0,
+            base,
+            fwd,
+            prev: (64.0, base),
+            charge: 0.0,
+            full: false,
+            smashing: false,
+            tw: (0.0, 0.0, 0, 0),
+        }
     }
 
     fn off(&self) -> f32 {
         let (a, b, t, n) = self.tw;
-        if t >= n { b } else { a + (b - a) * t as f32 / n as f32 }
+        if t >= n {
+            b
+        } else {
+            a + (b - a) * t as f32 / n as f32
+        }
     }
 
     fn pos(&self) -> (f32, f32) {
@@ -284,7 +297,11 @@ enum St {
     /// The serve marker flies in for 10 frames (`FUN_1000f040`, 0.5 s); `me` = served on my side.
     Serve(u8, bool),
     Play,
-    Goal { me: bool, banner: Node, fx: Option<Node> },
+    Goal {
+        me: bool,
+        banner: Node,
+        fx: Option<Node>,
+    },
     /// Time is up: the ball fades out (state 9000).
     End,
     Panel(Panel),
@@ -540,9 +557,15 @@ impl MiniGame for Arcade01 {
     fn hud(&self) -> Vec<Hud> {
         match self.st {
             St::Intro => Vec::new(),
-            St::Panel(ref p) => vec![Hud::Number { n: self.score[0] as u32, x: 42 + p.dx(), y: 48 }, Hud::Number { n: self.score[1] as u32, x: 86 + p.dx(), y: 48 }],
+            St::Panel(ref p) => vec![
+                Hud::Number { n: self.score[0] as u32, x: 42 + p.dx(), y: 48 },
+                Hud::Number { n: self.score[1] as u32, x: 86 + p.dx(), y: 48 },
+            ],
             _ => {
-                let mut h = vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.shown as u32, x: 14, y: 11 }];
+                let mut h = vec![
+                    Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 },
+                    Hud::Number { n: self.shown as u32, x: 14, y: 11 },
+                ];
                 let s = (self.t as u32).div_ceil(20);
                 if s < 10 {
                     h.extend([Hud::Sprite { id: 0x80f, frame: 0, x: 120, y: 11 }, Hud::Number { n: s, x: 120, y: 11 }]);

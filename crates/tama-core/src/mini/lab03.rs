@@ -91,7 +91,11 @@ impl Lab03 {
 
     fn bird_off_y(&self) -> i32 {
         let (from, to, t) = self.bird_y;
-        if t >= 4 { to } else { from + (to - from) * t as i32 / 4 }
+        if t >= 4 {
+            to
+        } else {
+            from + (to - from) * t as i32 / 4
+        }
     }
 
     fn place_bird(&mut self) {
@@ -131,7 +135,15 @@ impl Lab03 {
     /// `FUN_1007cee4`: A/dial up = lane up, B/dial down = lane down; magnet on/off swaps the bird.
     fn input(&mut self, pressed: u8, sounds: &mut Vec<(u16, u8)>) {
         let (a, b) = (pressed & A != 0, pressed & B != 0);
-        let up = if a != b { a } else if pressed & UP != 0 { true } else if pressed & DOWN != 0 { false } else { return self.magnet_tick() };
+        let up = if a != b {
+            a
+        } else if pressed & UP != 0 {
+            true
+        } else if pressed & DOWN != 0 {
+            false
+        } else {
+            return self.magnet_tick();
+        };
         let mut moved = false;
         if up && self.lane > 0 {
             self.lane -= 1;
@@ -238,7 +250,13 @@ impl MiniGame for Lab03 {
             return (t + 1 >= END_FRAMES).then(|| self.result());
         }
         let old_speed = self.speed;
-        self.speed = if self.dist < 1152 { 3 } else if self.dist < 2816 { 5 } else { 7 };
+        self.speed = if self.dist < 1152 {
+            3
+        } else if self.dist < 2816 {
+            5
+        } else {
+            7
+        };
         if self.dist > 0 && old_speed != self.speed {
             self.step += 1;
             sounds.push((0x12, 100));
@@ -269,7 +287,8 @@ impl MiniGame for Lab03 {
     }
 
     fn draws(&self, out: &mut Vec<Draw>) {
-        let sprite = |id, frame, x, y, alpha| Draw { look: Look::Sprite { id, frame }, x, y, flip: false, alpha, palette: 0 };
+        let sprite =
+            |id, frame, x, y, alpha| Draw { look: Look::Sprite { id, frame }, x, y, flip: false, alpha, palette: 0 };
         let phase = self.dist % 128;
         for k in 0..2 {
             out.push(sprite(self.bg[k], 0, 64 + phase - 128 * k as i32, 64, 64));

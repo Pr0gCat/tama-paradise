@@ -170,7 +170,8 @@ mod tests {
         let mut greats = 0;
         let mut hunts = 0;
         while p.can_hunt(NOON).is_ok() {
-            let free: Vec<usize> = (0..p.hunt_roster().len()).filter(|&i| !p.hunt_slot_used(p.hunt_roster()[i].slot)).collect();
+            let free: Vec<usize> =
+                (0..p.hunt_roster().len()).filter(|&i| !p.hunt_slot_used(p.hunt_roster()[i].slot)).collect();
             let r = p.hunt(&d, NOON, 0, [free[0], free[1], free[2]]).unwrap();
             hunts += 1;
             assert!(r.result <= 1);

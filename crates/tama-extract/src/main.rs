@@ -28,10 +28,7 @@ fn table(dump: &[u8], t: usize, n: usize) -> Vec<Vec<u16>> {
     let pack = arc_entry(dump, 0).0;
     let start = pack + u32_at(dump, pack + t * 4) as usize * 2;
     let end = pack + u32_at(dump, pack + (t + 1) * 4) as usize * 2;
-    dump[start..end]
-        .chunks_exact(n * 2)
-        .map(|r| (0..n).map(|i| u16_at(r, i * 2)).collect())
-        .collect()
+    dump[start..end].chunks_exact(n * 2).map(|r| (0..n).map(|i| u16_at(r, i * 2)).collect()).collect()
 }
 
 /// Start of data-pack table `t` (u16-unit offsets at the pack start).
@@ -57,7 +54,15 @@ fn keyframe(dump: &[u8], idx: usize) -> Part {
             p += 2;
         }
     }
-    Part { sprite: k[0], frame: k[6], x: k[1] as i16, y: k[2] as i16, kind: k[10], alpha: k[5] as u8, flip: k[9] & 1 != 0 }
+    Part {
+        sprite: k[0],
+        frame: k[6],
+        x: k[1] as i16,
+        y: k[2] as i16,
+        kind: k[10],
+        alpha: k[5] as u8,
+        flip: k[9] & 1 != 0,
+    }
 }
 
 /// Character models (table 18, 0xd8 bytes = 54 × {i16 first keyframe, i16 part count}).
@@ -91,14 +96,42 @@ fn motions(dump: &[u8]) -> Vec<Vec<u16>> {
 fn ui_elems(dump: &[u8]) -> Vec<UiElem> {
     const SPEC: [&[(u16, usize, i16)]; 9] = [
         &[(0x800, 0, 0)],
-        &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0x1000), (0x20, 6, 0x40), (0x40, 7, 0), (0x80, 8, 0), (0x100, 9, 0), (0x400, 10, 0), (0x800, 0, 0)],
-        &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0), (0x40, 6, 0x40), (0x80, 7, 0), (0x100, 8, 0), (0x400, 9, 0), (0x800, 0, 0)],
+        &[
+            (0x1, 3, 0),
+            (0x8, 4, 0),
+            (0x10, 5, 0x1000),
+            (0x20, 6, 0x40),
+            (0x40, 7, 0),
+            (0x80, 8, 0),
+            (0x100, 9, 0),
+            (0x400, 10, 0),
+            (0x800, 0, 0),
+        ],
+        &[
+            (0x1, 3, 0),
+            (0x8, 4, 0),
+            (0x10, 5, 0),
+            (0x40, 6, 0x40),
+            (0x80, 7, 0),
+            (0x100, 8, 0),
+            (0x400, 9, 0),
+            (0x800, 0, 0),
+        ],
         &[(0x8, 3, 1), (0x10, 4, 1), (0x20, 5, 0), (0x40, 6, 0), (0x100, 7, 0), (0x400, 8, 0), (0x800, 0, 0)],
         &[(0x1, 3, 0), (0x8, 4, 0), (0x10, 5, 0), (0x20, 6, 0), (0x100, 7, 0), (0x200, 8, 0), (0x800, 0, 0)],
         &[(0x1, 3, 0), (0x100, 4, 0), (0x200, 5, 0), (0x800, 0, 0)],
         &[(0x1, 3, 0)],
         &[(0x1, 8, 0), (0x8, 3, 0), (0x10, 4, 0), (0x20, 5, 0), (0x40, 7, 0), (0x80, 6, 0), (0x800, 0, 0)],
-        &[(0x1, 0, 0), (0x8, 4, 0), (0x10, 5, 0), (0x40, 6, 0x40), (0x80, 7, 0), (0x100, 8, 0), (0x400, 9, 0), (0x800, 3, 0)],
+        &[
+            (0x1, 0, 0),
+            (0x8, 4, 0),
+            (0x10, 5, 0),
+            (0x40, 6, 0x40),
+            (0x80, 7, 0),
+            (0x100, 8, 0),
+            (0x400, 9, 0),
+            (0x800, 3, 0),
+        ],
     ];
     let (t4, t5) = (table_start(dump, 4), table_start(dump, 5));
     (0..(t5 - t4) / 2)
@@ -175,7 +208,7 @@ fn rle(src: &[u8]) -> Vec<u8> {
             out.extend_from_slice(&src[i..i + n]);
             i += n;
         } else if i < src.len() {
-            out.extend(std::iter::repeat(src[i]).take(c));
+            out.extend(std::iter::repeat_n(src[i], c));
             i += 1;
         }
     }
@@ -209,10 +242,18 @@ fn decode_sprite(rec: &[u8]) -> Option<Sprite> {
             let start = doff + (o & 0x7fff_ffff);
             let raw: Vec<u8> = rec[start..start + len].to_vec();
             let raw = if flags & 0x80 != 0 { raw.iter().map(|b| b ^ 0x53).collect() } else { raw };
-            if o & 0x8000_0000 != 0 { raw } else { rle(&raw) }
+            if o & 0x8000_0000 != 0 {
+                raw
+            } else {
+                rle(&raw)
+            }
         } else {
             let raw = rec[doff + k * per..doff + (k + 1) * per].to_vec();
-            if flags & 0x80 != 0 { raw.iter().map(|b| b ^ 0x53).collect() } else { raw }
+            if flags & 0x80 != 0 {
+                raw.iter().map(|b| b ^ 0x53).collect()
+            } else {
+                raw
+            }
         };
         d.resize(per.max(d.len()), 0);
         d
@@ -407,10 +448,15 @@ fn main() {
                 home_pos: (0..3)
                     .map(|f| {
                         let t = &home[f * 42..];
-                        std::array::from_fn(|a| std::array::from_fn(|r| pos(t[6 + a * 18 + r * 2], t[6 + a * 18 + r * 2 + 1])))
+                        std::array::from_fn(|a| {
+                            std::array::from_fn(|r| pos(t[6 + a * 18 + r * 2], t[6 + a * 18 + r * 2 + 1]))
+                        })
                     })
                     .collect(),
-                planet_chr: [0x1009_4786, 0x1009_47b2, 0x1009_479c].iter().map(|&a| words(a, 11).try_into().unwrap()).collect(),
+                planet_chr: [0x1009_4786, 0x1009_47b2, 0x1009_479c]
+                    .iter()
+                    .map(|&a| words(a, 11).try_into().unwrap())
+                    .collect(),
                 equip_sets: words(0x1009_47c8, 35).chunks(5).map(|c| c.try_into().unwrap()).collect(),
                 // Order and ranks from `travel_dest_list` 0x1006f4f0, animations 0x866.., NPCs 0x10091634;
                 // souvenirs live in RW data 0x180006e6 (packed in encrypted PRAM), so they are constants.
@@ -428,7 +474,13 @@ fn main() {
                     dests
                         .iter()
                         .enumerate()
-                        .map(|(i, &(item, rank, anim, souvenirs))| tama_core::data::Destination { item, rank, anim, souvenirs, npcs: [npcs[i * 2], npcs[i * 2 + 1]] })
+                        .map(|(i, &(item, rank, anim, souvenirs))| tama_core::data::Destination {
+                            item,
+                            rank,
+                            anim,
+                            souvenirs,
+                            npcs: [npcs[i * 2], npcs[i * 2 + 1]],
+                        })
                         .collect()
                 },
                 rank_goals: words(0x100a_138e, 10),
@@ -438,42 +490,68 @@ fn main() {
             // Game 00 board pointers live in RW data (packed in encrypted PRAM at 0xe6a0);
             // the boards themselves are in XIP. Rows per level at 0x1009de92 (31, 26, 21);
             // the game reads 24, so short boards are padded with empty rows.
-            lab00_boards: [0x100a_013e, 0x100a_02b2, 0x100a_0426, 0x100a_0c78, 0x100a_0db0, 0x100a_0ee8, 0x100a_0696, 0x100a_0792, 0x100a_088e]
-                .iter()
-                .enumerate()
-                .map(|(i, &a)| {
-                    let rows = words(0x1009_de92, 3)[i / 3] as usize;
-                    let w = words(a, rows * 6);
-                    let mut b: Vec<[i16; 6]> = w.chunks(6).map(|r| std::array::from_fn(|k| r[k] as i16)).collect();
-                    b.resize(b.len().max(24), [0; 6]);
-                    b
-                })
-                .collect(),
+            lab00_boards: [
+                0x100a_013e,
+                0x100a_02b2,
+                0x100a_0426,
+                0x100a_0c78,
+                0x100a_0db0,
+                0x100a_0ee8,
+                0x100a_0696,
+                0x100a_0792,
+                0x100a_088e,
+            ]
+            .iter()
+            .enumerate()
+            .map(|(i, &a)| {
+                let rows = words(0x1009_de92, 3)[i / 3] as usize;
+                let w = words(a, rows * 6);
+                let mut b: Vec<[i16; 6]> = w.chunks(6).map(|r| std::array::from_fn(|k| r[k] as i16)).collect();
+                b.resize(b.len().max(24), [0; 6]);
+                b
+            })
+            .collect(),
             // Game 01 maps (`FUN_10020a30`): 10 × {u16 segment, u16 style}. Segment table
             // 0x1009b168 = 32 × {u32 n, u32 ptr → {i16 x, i16 y}[n]}, style table 0x10093574 =
             // 22 × {u32 n, u32 ptr → u16 type[n]}; platform j of map entry i is at height
             // y + 640 i with type style[j % n] (`FUN_10009d98`), then the goal at (64, 6400).
-            lab01_maps: [0x1009_1fec, 0x1009_2160, 0x1009_22d4, 0x1009_2448, 0x1009_25bc, 0x1009_2730, 0x1009_28a4, 0x1009_2a3c, 0x1009_2bd4]
-                .iter()
-                .map(|&m| {
-                    let list = |table: usize, i: u16| {
-                        let e = xip(table) + i as usize * 8;
-                        (u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize)
-                    };
-                    let mut p: Vec<[i16; 3]> = Vec::new();
-                    for (i, e) in words(m, 20).chunks(2).enumerate() {
-                        let ((n, seg), (sn, sty)) = (list(0x1009_b168, e[0]), list(0x1009_3574, e[1]));
-                        let (seg, sty) = (words(seg, n * 2), words(sty, sn));
-                        p.extend((0..n).map(|j| [seg[2 * j] as i16, seg[2 * j + 1] as i16 + 640 * i as i16, sty[j % sn] as i16]));
-                    }
-                    p.push([64, 6400, 0]);
-                    p
-                })
-                .collect(),
+            lab01_maps: [
+                0x1009_1fec,
+                0x1009_2160,
+                0x1009_22d4,
+                0x1009_2448,
+                0x1009_25bc,
+                0x1009_2730,
+                0x1009_28a4,
+                0x1009_2a3c,
+                0x1009_2bd4,
+            ]
+            .iter()
+            .map(|&m| {
+                let list = |table: usize, i: u16| {
+                    let e = xip(table) + i as usize * 8;
+                    (u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize)
+                };
+                let mut p: Vec<[i16; 3]> = Vec::new();
+                for (i, e) in words(m, 20).chunks(2).enumerate() {
+                    let ((n, seg), (sn, sty)) = (list(0x1009_b168, e[0]), list(0x1009_3574, e[1]));
+                    let (seg, sty) = (words(seg, n * 2), words(sty, sn));
+                    p.extend(
+                        (0..n).map(|j| [seg[2 * j] as i16, seg[2 * j + 1] as i16 + 640 * i as i16, sty[j % sn] as i16]),
+                    );
+                }
+                p.push([64, 6400, 0]);
+                p
+            })
+            .collect(),
             // Game 02 boards: 15 × 15 × u32 card type at 0x1009436c.
-            lab02_boards: (0..15).map(|b| std::array::from_fn(|i| u32_at(&dump, xip(0x1009_436c) + b * 60 + i * 4) as u8)).collect(),
+            lab02_boards: (0..15)
+                .map(|b| std::array::from_fn(|i| u32_at(&dump, xip(0x1009_436c) + b * 60 + i * 4) as u8))
+                .collect(),
             lab03_layouts: (0..6)
-                .map(|l| words(0x1009_3984 + 0x98 * l, 76).iter().map(|&w| [w as u8 as i8, (w >> 8) as u8 as i8]).collect())
+                .map(|l| {
+                    words(0x1009_3984 + 0x98 * l, 76).iter().map(|&w| [w as u8 as i8, (w >> 8) as u8 as i8]).collect()
+                })
                 .collect(),
             // u16[3 level][3 n][5 round] and u16[3 level][10][5] (only the first 5 rows are used).
             lab04_launch: words(0x1009_bb5c, 45).chunks(5).map(|c| std::array::from_fn(|r| c[r] as u8)).collect(),
@@ -503,16 +581,34 @@ fn main() {
                 })
                 .collect(),
             together07_maps: (0..3)
-                .map(|m| (0..19).map(|r| String::from_utf8_lossy(&dump[xip(0x1009_c7a8) + m * 0x156 + r * 18..][..18]).into_owned()).collect())
+                .map(|m| {
+                    (0..19)
+                        .map(|r| {
+                            String::from_utf8_lossy(&dump[xip(0x1009_c7a8) + m * 0x156 + r * 18..][..18]).into_owned()
+                        })
+                        .collect()
+                })
                 .collect(),
-            together01_commands: words(0x100a_10c2, 60).chunks(20).map(|s| std::array::from_fn(|i| [s[2 * i] as u8, s[2 * i + 1] as u8])).collect(),
+            together01_commands: words(0x100a_10c2, 60)
+                .chunks(20)
+                .map(|s| std::array::from_fn(|i| [s[2 * i] as u8, s[2 * i + 1] as u8]))
+                .collect(),
             together04_cards: words(0x1009_1ece, 30).chunks(3).map(|c| std::array::from_fn(|i| c[i] as u8)).collect(),
             together04_pet_slot: words(0x1009_1f94, 5).into_iter().map(|w| w as u8).collect(),
             together00_answers: words(0x100a_113a, 18).into_iter().map(|w| w as u8).collect(),
-            together02_layouts: words(0x1009_a710, 300).chunks(60).map(|s| s.chunks(3).map(|e| [e[0] as u8, e[1] as u8, e[2] as u8]).collect()).collect(),
+            together02_layouts: words(0x1009_a710, 300)
+                .chunks(60)
+                .map(|s| s.chunks(3).map(|e| [e[0] as u8, e[1] as u8, e[2] as u8]).collect())
+                .collect(),
             together02_swaps: words(0x1009_a6fe, 9).chunks(3).map(|c| [c[0] as u8, c[1] as u8, c[2] as u8]).collect(),
             together03_maps: (0..3)
-                .map(|m| (0..14).map(|r| String::from_utf8_lossy(&dump[xip(0x1009_c5b0) + m * 0xa8 + r * 12..][..12]).into_owned()).collect())
+                .map(|m| {
+                    (0..14)
+                        .map(|r| {
+                            String::from_utf8_lossy(&dump[xip(0x1009_c5b0) + m * 0xa8 + r * 12..][..12]).into_owned()
+                        })
+                        .collect()
+                })
                 .collect(),
         },
         hunt_finds: words(0x100a_0600, 75).chunks(3).map(|c| [c[0], c[1], c[2]]).collect(),

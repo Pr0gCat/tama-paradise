@@ -108,7 +108,8 @@ impl Game {
 
     /// Items that can be given away: owned and not placed or worn.
     fn giftable(&self) -> Vec<u16> {
-        let mut ids: Vec<u16> = self.pet.inventory.iter().map(|&(id, _)| id).filter(|&id| self.pet.free(id) > 0).collect();
+        let mut ids: Vec<u16> =
+            self.pet.inventory.iter().map(|&(id, _)| id).filter(|&id| self.pet.free(id) > 0).collect();
         ids.sort_unstable();
         ids
     }
@@ -123,6 +124,17 @@ impl Game {
         let Some(f) = self.pet.friends.get(idx).copied() else { return };
         self.draw_character(f.tama, Some(f.color), 64, 92);
         self.draw_digits(f.friendship as u32, 64, 114);
+    }
+}
+
+impl Game {
+    pub(super) fn update_friends(&mut self, idx: usize, pressed: u8) -> Scene {
+        let idx = super::cycle(idx, self.pet.friends.len(), pressed);
+        if pressed & crate::input::C != 0 {
+            self.open(Action::Connect)
+        } else {
+            Scene::Friends { idx }
+        }
     }
 }
 

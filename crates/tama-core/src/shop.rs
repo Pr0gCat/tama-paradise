@@ -30,18 +30,66 @@ pub fn day_group(t: u64) -> u8 {
 /// MICROSCOPE lab codes (XIP 0x100a1660, 16-byte entries `{u16 chr, u16, char* code, ..}`):
 /// the first 29 show a character (ChrID); the rest are valid codes with NO DATA.
 pub const LAB_CODES: [(&str, u16); 60] = [
-    ("4RG89EWK", 0x40), ("XKGDC0FX", 0x50), ("Y536U3WA", 0x60), ("4S4GL6QN", 0x61), ("1EWR12VQ", 0x4c),
-    ("L5B4RUHL", 0x45), ("LW5JHHDB", 0x54), ("K04B787H", 0x44), ("8E6XEDXR", 0x56), ("C1X9FUKR", 0x68),
-    ("487V6CAU", 0x41), ("35LPY0WX", 0x75), ("9EBAMVF8", 0x77), ("4Y8ECKXP", 0x78), ("T97YQ3U5", 0x7b),
-    ("02UXR90S", 0x7c), ("E1F79X8P", 0x7f), ("4AEX49V8", 0x84), ("WN9Q7X85", 0x89), ("2WBRUA3H", 0x8d),
-    ("3MTWNK6X", 0x85), ("KT31XBG1", 0x90), ("0Y1G7G66", 0x91), ("TF8C4XG3", 0x99), ("V5A0EP28", 0x96),
-    ("PA9E4NAQ", 0xa1), ("HCF8K432", 0x9a), ("1HUNV49V", 0x9c), ("4NEYYB0B", 0x9d), ("CCU056KH", 0),
-    ("52GSVBYQ", 0), ("K0T76S7W", 0), ("N1KAK9WM", 0), ("XT4EM76L", 0), ("R15YCM3B", 0),
-    ("XGNEM8PH", 0), ("R3TKW5H5", 0), ("6LWVAJQF", 0), ("YDVCYU37", 0), ("5RXQTV84", 0),
-    ("7REWT39J", 0), ("W8H4PJBV", 0), ("KUD1X3SY", 0), ("25VTBKRW", 0), ("AB12K27L", 0),
-    ("WL27XQWA", 0), ("QTM4K9F1", 0), ("VECPA9T0", 0), ("UYFU1M5E", 0), ("FNNFK4EQ", 0),
-    ("HLVCRT2C", 0), ("RMND87L2", 0), ("KCLGKNW9", 0), ("N4U9LB46", 0), ("GKF9DWSD", 0),
-    ("ULQ4MSBS", 0), ("BUWRC7V9", 0), ("W3VFXW1B", 0), ("C6GC8YG8", 0), ("AY85L2AM", 0),
+    ("4RG89EWK", 0x40),
+    ("XKGDC0FX", 0x50),
+    ("Y536U3WA", 0x60),
+    ("4S4GL6QN", 0x61),
+    ("1EWR12VQ", 0x4c),
+    ("L5B4RUHL", 0x45),
+    ("LW5JHHDB", 0x54),
+    ("K04B787H", 0x44),
+    ("8E6XEDXR", 0x56),
+    ("C1X9FUKR", 0x68),
+    ("487V6CAU", 0x41),
+    ("35LPY0WX", 0x75),
+    ("9EBAMVF8", 0x77),
+    ("4Y8ECKXP", 0x78),
+    ("T97YQ3U5", 0x7b),
+    ("02UXR90S", 0x7c),
+    ("E1F79X8P", 0x7f),
+    ("4AEX49V8", 0x84),
+    ("WN9Q7X85", 0x89),
+    ("2WBRUA3H", 0x8d),
+    ("3MTWNK6X", 0x85),
+    ("KT31XBG1", 0x90),
+    ("0Y1G7G66", 0x91),
+    ("TF8C4XG3", 0x99),
+    ("V5A0EP28", 0x96),
+    ("PA9E4NAQ", 0xa1),
+    ("HCF8K432", 0x9a),
+    ("1HUNV49V", 0x9c),
+    ("4NEYYB0B", 0x9d),
+    ("CCU056KH", 0),
+    ("52GSVBYQ", 0),
+    ("K0T76S7W", 0),
+    ("N1KAK9WM", 0),
+    ("XT4EM76L", 0),
+    ("R15YCM3B", 0),
+    ("XGNEM8PH", 0),
+    ("R3TKW5H5", 0),
+    ("6LWVAJQF", 0),
+    ("YDVCYU37", 0),
+    ("5RXQTV84", 0),
+    ("7REWT39J", 0),
+    ("W8H4PJBV", 0),
+    ("KUD1X3SY", 0),
+    ("25VTBKRW", 0),
+    ("AB12K27L", 0),
+    ("WL27XQWA", 0),
+    ("QTM4K9F1", 0),
+    ("VECPA9T0", 0),
+    ("UYFU1M5E", 0),
+    ("FNNFK4EQ", 0),
+    ("HLVCRT2C", 0),
+    ("RMND87L2", 0),
+    ("KCLGKNW9", 0),
+    ("N4U9LB46", 0),
+    ("GKF9DWSD", 0),
+    ("ULQ4MSBS", 0),
+    ("BUWRC7V9", 0),
+    ("W3VFXW1B", 0),
+    ("C6GC8YG8", 0),
+    ("AY85L2AM", 0),
 ];
 pub const LAB_BONUS: u32 = 50;
 
@@ -51,7 +99,9 @@ pub enum LabCode {
     Wrong,
     Used,
     /// A valid code without a character; `bonus` = today's +50 points were paid now.
-    NoData { bonus: bool },
+    NoData {
+        bonus: bool,
+    },
     /// A new character (ChrID) for the collection.
     Found(u16),
 }
@@ -102,7 +152,11 @@ impl Pet {
     pub fn price(item: &Item, now: u64) -> u32 {
         let d = date(now).2 % 10;
         let half = (d == 5 && matches!(item.kind, 1 | 2)) || (d == 0 && matches!(item.kind, 3..=7));
-        if half { item.buy as u32 >> 1 } else { item.buy as u32 }
+        if half {
+            item.buy as u32 >> 1
+        } else {
+            item.buy as u32
+        }
     }
 
     pub fn buy(&mut self, item: &Item, now: u64) -> Result<(), ShopError> {
@@ -240,7 +294,17 @@ mod tests {
 
     fn data() -> Data {
         let mut d = crate::evolve::tests::data();
-        let item = |id, kind, buy, rank, day_group, flags| Item { id, kind, buy, sell: buy / 2, rank, day_group, flags, onaka: 1, ..Default::default() };
+        let item = |id, kind, buy, rank, day_group, flags| Item {
+            id,
+            kind,
+            buy,
+            sell: buy / 2,
+            rank,
+            day_group,
+            flags,
+            onaka: 1,
+            ..Default::default()
+        };
         d.items = vec![
             item(5010, KIND_MEAL, 100, 1, 0, 2),
             item(5011, KIND_MEAL, 100, 3, 0, 2),

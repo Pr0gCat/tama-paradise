@@ -145,8 +145,18 @@ impl Together03 {
     /// Obstacle position now (world pixels): a triangle wave 0 → +48 → 0 → −48.
     fn obstacle_at(&self, (x, y, h): (i32, i32, bool)) -> (i32, i32) {
         let f = (4 * SWING as i64 * (self.time - self.built_at).rem_euclid(SWING_T) as i64 / SWING_T as i64) as i32;
-        let d = if f < SWING { f } else if f < 3 * SWING { 2 * SWING - f } else { f - 4 * SWING };
-        if h { (x + d, y) } else { (x, y + d) }
+        let d = if f < SWING {
+            f
+        } else if f < 3 * SWING {
+            2 * SWING - f
+        } else {
+            f - 4 * SWING
+        };
+        if h {
+            (x + d, y)
+        } else {
+            (x, y + d)
+        }
     }
 
     /// State 2000: obstacles, the pet on 'S', the dial at 0, the camera pan starts.
@@ -203,10 +213,14 @@ impl Together03 {
         let mut dy = -((self.v as i64 * cos16(&data.mini, a) as i64) >> 16) as i32;
         let (cx, cy) = ((self.x >> 16) / CELL, (self.y >> 16) / CELL);
         let (ix, iy) = (self.x % (CELL << 16), self.y % (CELL << 16));
-        if dx < 0 && self.cell(cx - 1, cy) == b'w' && ix < 10 * ONE || dx > 0 && self.cell(cx + 1, cy) == b'w' && ix > 38 * ONE {
+        if dx < 0 && self.cell(cx - 1, cy) == b'w' && ix < 10 * ONE
+            || dx > 0 && self.cell(cx + 1, cy) == b'w' && ix > 38 * ONE
+        {
             dx = 0;
         }
-        if dy < 0 && self.cell(cx, cy - 1) == b'w' && iy < 10 * ONE || dy > 0 && self.cell(cx, cy + 1) == b'w' && iy > 38 * ONE {
+        if dy < 0 && self.cell(cx, cy - 1) == b'w' && iy < 10 * ONE
+            || dy > 0 && self.cell(cx, cy + 1) == b'w' && iy > 38 * ONE
+        {
             dy = 0;
         }
         self.x += dx;

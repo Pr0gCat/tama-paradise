@@ -3,7 +3,8 @@
 use crate::pet::Pet;
 
 /// Mission targets (XIP 0x100942b4). Missions 8, 17–22 count collected bits.
-pub const TARGETS: [u32; 22] = [500, 500, 100, 100, 100, 1000, 10, 7, 50, 50, 100, 50, 100, 99_999, 50, 50, 18, 12, 16, 16, 16, 16];
+pub const TARGETS: [u32; 22] =
+    [500, 500, 100, 100, 100, 1000, 10, 7, 50, 50, 100, 50, 100, 99_999, 50, 50, 18, 12, 16, 16, 16, 16];
 /// Mission text ids (XIP 0x100a4ce0): 169 + index.
 pub const TEXT_FIRST: u16 = 169;
 pub const REWARD: u32 = 1000;
@@ -50,7 +51,11 @@ impl Pet {
     }
 
     pub fn mission_progress(&self, i: usize) -> u32 {
-        if is_bits(i) { self.missions[i].count_ones() } else { self.missions[i] }
+        if is_bits(i) {
+            self.missions[i].count_ones()
+        } else {
+            self.missions[i]
+        }
     }
 
     /// Newly completed missions: marks and pays them (+1000 each, `FUN_10025368` / `FUN_10048bd0`).

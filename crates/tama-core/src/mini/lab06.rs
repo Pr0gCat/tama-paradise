@@ -67,7 +67,11 @@ impl Tween {
     }
 
     fn value(&self) -> i32 {
-        if self.done() { self.to } else { self.from + ((self.to - self.from) as i64 * self.t as i64 / self.len as i64) as i32 }
+        if self.done() {
+            self.to
+        } else {
+            self.from + ((self.to - self.from) as i64 * self.t as i64 / self.len as i64) as i32
+        }
     }
 
     fn done(&self) -> bool {
@@ -427,7 +431,8 @@ impl MiniGame for Lab06 {
     }
 
     fn hud(&self) -> Vec<Hud> {
-        let mut h = vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.coins, x: 14, y: 11 }];
+        let mut h =
+            vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.coins, x: 14, y: 11 }];
         let secs = (self.time as i32 + 19) / 20;
         if secs < 10 {
             h.push(Hud::Sprite { id: 0x80f, frame: 0, x: 120, y: 11 });

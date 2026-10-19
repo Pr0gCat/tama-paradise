@@ -37,7 +37,18 @@ pub struct Together01 {
 impl Together01 {
     /// `cmds` = together01_commands[play count % 3] (`[feint, answer]`).
     pub fn new(cmds: [[u8; 2]; 10]) -> Self {
-        Together01 { cmds, state: 0x65, wait: 0, pet: Node::new(INTRO), cmd: 0, score: 0, input: NONE, a: false, b: false, count: 0 }
+        Together01 {
+            cmds,
+            state: 0x65,
+            wait: 0,
+            pet: Node::new(INTRO),
+            cmd: 0,
+            score: 0,
+            input: NONE,
+            a: false,
+            b: false,
+            count: 0,
+        }
     }
 
     /// Thresholds 10/8/1 (0x100a13d8).

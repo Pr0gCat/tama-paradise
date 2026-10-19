@@ -7,10 +7,13 @@ use crate::motion::Node;
 use crate::pet::{req, Cond};
 use crate::Game;
 
+mod care;
 mod connect;
 mod decor;
+mod draw;
 mod event;
 mod hunt;
+mod settings;
 mod shop;
 
 pub(crate) use connect::PLAYDATE_ANIM;
@@ -148,9 +151,23 @@ pub(crate) enum Action {
     Setsubi,
     ToyList,
     /// SETSUBI cursor; toy 0 = REMOVE, field 0xff = start on the current field.
-    SetsubiAt { toy: u16, field: u8, area: u8, slot: u8 },
-    PlaceToy { toy: u16, field: u8, area: u8, slot: u8 },
-    RemoveToy { field: u8, area: u8, slot: u8 },
+    SetsubiAt {
+        toy: u16,
+        field: u8,
+        area: u8,
+        slot: u8,
+    },
+    PlaceToy {
+        toy: u16,
+        field: u8,
+        area: u8,
+        slot: u8,
+    },
+    RemoveToy {
+        field: u8,
+        area: u8,
+        slot: u8,
+    },
     SpaceMenu,
     Stars,
     Deco,
@@ -164,7 +181,10 @@ pub(crate) enum Action {
     /// EGG HUNT: place menu, team picker for a place, and setting off with three members.
     Hunt,
     HuntKind(u8),
-    HuntGo { kind: u8, team: [u8; 3] },
+    HuntGo {
+        kind: u8,
+        team: [u8; 3],
+    },
     /// Planet menu CONNECTION and its entries.
     Connect,
     /// Lab menu SETTINGS and its birthday editor.
@@ -230,68 +250,174 @@ pub(crate) struct Play {
 pub(crate) enum Scene {
     Home,
     /// Ring menu; C goes back to `back` (or HOME).
-    Menu { items: Vec<(u16, Option<Action>)>, idx: usize, back: Option<Action> },
+    Menu {
+        items: Vec<(u16, Option<Action>)>,
+        idx: usize,
+        back: Option<Action>,
+    },
     /// Item carousel for the shop (buy / sell / cook).
-    Card { kind: CardKind, items: Vec<u16>, idx: usize },
+    Card {
+        kind: CardKind,
+        items: Vec<u16>,
+        idx: usize,
+    },
     /// A notice; any button continues.
-    Message { text: u16, then: Box<Scene> },
+    Message {
+        text: u16,
+        then: Box<Scene>,
+    },
     /// YES/NO question.
-    Ask { text: u16, yes: bool, on_yes: Action, back: Action },
+    Ask {
+        text: u16,
+        yes: bool,
+        on_yes: Action,
+        back: Action,
+    },
     /// 8-digit code entry.
-    Code { digits: [u8; 8], pos: usize },
+    Code {
+        digits: [u8; 8],
+        pos: usize,
+    },
     /// Mission list (lab menu INFORMATION).
-    Missions { idx: usize },
+    Missions {
+        idx: usize,
+    },
     /// Breeding candidates.
-    Breed { cands: Vec<u16>, idx: usize },
+    Breed {
+        cands: Vec<u16>,
+        idx: usize,
+    },
     /// Grave records (lab menu COLLECTION).
-    Graves { idx: usize, back: Action },
+    Graves {
+        idx: usize,
+        back: Action,
+    },
     /// SETSUBI: choosing a slot for `toy` (0 = choosing a toy to put away).
-    Setsubi { toy: u16, field: u8, area: u8, idx: usize },
+    Setsubi {
+        toy: u16,
+        field: u8,
+        area: u8,
+        idx: usize,
+    },
     /// TAMA STARS (`lookstars_state` 0x10057e54): page 0 the stars with a cursor, 1 the ghost,
     /// 2 its profile. `node` is the cursor (page 0) or the ghost animation (page 1).
-    Stars { idx: usize, page: u8, node: Node },
+    Stars {
+        idx: usize,
+        page: u8,
+        node: Node,
+    },
     /// End credits (`FUN_10058a0c`): any key or the end of the script goes on to `then`.
-    Credits { node: Node, then: Box<Scene> },
+    Credits {
+        node: Node,
+        then: Box<Scene>,
+    },
     /// Page 0: rank; page 1: the next goal.
-    PlanetLv { page: u8 },
-    HuntTeam { kind: u8, idx: usize, picked: Vec<usize> },
+    PlanetLv {
+        page: u8,
+    },
+    HuntTeam {
+        kind: u8,
+        idx: usize,
+        picked: Vec<usize>,
+    },
     /// EDIT PLANET NAME: 8 letters, `pos` = the one being chosen.
-    PlanetName { chars: [u16; 8], pos: usize },
+    PlanetName {
+        chars: [u16; 8],
+        pos: usize,
+    },
     /// EDIT BIRTHDAY: month and day, `pos` 0 = month.
-    Birthday { m: u8, d: u8, pos: u8 },
+    Birthday {
+        m: u8,
+        d: u8,
+        pos: u8,
+    },
     /// CONNECTION → PLANETS: the friend list.
-    Friends { idx: usize },
+    Friends {
+        idx: usize,
+    },
     /// Opened eggs; `peach` = the golden-peach page after a great result.
-    HuntEggs { items: Vec<u16>, t: u16, peach: bool },
+    HuntEggs {
+        items: Vec<u16>,
+        t: u16,
+        peach: bool,
+    },
     /// Points earned, then `then` (lab game result screen).
-    Points { points: u32, then: Box<Scene> },
+    Points {
+        points: u32,
+        then: Box<Scene>,
+    },
     /// MICROSCOPE's daily +50 for a NO DATA code (`FUN_1005cc78`).
     Bonus,
     /// A mini-game: lab game index and difficulty (None for play-together games).
-    Mini { session: crate::mini::Session, lab: Option<(u8, u8)> },
-    FoodCategory { idx: usize },
-    FoodList { cat: u8, items: Vec<u16>, idx: usize },
-    Confirm { cat: u8, items: Vec<u16>, idx: usize, yes: bool },
+    Mini {
+        session: crate::mini::Session,
+        lab: Option<(u8, u8)>,
+    },
+    FoodCategory {
+        idx: usize,
+    },
+    FoodList {
+        cat: u8,
+        items: Vec<u16>,
+        idx: usize,
+    },
+    Confirm {
+        cat: u8,
+        items: Vec<u16>,
+        idx: usize,
+        yes: bool,
+    },
     Play(Play),
-    Prompt { wake: bool, yes: bool },
-    Status { page: u8, idle: u16 },
+    Prompt {
+        wake: bool,
+        yes: bool,
+    },
+    Status {
+        page: u8,
+        idle: u16,
+    },
     /// Play the pending eating effects one by one, then show the food list.
-    Effects { cat: u8, idx: usize },
+    Effects {
+        cat: u8,
+        idx: usize,
+    },
     /// HELP_SITTER while the pet is with the sitter (`FUN_1004d304` state 2000).
-    Sitter { node: Node },
+    Sitter {
+        node: Node,
+    },
     /// EVENT_EVOL_SUPPORT (`FUN_1003bd20`): `round` icons taken, `t` frames into this step,
     /// `busy` while the baby takes one in.
-    Support { pet: Node, round: u8, t: u16, busy: bool },
+    Support {
+        pet: Node,
+        round: u8,
+        t: u16,
+        busy: bool,
+    },
     /// EVENT_DYING (`FUN_1003d474`) until DeathRemain runs out.
-    Dying { node: Node },
+    Dying {
+        node: Node,
+    },
     /// The graves after a death (EVENT_DYING state 4000); the last node ends the scene.
-    Graveyard { nodes: Vec<(Node, i32, i32)> },
+    Graveyard {
+        nodes: Vec<(Node, i32, i32)>,
+    },
     /// EVENT_DEAD (`FUN_1003ccb0`): page 0 the tombstone, 1 the record.
-    Dead { page: u8, nodes: Vec<(Node, i32, i32)> },
+    Dead {
+        page: u8,
+        nodes: Vec<(Node, i32, i32)>,
+    },
     /// MICROSCOPE (`FUN_1004f360`): LAB CODE entry (font glyphs), searching, a character found.
-    LabCode { chars: [u16; 8], pos: usize },
-    Searching { code: String, t: u16 },
-    Found { chr: u16 },
+    LabCode {
+        chars: [u16; 8],
+        pos: usize,
+    },
+    Searching {
+        code: String,
+        t: u16,
+    },
+    Found {
+        chr: u16,
+    },
 }
 
 fn pressed_any(p: u8) -> bool {
@@ -319,23 +445,6 @@ impl Game {
         Scene::Play(Play { node: Node::new(first), queue, presses: 0, on_press, food, then: Box::new(then) })
     }
 
-    /// Foods offered for a category (`inv_list_for_eat` 0x1001e250): a free item first, then the
-    /// inventory. Babies only get milk / jelly sticks.
-    fn food_items(&self, cat: u8) -> Vec<u16> {
-        let baby = self.pet.def.stage == 2;
-        let free = match (cat, baby) {
-            (KIND_MEAL, true) => MILK,
-            (KIND_MEAL, false) => PELLETS,
-            _ => JELLY_STICK,
-        };
-        let mut items = vec![free];
-        if !baby {
-            let kinds = self.pet.inventory.iter().filter(|(id, n)| *n > 0 && self.data.item(*id).is_some_and(|i| i.kind == cat));
-            items.extend(kinds.map(|(id, _)| *id));
-        }
-        items
-    }
-
     /// Sound ids (04-assets SND8, 08-care-ui U6): 0 cursor, 1 confirm, 2 cancel, 0xb not allowed, 0x28 zoom.
     pub(crate) fn sfx(&mut self, id: u16, vol: u8) {
         self.sounds.push((id, vol));
@@ -343,8 +452,129 @@ impl Game {
 
     /// Handle one frame of input for the current scene.
     pub(crate) fn update_scene(&mut self, pressed: u8) {
-        if matches!(
-            self.scene,
+        if self.scene.has_menu_sounds() {
+            let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
+            if pressed & C != 0 {
+                self.sfx(2, 100);
+            } else if pressed & (B | PUSH) != 0 {
+                self.sfx(if disabled { 0x0b } else { 1 }, 100);
+            } else if pressed & (A | UP | DOWN) != 0 {
+                self.sfx(0, 100);
+            }
+        }
+        let scene = std::mem::replace(&mut self.scene, Scene::Home);
+        self.scene = match scene {
+            Scene::Home if self.level == Level::Space => self.update_space_input(pressed),
+            Scene::Home => self.update_home_input(pressed),
+            Scene::Menu { items, idx, back } => self.update_menu(items, idx, back, pressed),
+            Scene::Ask { text, yes, on_yes, back } => self.update_ask(text, yes, on_yes, back, pressed),
+            // Notices: any button goes on.
+            Scene::Message { text, then } => {
+                if pressed_any(pressed) {
+                    *then
+                } else {
+                    Scene::Message { text, then }
+                }
+            }
+            Scene::Points { points, then } => {
+                if pressed_any(pressed) {
+                    *then
+                } else {
+                    Scene::Points { points, then }
+                }
+            }
+            Scene::Bonus => {
+                if pressed_any(pressed) {
+                    self.open(Action::Microscope)
+                } else {
+                    Scene::Bonus
+                }
+            }
+            Scene::Found { chr } => {
+                if pressed_any(pressed) {
+                    self.open(Action::Microscope)
+                } else {
+                    Scene::Found { chr }
+                }
+            }
+            // Care (ui/care.rs).
+            Scene::FoodCategory { idx } => self.update_food_category(idx, pressed),
+            Scene::FoodList { cat, items, idx } => self.update_food_list(cat, items, idx, pressed),
+            Scene::Confirm { cat, items, idx, yes } => self.update_confirm(cat, items, idx, yes, pressed),
+            Scene::Effects { cat, idx } => self.update_effects(cat, idx),
+            Scene::Play(p) => self.update_play(p, pressed),
+            Scene::Prompt { wake, yes } => self.update_prompt(wake, yes, pressed),
+            Scene::Status { page, idle } => self.update_status(page, idle, pressed),
+            Scene::Credits { node, then } => self.update_credits(node, then, pressed),
+            // Life events (ui/event.rs).
+            Scene::Sitter { node } => self.update_sitter(node, pressed),
+            Scene::Support { pet, round, t, busy } => self.update_support(pet, round, t, busy, pressed),
+            Scene::Dying { node } => self.update_dying(node),
+            Scene::Graveyard { nodes } => self.update_graveyard(nodes),
+            Scene::Dead { page, nodes } => self.update_dead(page, nodes, pressed),
+            Scene::LabCode { chars, pos } => self.update_lab_code(chars, pos, pressed),
+            Scene::Searching { code, t } => self.update_searching(code, t),
+            // Lab menu, shop, family, mini-games (ui/shop.rs).
+            Scene::Card { kind, items, idx } => self.update_card(kind, items, idx, pressed),
+            Scene::Code { digits, pos } => self.update_code(digits, pos, pressed),
+            Scene::Breed { cands, idx } => self.update_breed(cands, idx, pressed),
+            Scene::Graves { idx, back } => self.update_graves(idx, back, pressed),
+            Scene::Missions { idx } => self.update_missions(idx, pressed),
+            Scene::Mini { session, lab } => self.update_mini(session, lab, pressed),
+            // Settings (ui/settings.rs).
+            Scene::PlanetName { chars, pos } => self.update_planet_name(chars, pos, pressed),
+            Scene::Birthday { m, d, pos } => self.update_birthday(m, d, pos, pressed),
+            // Field, planet and connection (ui/decor.rs, ui/hunt.rs, ui/connect.rs).
+            Scene::Setsubi { toy, field, area, idx } => self.update_setsubi(toy, field, area, idx, pressed),
+            Scene::HuntTeam { kind, idx, picked } => self.update_hunt_team(kind, idx, picked, pressed),
+            Scene::HuntEggs { items, t, peach } => self.update_hunt_eggs(items, t, peach, pressed),
+            Scene::PlanetLv { page } => self.update_planet_lv(page, pressed),
+            Scene::Stars { idx, page, node } => self.update_stars(idx, page, node, pressed),
+            Scene::Friends { idx } => self.update_friends(idx, pressed),
+        };
+    }
+
+    /// Ring menu: A / dial move, B or the dial button opens the item, C goes back.
+    fn update_menu(
+        &mut self,
+        items: Vec<(u16, Option<Action>)>,
+        idx: usize,
+        back: Option<Action>,
+        pressed: u8,
+    ) -> Scene {
+        let idx = cycle(idx, items.len(), pressed);
+        if pressed & C != 0 {
+            back.map_or(Scene::Home, |a| self.open(a))
+        } else if pressed & (B | PUSH) != 0 {
+            match items[idx].1 {
+                Some(a) => self.open(a),
+                None => Scene::Menu { items, idx, back },
+            }
+        } else {
+            Scene::Menu { items, idx, back }
+        }
+    }
+
+    /// YES / NO question.
+    fn update_ask(&mut self, text: u16, mut yes: bool, on_yes: Action, back: Action, pressed: u8) -> Scene {
+        if pressed & (A | UP | DOWN) != 0 {
+            yes = !yes;
+        }
+        if pressed & (B | PUSH) != 0 && yes {
+            self.open(on_yes)
+        } else if pressed & (B | PUSH | C) != 0 {
+            self.open(back)
+        } else {
+            Scene::Ask { text, yes, on_yes, back }
+        }
+    }
+}
+
+impl Scene {
+    /// Scenes that click on cursor moves, confirm and cancel (U6).
+    fn has_menu_sounds(&self) -> bool {
+        matches!(
+            self,
             Scene::Menu { .. }
                 | Scene::FoodCategory { .. }
                 | Scene::FoodList { .. }
@@ -364,902 +594,18 @@ impl Game {
                 | Scene::PlanetName { .. }
                 | Scene::PlanetLv { .. }
                 | Scene::LabCode { .. }
-        ) {
-            let disabled = matches!(&self.scene, Scene::Menu { items, idx, .. } if items[*idx].1.is_none());
-            if pressed & C != 0 {
-                self.sfx(2, 100);
-            } else if pressed & (B | PUSH) != 0 {
-                self.sfx(if disabled { 0x0b } else { 1 }, 100);
-            } else if pressed & (A | UP | DOWN) != 0 {
-                self.sfx(0, 100);
-            }
-        }
-        let scene = std::mem::replace(&mut self.scene, Scene::Home);
-        self.scene = match scene {
-            Scene::Home if self.level == Level::Space => self.update_space_input(pressed),
-            Scene::Home => self.update_home_input(pressed),
-            Scene::Menu { items, mut idx, back } => {
-                let n = items.len();
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % n;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + n - 1) % n;
-                }
-                if pressed & C != 0 {
-                    back.map_or(Scene::Home, |a| self.open(a))
-                } else if pressed & (B | PUSH) != 0 {
-                    match items[idx].1 {
-                        Some(a) => self.open(a),
-                        None => Scene::Menu { items, idx, back },
-                    }
-                } else {
-                    Scene::Menu { items, idx, back }
-                }
-            }
-            Scene::Card { kind, items, idx } => self.update_card(kind, items, idx, pressed),
-            Scene::Points { points, then } => {
-                if pressed_any(pressed) { *then } else { Scene::Points { points, then } }
-            }
-            Scene::Bonus => {
-                if pressed_any(pressed) { self.open(Action::Microscope) } else { Scene::Bonus }
-            }
-            Scene::Sitter { node } => self.update_sitter(node, pressed),
-            Scene::Support { pet, round, t, busy } => self.update_support(pet, round, t, busy, pressed),
-            Scene::Dying { node } => self.update_dying(node),
-            Scene::Graveyard { nodes } => self.update_graveyard(nodes),
-            Scene::Dead { page, nodes } => self.update_dead(page, nodes, pressed),
-            Scene::LabCode { chars, pos } => self.update_lab_code(chars, pos, pressed),
-            Scene::Searching { code, t } => self.update_searching(code, t),
-            Scene::Found { chr } => {
-                if pressed_any(pressed) { self.open(Action::Microscope) } else { Scene::Found { chr } }
-            }
-            Scene::Message { text, then } => {
-                if pressed_any(pressed) { *then } else { Scene::Message { text, then } }
-            }
-            Scene::Ask { text, mut yes, on_yes, back } => {
-                if pressed & (A | UP | DOWN) != 0 {
-                    yes = !yes;
-                }
-                if pressed & (B | PUSH) != 0 && yes {
-                    self.open(on_yes)
-                } else if pressed & (B | PUSH | C) != 0 {
-                    self.open(back)
-                } else {
-                    Scene::Ask { text, yes, on_yes, back }
-                }
-            }
-            Scene::Code { digits, pos } => self.update_code(digits, pos, pressed),
-            Scene::Breed { cands, mut idx } => {
-                let n = cands.len();
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % n;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + n - 1) % n;
-                }
-                if pressed & C != 0 {
-                    self.open(Action::Help)
-                } else if pressed & (B | PUSH) != 0 {
-                    Scene::Ask { text: 0xdb, yes: true, on_yes: Action::BreedWith(cands[idx]), back: Action::Breed }
-                } else {
-                    Scene::Breed { cands, idx }
-                }
-            }
-            Scene::PlanetName { mut chars, mut pos } => {
-                // Letters cycle through space, A–Z and 0–9 (font glyphs 305, 318–343, 306–315).
-                let set: Vec<u16> = std::iter::once(crate::screen::SPACE).chain(318..=343).chain(306..=315).collect();
-                let at = set.iter().position(|&c| c == chars[pos]).unwrap_or(0);
-                if pressed & (A | UP) != 0 {
-                    chars[pos] = set[(at + 1) % set.len()];
-                }
-                if pressed & DOWN != 0 {
-                    chars[pos] = set[(at + set.len() - 1) % set.len()];
-                }
-                if pressed & C != 0 {
-                    if pos == 0 { self.open(Action::Settings) } else { Scene::PlanetName { chars, pos: pos - 1 } }
-                } else if pressed & (B | PUSH) != 0 {
-                    pos += 1;
-                    if pos == chars.len() {
-                        let len = chars.iter().rposition(|&c| c != crate::screen::SPACE).map_or(0, |i| i + 1);
-                        self.pet.planet_name = chars[..len].to_vec();
-                        self.open(Action::Settings)
-                    } else {
-                        Scene::PlanetName { chars, pos }
-                    }
-                } else {
-                    Scene::PlanetName { chars, pos }
-                }
-            }
-            Scene::Birthday { mut m, mut d, pos } => {
-                let days = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m as usize - 1];
-                let step = |v: u8, max: u8, up: bool| if up { v % max + 1 } else { (v + max - 2) % max + 1 };
-                if pressed & (A | UP | DOWN) != 0 {
-                    let up = pressed & DOWN == 0;
-                    if pos == 0 { m = step(m, 12, up) } else { d = step(d, days, up) }
-                }
-                d = d.min([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m as usize - 1]);
-                if pressed & C != 0 {
-                    if pos == 0 { self.open(Action::Settings) } else { Scene::Birthday { m, d, pos: 0 } }
-                } else if pressed & (B | PUSH) != 0 {
-                    if pos == 0 {
-                        Scene::Birthday { m, d, pos: 1 }
-                    } else {
-                        self.pet.birthday = Some((m, d));
-                        self.open(Action::Settings)
-                    }
-                } else {
-                    Scene::Birthday { m, d, pos }
-                }
-            }
-            Scene::Friends { mut idx } => {
-                let n = self.pet.friends.len().max(1);
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % n;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + n - 1) % n;
-                }
-                if pressed & C != 0 { self.open(Action::Connect) } else { Scene::Friends { idx } }
-            }
-            Scene::HuntTeam { kind, idx, picked } => self.update_hunt_team(kind, idx, picked, pressed),
-            Scene::HuntEggs { items, t, peach } => self.update_hunt_eggs(items, t, peach, pressed),
-            Scene::Setsubi { toy, field, area, idx } => self.update_setsubi(toy, field, area, idx, pressed),
-            Scene::PlanetLv { page } => {
-                if pressed & C != 0 && page == 1 {
-                    Scene::PlanetLv { page: 0 }
-                } else if pressed & (B | PUSH) != 0 && page == 0 && self.pet.rank < 10 {
-                    Scene::PlanetLv { page: 1 }
-                } else if pressed & (B | PUSH) != 0 && page == 0 {
-                    let menu = self.open(Action::SpaceMenu);
-                    self.credits(menu)
-                } else if pressed_any(pressed) {
-                    self.open(Action::SpaceMenu)
-                } else {
-                    Scene::PlanetLv { page }
-                }
-            }
-            Scene::Graves { mut idx, back } => {
-                let n = self.pet.graves.len().max(1);
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % n;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + n - 1) % n;
-                }
-                if pressed & C != 0 { self.open(back) } else { Scene::Graves { idx, back } }
-            }
-            Scene::Mini { mut session, lab } => {
-                if pressed & C != 0 && session.can_quit() {
-                    self.sfx(2, 100);
-                    self.after_mini(None, lab)
-                } else {
-                    match session.update(pressed, self.held, &self.data, &mut self.sounds) {
-                        Some(r) if session.event == Some(req::METEOR) => {
-                            // Back to HOME on the field layer (`labo05_tick` 0xdae).
-                            self.pet.finish_meteor(r > 0);
-                            self.level = Level::Field;
-                            Scene::Home
-                        }
-                        Some(r) => match session.arcade {
-                            Some(g) => self.after_arcade(g, r),
-                            None => self.after_mini(Some(r), lab),
-                        },
-                        None => Scene::Mini { session, lab },
-                    }
-                }
-            }
-            Scene::Missions { mut idx } => {
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % 22;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + 21) % 22;
-                }
-                if pressed & C != 0 { self.open(Action::Lab) } else { Scene::Missions { idx } }
-            }
-            Scene::FoodCategory { mut idx } => {
-                if pressed & (A | UP | DOWN) != 0 {
-                    idx ^= 1;
-                }
-                if pressed & C != 0 {
-                    self.pet_menu()
-                } else if pressed & (B | PUSH) != 0 {
-                    let cat = if idx == 0 { KIND_MEAL } else { KIND_SNACK };
-                    Scene::FoodList { cat, items: self.food_items(cat), idx: 0 }
-                } else {
-                    Scene::FoodCategory { idx }
-                }
-            }
-            Scene::FoodList { cat, items, mut idx } => {
-                let n = items.len();
-                if pressed & (A | UP) != 0 {
-                    idx = (idx + 1) % n;
-                }
-                if pressed & DOWN != 0 {
-                    idx = (idx + n - 1) % n;
-                }
-                if pressed & C != 0 {
-                    Scene::FoodCategory { idx: (cat == KIND_SNACK) as usize }
-                } else if pressed & (B | PUSH) != 0 {
-                    Scene::Confirm { cat, items, idx, yes: true }
-                } else {
-                    Scene::FoodList { cat, items, idx }
-                }
-            }
-            Scene::Confirm { cat, items, idx, mut yes } => {
-                if pressed & (A | UP | DOWN) != 0 {
-                    yes = !yes;
-                }
-                if pressed & C != 0 || (pressed & (B | PUSH) != 0 && !yes) {
-                    Scene::FoodList { cat, items, idx }
-                } else if pressed & (B | PUSH) != 0 {
-                    self.eat(cat, items, idx)
-                } else {
-                    Scene::Confirm { cat, items, idx, yes }
-                }
-            }
-            Scene::Play(p) => self.update_play(p, pressed),
-            Scene::Stars { idx, page, node } => self.update_stars(idx, page, node, pressed),
-            Scene::Credits { mut node, then } => {
-                node.tick(&self.data.motions);
-                node.take_sounds(&mut self.sounds);
-                if node.is_finished() || pressed_any(pressed) { *then } else { Scene::Credits { node, then } }
-            }
-            Scene::Effects { cat, idx } => match self.pet.complete_effect() {
-                Some(id) => {
-                    let k = req::EFFECTS.iter().position(|&r| r == id).unwrap_or(0);
-                    self.play(&[script::EFFECTS[k]], (0, OnPress::None), None, Scene::Effects { cat, idx })
-                }
-                None => {
-                    let items = self.food_items(cat);
-                    let idx = idx.min(items.len() - 1);
-                    Scene::FoodList { cat, items, idx }
-                }
-            },
-            Scene::Prompt { wake, mut yes } => {
-                if pressed & (A | UP | DOWN) != 0 {
-                    yes = !yes;
-                }
-                if pressed & (B | PUSH) != 0 && yes {
-                    if wake { self.pet.wake() } else { self.pet.put_to_bed() };
-                    Scene::Home
-                } else if pressed & C != 0 || pressed & (B | PUSH) != 0 {
-                    if wake { self.pet.no_wake_today = true } else { self.pet.no_sleep_today = true }
-                    Scene::Home
-                } else {
-                    Scene::Prompt { wake, yes }
-                }
-            }
-            Scene::Status { mut page, idle } => {
-                if pressed & (A | UP | DOWN) != 0 {
-                    page ^= 1;
-                }
-                if pressed & C != 0 || idle >= 200 {
-                    Scene::Home
-                } else {
-                    Scene::Status { page, idle: if pressed != 0 { 0 } else { idle + 1 } }
-                }
-            }
-        };
+        )
     }
+}
 
-    /// End credits at planet rank 10, with their song (melody 0x54).
-    pub(crate) fn credits(&mut self, then: Scene) -> Scene {
-        self.sfx(0x54, 100);
-        let script = if self.lang == 1 { script::CREDITS_EN } else { script::CREDITS };
-        Scene::Credits { node: Node::new(script), then: Box::new(then) }
-    }
-
-    /// Rank-up and mission-clear notices when the pet is back at HOME.
-    pub(crate) fn check_notices(&mut self) {
-        if let Some((old, r)) = self.pet.take_rank_up() {
-            // The planet hops from its old look to the new one (anim 0xc4), then CONGRATS.
-            let text = if r < 10 { 0x8e + r as u16 - 1 } else { 0x97 };
-            self.planet_ranks = Some([old, r]);
-            let after = if r >= 10 { self.credits(Scene::Home) } else { Scene::Home };
-            let then = Scene::Message { text, then: Box::new(after) };
-            self.scene = self.play(&[script::RANK_UP], (0, OnPress::None), None, then);
-        } else if !self.pet.claim_missions().is_empty() {
-            self.sfx(1, 100);
-            self.scene = Scene::Message { text: 0xa8, then: Box::new(Scene::Home) };
-        }
-    }
-
-    /// Start a pending calendar event when HOME allows it (`FUN_1001abd0`): checked once a minute
-    /// with a fresh roll, as the original rolls each time HOME opens.
-    pub(crate) fn check_events(&mut self, now: u64, r: u32) {
-        let p = &self.pet;
-        let sleeping = p.is_sleeping_at(now);
-        let hour = now % 86_400 / 3600;
-        let busy = [req::ONAKA, req::GOKIGEN, req::SOWASOWA].iter().any(|&q| p.is_pending(q));
-        if p.is_pending(req::BIRTHDAY) && !sleeping && p.cond == Cond::Normal {
-            let mate = self.pet.grazing[self.pet.field as usize].last().copied();
-            self.roles[1] = mate.and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
-            let cake = self.play(&[script::BIRTHDAY], (0, OnPress::Event(req::BIRTHDAY)), None, Scene::Home);
-            self.scene = Scene::Message { text: 0x102, then: Box::new(cake) };
-            return;
-        }
-        // DODODO only lasts 15 minutes and does not wait for care calls.
-        if p.is_pending(req::DODODO) && !sleeping && p.cond == Cond::Normal {
-            self.scene = self.play(&[script::DODODO], (0, OnPress::Event(req::DODODO)), None, Scene::Home);
-            return;
-        }
-        if p.def.stage < 3 || p.cond != Cond::Normal || busy {
-            return;
-        }
-        let (r, period) = (r % 100, crate::pet::Pet::period(now));
-        if !sleeping && p.is_pending(req::METEOR) && period == 1 && r < 30 {
-            let game = crate::mini::lab05::Lab05::event(self.data.mini.lab05_event.clone());
-            let session = crate::mini::Session { event: Some(req::METEOR), ..crate::mini::Session::new(Box::new(game), None) };
-            self.scene = Scene::Mini { session: session.with_intro(crate::mini::lab05::EVENT_OPENING), lab: None };
-            return;
-        }
-        let ev = if p.is_pending(req::EVE) && sleeping && hour > 18 {
-            Some((req::EVE, script::EVE))
-        } else if sleeping {
-            None
-        } else if p.is_pending(req::NEWYEAR) {
-            Some((req::NEWYEAR, script::HAPPY_JUMP))
-        } else if p.is_pending(req::SHOOTINGSTAR) && period == 3 && r < 10 {
-            Some((req::SHOOTINGSTAR, script::SHOOTINGSTAR))
-        } else if p.is_pending(req::UFO) {
-            Some((req::UFO, script::UFO))
-        } else if p.is_pending(req::SANTA) && period >= 3 && r < 10 {
-            Some((req::SANTA, script::SANTA))
-        } else if p.is_pending(req::XMAS) {
-            Some((req::XMAS, script::XMAS))
-        } else {
-            None
-        };
-        if let Some((id, anim)) = ev {
-            self.scene = self.play(&[anim], (0, OnPress::Event(id)), None, Scene::Home);
-        }
-    }
-
-    pub(crate) fn pet_menu(&self) -> Scene {
-        Scene::Menu {
-            items: vec![(text::FEED, Some(Action::Feed)), (text::PLAY, Some(Action::Together)), (text::CLEAN_TAMA, Some(Action::Groom))],
-            idx: 0,
-            back: None,
-        }
-    }
-
-    fn field_menu(&self) -> Scene {
-        Scene::Menu {
-            items: vec![
-                (text::OUTSIDE_TOY, (self.pet.rank >= 2).then_some(Action::Setsubi)),
-                (text::EGG_HUNT, Some(Action::Hunt)),
-                (text::CLEAN_POOP, Some(Action::CleanPoop)),
-                (text::FIELDS, (self.pet.rank >= 4).then_some(Action::Fields)),
-            ],
-            idx: 2,
-            back: None,
-        }
-    }
-
-    /// HOME input (`home_field_tama_state` 0x10039eb8, `home_cell_state` 0x100398c8).
-    fn update_home_input(&mut self, pressed: u8) -> Scene {
-        if pressed & (UP | DOWN) != 0 {
-            self.sfx(0x28, 40);
-        }
-        if pressed & UP != 0 {
-            self.level = match self.level {
-                Level::Field => Level::Pet,
-                _ if self.pet.def.stage > 1 => Level::Cell,
-                l => l,
-            };
-        }
-        if pressed & DOWN != 0 {
-            self.level = match self.level {
-                Level::Cell => Level::Pet,
-                Level::Field if self.pet.def.stage > 1 => {
-                    self.sfx(0x2b, 100);
-                    Level::Space
-                }
-                _ => Level::Field,
-            };
-        }
-        if !pressed_any(pressed) || self.pet.def.stage == 1 {
-            return Scene::Home;
-        }
-        // C on the field: go to the field's expansion area and back (HOME_FIELD2).
-        if self.level == Level::Field && pressed & C != 0 {
-            self.field_c();
-            return Scene::Home;
-        }
-        let p = &self.pet;
-        let sleeping = p.last.is_some_and(|t| p.is_sleeping_at(t));
-        let state = self.home_state.map(|s| s.0);
-        // First aid (HOME state 0x19, pet layer) and the baby's support call (0x1a, cell layer).
-        if self.level == Level::Pet && state == Some(0x19) {
-            return self.rescue();
-        }
-        if self.level == Level::Cell && state == Some(0x1a) {
-            return self.support();
-        }
-        if self.level != Level::Cell && p.is_pending(req::SOWASOWA) {
-            self.pet.toilet();
-            return self.play(&[script::TOILET], (0, OnPress::None), None, Scene::Home);
-        }
-        match self.level {
-            Level::Cell if p.cond == Cond::Cold => {
-                self.play(&[script::MEDICINE, script::CURED], (5, OnPress::Medicine), None, Scene::Home)
-            }
-            Level::Cell if pressed & A != 0 => Scene::Status { page: 0, idle: 0 },
-            Level::Pet if p.cond == Cond::Injury => {
-                self.play(&[script::INJURY, script::INJURY_DONE], (4, OnPress::Injury), None, Scene::Home)
-            }
-            Level::Pet if sleeping && p.is_pending(req::WAKE) && !p.no_wake_today => Scene::Prompt { wake: true, yes: true },
-            Level::Pet if p.is_pending(req::SLEEP) && !p.no_sleep_today => Scene::Prompt { wake: false, yes: true },
-            _ if pressed & A == 0 => Scene::Home,
-            // Sick, injured or asleep pets cannot open the menu.
-            _ if sleeping || p.cond != Cond::Normal => {
-                self.sfx(0x0b, 100);
-                Scene::Home
-            }
-            Level::Pet => {
-                self.sfx(1, 100);
-                self.pet_menu()
-            }
-            Level::Field => {
-                self.sfx(1, 100);
-                self.field_menu()
-            }
-            Level::Cell | Level::Space => Scene::Home,
-        }
-    }
-
-    /// Eat the chosen food (`gohan_state` 0x1003ff80 state 0x4b0/3000).
-    fn eat(&mut self, cat: u8, items: Vec<u16>, idx: usize) -> Scene {
-        let Some(item) = self.data.item(items[idx]) else { return Scene::FoodList { cat, items, idx } };
-        let sprite = Some(item.eat_sprite);
-        let back = Scene::FoodList { cat, items: items.clone(), idx };
-        let p = &self.pet;
-        if !matches!(p.cond, Cond::Normal) {
-            return self.play(&[script::REFUSE_SICK], (0, OnPress::None), sprite, back);
-        }
-        if cat == KIND_MEAL && p.onaka >= 6 {
-            return self.play(&[script::REFUSE_FULL], (0, OnPress::None), sprite, back);
-        }
-        let pref = match p.food_pref(&item) {
-            1.. => 1,
-            0 => 0,
-            _ => 2,
-        };
-        let thin = (cat == KIND_SNACK || p.onaka >= 3) as usize;
-        if !self.pet.feed(&item) {
-            return back;
-        }
-        self.pet.give(item.id, -1);
-        let mut scripts = vec![script::SERVE[pref], if item.drink { script::DRINK[pref] } else { script::EAT[pref][thin] }];
-        if cat == KIND_MEAL && self.pet.onaka >= 6 {
-            scripts.push(script::FULL);
-        }
-        self.play(&scripts, (0, OnPress::None), sprite, Scene::Effects { cat, idx })
-    }
-
-    fn start_poop_clean(&mut self) -> Scene {
-        let anim = self.ui_elem(elem::POOP_CLEAN);
-        let clean = if anim.kind == UI_ANIM { anim.p[3] as u16 } else { 0 };
-        let had = self.pet.clean();
-        let mut scripts = vec![clean];
-        if had > 0 {
-            self.pet.happy(1);
-            scripts.push(script::HAPPY_JUMP);
-        }
-        self.play(&scripts, (0, OnPress::None), None, Scene::Home)
-    }
-
-    fn update_play(&mut self, mut p: Play, pressed: u8) -> Scene {
-        if p.node.is_paused() && pressed_any(pressed) {
-            p.presses += 1;
-            if p.presses == p.on_press.0 && p.on_press.1 == OnPress::Groom {
-                self.pet.groom();
-            }
-            p.node.resume();
-        }
-        p.node.tick(&self.data.motions);
-        p.node.take_sounds(&mut self.sounds);
-        if !p.node.is_finished() {
-            return Scene::Play(p);
-        }
-        if let Some(next) = p.queue.pop() {
-            p.node = Node::new(next);
-            return Scene::Play(p);
-        }
-        // Treatments complete when their animations end.
-        match p.on_press.1 {
-            OnPress::Medicine => {
-                self.pet.medicine();
-            }
-            OnPress::Injury => {
-                self.pet.treat_injury();
-            }
-            OnPress::Event(id) => self.pet.finish_event(id),
-            OnPress::Rescue => {
-                self.pet.rescue();
-            }
-            OnPress::Dying(saved) => self.pet.end_dying(saved),
-            OnPress::NewEgg => self.pet.new_egg(&self.data),
-            OnPress::EndSitter => self.pet.end_sitter(),
-            _ => {}
-        }
-        *p.then
-    }
-
-    // ---- drawing ----------------------------------------------------------
-
-    pub(crate) fn draw_elem(&mut self, id: u16, frame: Option<u16>, palette: Option<usize>) {
-        let e = self.ui_elem(id);
-        if e.kind != UI_SPRITE {
-            return;
-        }
-        let pal = palette.or((e.p[8] > 0).then_some(e.p[8] as usize));
-        let sprite = e.p[3] as u16;
-        self.screen.blit(sprite, frame.unwrap_or(e.p[7] as u16), e.x as i32, e.y as i32, e.p[6].clamp(0, 64) as u8, false, pal.map(|s| (sprite, s)));
-    }
-
-    /// Font palette sets (font sprite 17): 0 = white, 1 = dark navy.
-    pub(crate) fn draw_text(&mut self, id: u16, x: i32, y: i32, center: bool, palette: usize) {
-        let glyphs = self.string(id);
-        self.screen.text(&self.data.fonts, &glyphs, x, y, center, palette);
-    }
-
-    pub(crate) fn draw_number(&mut self, n: u32, x: i32, y: i32, palette: usize) {
-        let glyphs: Vec<u16> = n.to_string().bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect();
-        self.screen.text(&self.data.fonts, &glyphs, x, y, true, palette);
-    }
-
-    /// Field background sprite for the current field and time of day (`field_bg_create` 0x10015d90).
-    pub(crate) fn field_bg(&self) -> Option<u16> {
-        self.field_bg_at(self.pet.field, self.pet.in_area2)
-    }
-
-    pub(crate) fn field_bg_at(&self, field: u8, area2: bool) -> Option<u16> {
-        let now = self.pet.last.unwrap_or(12 * 3600);
-        let period = crate::pet::Pet::period(now) as usize;
-        let weather = self.pet.weather_now(&self.data, now) as usize;
-        let id = self.data.field_bg.get(field as usize)?[area2 as usize][1 + period * 3 + weather];
-        let e = self.ui_elem(id);
-        (e.kind == UI_SPRITE).then_some(e.p[3] as u16)
-    }
-
-    pub(crate) fn draw_field_bg(&mut self) {
-        match self.field_bg() {
-            Some(bg) => {
-                self.screen.blit(bg, 0, 64, 64, 64, false, None);
-            }
-            None => self.screen.rect(0, 0, 128, 128, [200, 230, 240]),
-        }
-        // Rain / snow when the weather is 2: a full-screen 4-frame overlay (UI element 0x2d5).
-        if self.pet.weather_now(&self.data, self.pet.last.unwrap_or(0)) == 2 {
-            let frame = (self.frame_count / 4 % 4) as u16;
-            self.screen.blit(PARTICLE, frame, 64, 64, 64, false, None);
-        }
-    }
-
-    /// Draw a character (TamaID) standing at (x, y) in its large idle pose, with `color`.
-    pub(crate) fn draw_character(&mut self, id: u16, color: Option<u8>, x: i32, y: i32) {
-        self.draw_character_pose(id, color, 1, x, y);
-    }
-
-    pub(crate) fn draw_character_pose(&mut self, id: u16, color: Option<u8>, anim: u16, x: i32, y: i32) {
-        let Some(def) = self.data.character(id) else { return };
-        let Some(parts) = self.data.model(def.chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else { return };
-        let color = color.filter(|&c| c < 16).unwrap_or(def.color) as usize;
-        for part in parts {
-            if !matches!(part.kind, 0 | 1 | 15) {
-                continue;
-            }
-            let pal = (part.kind == 0 && def.stage > 1 && color < 16).then_some((206, color));
-            self.screen.blit(part.sprite, part.frame, x + part.x as i32, y + part.y as i32, part.alpha, part.flip, pal);
-        }
-    }
-
-    /// Grazing tamas walking around the field (small poses; up to 4).
-    pub(crate) fn draw_grazing(&mut self) {
-        const SPOTS: [(i32, i32); 4] = [(24, 72), (104, 76), (36, 112), (96, 116)];
-        let shown = self.pet.grazing_shown(self.pet.field);
-        let bob = (self.frame_count / 15 % 2) as u16;
-        for (g, &(x, y)) in shown.iter().zip(SPOTS.iter()) {
-            self.draw_character_pose(g.id, Some(g.color), 30 + bob, x, y);
-        }
-    }
-
-    pub(crate) fn draw_poop(&mut self) {
-        let old = self.pet.unchi.iter().filter(|&&a| a >= crate::pet::UNCHI_OLD).count();
-        let frame = (self.frame_count / 15 % 2) as u16;
-        for i in 0..self.pet.unchi.len() {
-            self.draw_elem(elem::POOP[i], Some(frame), Some((i < old) as usize));
-        }
-    }
-
-    /// Draw the current non-HOME scene. Returns false for HOME (drawn by the caller).
-    pub(crate) fn render_scene(&mut self) -> bool {
-        let scene = std::mem::replace(&mut self.scene, Scene::Home);
-        let drawn = match &scene {
-            Scene::Home => false,
-            Scene::Menu { items, idx, .. } => {
-                self.draw_elem(elem::MENU_BG, None, None);
-                // Vertical wheel: item k from the selection at y = 64 − 88·sin(25°·k).
-                let n = items.len() as i32;
-                let mut order: Vec<i32> = (-(n / 2)..=(n - 1) / 2).collect();
-                order.sort_by_key(|k| -k.abs());
-                for k in order {
-                    let i = (*idx as i32 + k).rem_euclid(n) as usize;
-                    let a = (25.0f32 * k as f32).to_radians();
-                    let (x, y) = (64 + (10.0 * (1.0 - (45.0f32 * k as f32).to_radians().cos())) as i32, 64 - (88.0 * a.sin()) as i32);
-                    let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
-                    let gray = items[i].1.is_none() as usize;
-                    self.screen.blit(label, 0, x, y, 64, false, (gray > 0).then_some((label, gray)));
-                    self.draw_text(items[i].0, x, y, true, 1);
-                }
-                true
-            }
-            Scene::FoodCategory { idx } => {
-                self.draw_list(&[text::FOOD, text::SNACKS], *idx, None);
-                true
-            }
-            Scene::FoodList { items, idx, .. } => {
-                self.draw_food_card(items, *idx);
-                true
-            }
-            Scene::Confirm { yes, .. } => {
-                self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(text::EAT_THIS));
-                true
-            }
-            Scene::Prompt { wake, yes } => {
-                self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(if *wake { text::WAKE_UP } else { text::TIME_TO_SLEEP }));
-                true
-            }
-            Scene::Stars { idx, page, node } => {
-                self.draw_stars(*idx, *page, node);
-                true
-            }
-            Scene::Credits { node, .. } => {
-                let mut draws = Vec::new();
-                node.draws(64, 64, &mut draws);
-                self.draw_list_of(&draws, None);
-                true
-            }
-            Scene::Play(p) => {
-                self.draw_field_bg();
-                if p.food.is_some() {
-                    self.screen.blit(TABLE, 0, 64, 106, 64, false, None);
-                }
-                let mut draws = Vec::new();
-                p.node.draws(64, 64, &mut draws);
-                self.draw_list_of(&draws, p.food);
-                true
-            }
-            Scene::Status { page, .. } => {
-                self.draw_status(*page);
-                true
-            }
-            Scene::Effects { .. } => {
-                self.draw_field_bg();
-                true
-            }
-            Scene::Sitter { node } | Scene::Dying { node } => {
-                self.draw_field_bg();
-                let mut draws = Vec::new();
-                node.draws(64, 64, &mut draws);
-                self.draw_list_of(&draws, None);
-                true
-            }
-            Scene::Support { pet, round, t, busy } => {
-                self.draw_support(pet, *round, *t, *busy);
-                true
-            }
-            Scene::Graveyard { nodes } => {
-                self.draw_graveyard(nodes);
-                true
-            }
-            Scene::Dead { page, nodes } => {
-                self.draw_dead(*page, nodes);
-                true
-            }
-            Scene::LabCode { chars, pos } => {
-                self.draw_lab_code(chars, *pos);
-                true
-            }
-            Scene::Searching { .. } => {
-                self.draw_list(&[], 0, Some(0xe1));
-                true
-            }
-            Scene::Found { chr } => {
-                self.draw_found(*chr);
-                true
-            }
-            Scene::Card { kind, items, idx } => {
-                self.draw_card(*kind, items, *idx);
-                true
-            }
-            Scene::Bonus => {
-                self.draw_list(&[], 0, Some(0xe2));
-                self.draw_digits(crate::shop::LAB_BONUS, 64, 96);
-                true
-            }
-            Scene::Points { points, .. } => {
-                self.draw_list(&[], 0, Some(0xb6));
-                self.draw_digits(*points, 64, 80);
-                true
-            }
-            Scene::Message { text, .. } => {
-                self.draw_list(&[], 0, Some(*text));
-                true
-            }
-            Scene::Ask { text, yes, .. } => {
-                self.draw_list(&[text::YES, text::NO], !*yes as usize, Some(*text));
-                true
-            }
-            Scene::Code { digits, pos } => {
-                self.draw_code(digits, *pos);
-                true
-            }
-            Scene::Missions { idx } => {
-                self.draw_mission(*idx);
-                true
-            }
-            Scene::Breed { cands, idx } => {
-                self.draw_list(&[], 0, Some(0x19));
-                self.draw_character(cands[*idx], None, 64, 112);
-                true
-            }
-            Scene::Setsubi { toy, field, area, idx } => {
-                self.draw_setsubi(*toy, *field, *area, *idx);
-                true
-            }
-            Scene::Friends { idx } => {
-                self.draw_friend(*idx);
-                true
-            }
-            Scene::PlanetName { chars, pos } => {
-                self.draw_list(&[], 0, Some(0x0c));
-                for (i, &c) in chars.iter().enumerate() {
-                    let x = 18 + i as i32 * 13;
-                    self.screen.text(&self.data.fonts, &[c], x, 86, true, 1);
-                    if i == *pos {
-                        self.screen.rect(x - 5, 96, 10, 2, [40, 40, 120]);
-                    }
-                }
-                true
-            }
-            Scene::Birthday { m, d, pos } => {
-                self.draw_list(&[], 0, Some(0x60));
-                for (i, (v, x)) in [(*m, 40), (*d, 88)].into_iter().enumerate() {
-                    if i == *pos as usize {
-                        self.screen.rect(x - 12, 98, 24, 2, [40, 40, 120]);
-                    }
-                    self.draw_digits(v as u32, x, 86);
-                }
-                self.screen.rect(62, 85, 4, 4, [40, 40, 120]);
-                true
-            }
-            Scene::HuntTeam { idx, picked, .. } => {
-                self.draw_hunt_team(*idx, picked);
-                true
-            }
-            Scene::HuntEggs { items, t, peach } => {
-                self.draw_hunt_eggs(items, *t, *peach);
-                true
-            }
-            Scene::PlanetLv { page } => {
-                self.draw_planet_lv(*page);
-                true
-            }
-            Scene::Graves { idx, .. } => {
-                self.draw_grave(*idx);
-                true
-            }
-            Scene::Mini { session, .. } => {
-                self.screen.rect(0, 0, 128, 128, [0, 0, 0]);
-                if let Some(bg) = self.field_bg().filter(|_| session.game.field_bg()) {
-                    self.screen.zoom = 2.0;
-                    self.screen.blit(bg, 0, 64, 64, 64, false, None);
-                    self.screen.zoom = 1.0;
-                }
-                let mut draws = Vec::new();
-                session.draws(&mut draws);
-                self.draw_list_of(&draws, None);
-                for h in session.hud() {
-                    match h {
-                        crate::mini::Hud::Sprite { id, frame, x, y } => {
-                            self.screen.blit(id, frame, x, y, 64, false, None);
-                        }
-                        crate::mini::Hud::Number { n, x, y } => self.draw_digits(n, x, y),
-                    }
-                }
-                true
-            }
-        };
-        self.scene = scene;
-        drawn
-    }
-
-    /// Simple vertical list (category, YES/NO): labels on the menu sprite, selection in colour.
-    pub(crate) fn draw_list(&mut self, labels: &[u16], sel: usize, title: Option<u16>) {
-        self.draw_elem(elem::LIST_BG, None, None);
-        let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
-        let mut top = 40;
-        if let Some(t) = title {
-            let glyphs = crate::screen::wrap(&self.data.fonts, &self.string(t), 104);
-            let lines = glyphs.iter().filter(|&&c| c == crate::screen::NEWLINE).count() as i32 + 1;
-            let h = lines * 13 + 8;
-            self.screen.rect(8, 10, 112, h, [255, 255, 255]);
-            self.screen.text(&self.data.fonts, &glyphs, 64, 10 + 4 + 6, true, 1);
-            top = 10 + h + 24;
-        }
-        for (i, &l) in labels.iter().enumerate() {
-            let y = top + i as i32 * 40;
-            let gray = (i != sel) as usize;
-            self.screen.blit(label, 0, 64, y, 64, false, (gray > 0).then_some((label, gray)));
-            self.draw_text(l, 64, y, true, 1);
-        }
-    }
-
-    /// One food card of the carousel (`itemlist_create` 0x1002cc90, mode 2).
-    pub(crate) fn draw_food_card(&mut self, items: &[u16], idx: usize) {
-        self.draw_elem(elem::LIST_BG, None, None);
-        self.draw_elem(elem::CARD_PANEL, None, None);
-        let Some(item) = self.data.item(items[idx]) else { return };
-        self.screen.blit(item.icon_sprite, 0, 64, 40, 64, false, None);
-        self.draw_elem(elem::CARD_NAME_BAR, None, None);
-        self.draw_text(item.name, 64, 92, true, 0);
-        self.draw_elem(elem::CARD_CAPSULE, None, None);
-        if item.buy != 0xffff {
-            let n = self.pet.count(item.id) as u32;
-            self.draw_number(n, 12, 8, 1);
-        }
-        if items.len() > 1 {
-            self.screen.blit(ARROWS, 2, 10, 116, 64, false, None);
-            self.screen.blit(ARROWS, 3, 118, 116, 64, false, None);
-        }
-    }
-
-    /// Number in the 16×16 digit font (sprite 19: frame 0 blank, digit d = frame d + 1), 10 px apart, centred on (x, y).
-    pub(crate) fn draw_digits(&mut self, n: u32, x: i32, y: i32) {
-        let s = n.to_string();
-        let w = s.len() as i32 * 10;
-        for (i, b) in s.bytes().enumerate() {
-            self.screen.blit(19, (b - b'0') as u16 + 1, x - w / 2 + 5 + i as i32 * 10, y, 64, false, None);
-        }
-    }
-
-    /// Draw motion-script output with the food placeholder replaced.
-    fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
-        for d in draws {
-            match d.look {
-                crate::motion::Look::Sprite { id, frame } => {
-                    let id = if id == FOOD_PLACEHOLDER { food.unwrap_or(id) } else { id };
-                    self.screen.blit(id, frame, d.x, d.y, d.alpha, d.flip, (d.palette > 0).then_some((id, d.palette as usize)));
-                }
-                crate::motion::Look::Chr { chr, anim, eyes, mouth } => {
-                    self.draw_chr(d, chr, anim, eyes, mouth);
-                }
-                crate::motion::Look::None => {}
-            }
-        }
-    }
-
-    /// CELL_STATUS (`cellstatus_state` 0x100452f0).
-    fn draw_status(&mut self, page: u8) {
-        if page == 0 {
-            self.draw_elem(elem::STATUS_BG, None, None);
-            self.draw_elem(elem::STATUS_FRAME, None, None);
-            self.draw_text(text::HUNGER, 10, 11, false, 0);
-            for i in 0..self.pet.onaka as usize {
-                self.draw_elem(elem::STATUS_HUNGER[i], None, None);
-            }
-            self.draw_text(text::HAPPY, 10, 58, false, 0);
-            self.draw_elem(elem::STATUS_HAPPY_BAR, Some(self.pet.gokigen as u16), None);
-            self.draw_number(self.pet.days as u32, 52, 110, 1);
-            self.draw_text(text::YEARS, 70, 110, false, 1);
-        } else {
-            self.draw_elem(elem::NAME_BG, None, None);
-            self.draw_elem(elem::NAME_BAR, None, None);
-            self.draw_text(self.pet.def.name_id, 64, 18, true, 0);
-        }
+/// Wrapping list cursor: A or dial up moves forward, dial down back.
+pub(crate) fn cycle(idx: usize, n: usize, pressed: u8) -> usize {
+    let n = n.max(1);
+    if pressed & (A | UP) != 0 {
+        (idx + 1) % n
+    } else if pressed & DOWN != 0 {
+        (idx + n - 1) % n
+    } else {
+        idx
     }
 }

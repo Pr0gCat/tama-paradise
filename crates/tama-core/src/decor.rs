@@ -27,7 +27,11 @@ impl Pet {
 
     /// Slots a toy kind can go in.
     pub fn toy_slots(kind: u8) -> &'static [usize] {
-        if kind == 4 { &[4, 5] } else { &[0, 1, 2, 3] }
+        if kind == 4 {
+            &[4, 5]
+        } else {
+            &[0, 1, 2, 3]
+        }
     }
 
     /// Slots that must be emptied to place a toy in `slot` (`toy_place_conflicts` 0x1006d804).
@@ -135,7 +139,8 @@ mod tests {
             Item { id: 8002, kind: 7, ..Default::default() },
         ];
         d.decor.equip_sets = vec![[8001, 0, 8002, 9000, 9001]];
-        d.decor.travel = vec![Destination { item: 9901, rank: 3, anim: 0x866, souvenirs: [8001, 8002], npcs: [167, 168] }];
+        d.decor.travel =
+            vec![Destination { item: 9901, rank: 3, anim: 0x866, souvenirs: [8001, 8002], npcs: [167, 168] }];
         d
     }
 

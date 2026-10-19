@@ -13,7 +13,6 @@ pub const FIELD_LOG_MAX: usize = 11;
 pub const METAMORPHO_AFTER: u32 = 3600;
 pub const SUPPORT_TIMEOUT: u32 = 900;
 
-
 /// Native food categories (1-based) per field: tropical 13–15, frozen 16–18, forest 10–12.
 const NATIVE_FIRST: [u8; 3] = [13, 16, 10];
 
@@ -204,7 +203,7 @@ impl Pet {
         }
         self.status &= status::DIRTY;
         // Planet rank 0→1→2→3 for the first child, teen and adult (05-content §2.6).
-        if def.stage as u8 == self.rank + 3 && def.stage >= 3 {
+        if def.stage == self.rank + 3 && def.stage >= 3 {
             self.rank_up();
         }
         if self.color == crate::pet::NO_COLOR && def.stage == 5 {
@@ -274,7 +273,9 @@ pub(crate) mod tests {
             characters.push(def(k, if k < 3000 { 3 } else { 5 }, 45, 20, 0));
         }
         let teens = std::array::from_fn(|f| std::array::from_fn(|b| 3000 + (f * 10 + b) as u16));
-        let adults = std::array::from_fn(|f| std::array::from_fn(|b| std::array::from_fn(|q| 4500 + (f * 100 + b * 10 + q) as u16)));
+        let adults = std::array::from_fn(|f| {
+            std::array::from_fn(|b| std::array::from_fn(|q| 4500 + (f * 100 + b * 10 + q) as u16))
+        });
         for f in 0..3 {
             for b in 0..4 {
                 characters.push(def(3000 + (f * 10 + b) as u16, 4, 60, 30, 0));
@@ -283,7 +284,27 @@ pub(crate) mod tests {
                 }
             }
         }
-        Data { rom_type: 6, characters, items: vec![], evolution: Evolution { kids, teens, adults, rare, failed: 4017 }, models: vec![], motions: vec![], home_motions: vec![], fonts: vec![], strings: vec![], ui: vec![], field_bg: vec![], melodies: vec![], shop_codes: vec![], recipes: vec![], weather_months: vec![], weather_patterns: vec![], hunt_finds: vec![], mini: Default::default(), decor: Default::default() }
+        Data {
+            rom_type: 6,
+            characters,
+            items: vec![],
+            evolution: Evolution { kids, teens, adults, rare, failed: 4017 },
+            models: vec![],
+            motions: vec![],
+            home_motions: vec![],
+            fonts: vec![],
+            strings: vec![],
+            ui: vec![],
+            field_bg: vec![],
+            melodies: vec![],
+            shop_codes: vec![],
+            recipes: vec![],
+            weather_months: vec![],
+            weather_patterns: vec![],
+            hunt_finds: vec![],
+            mini: Default::default(),
+            decor: Default::default(),
+        }
     }
 
     const NOON: u64 = 86_400 + 12 * 3600;
@@ -438,7 +459,7 @@ pub(crate) mod tests {
         p.age = 86_400;
         p.evolution_tick(1);
         assert!(p.evolve(&d));
-        assert_eq!(p.def.id, 4500 + 100 + 0 + 2, "adults[1][b=0][q=2]");
+        assert_eq!(p.def.id, (4500 + 100) + 2, "adults[1][b=0][q=2]");
         assert_eq!(p.points, 800);
     }
 
@@ -490,7 +511,8 @@ pub(crate) mod tests {
         };
         let d = Data::from_json(&json).unwrap();
         let e = &d.evolution;
-        let all = e.kids.iter().chain(e.teens.iter().flatten()).chain(e.adults.iter().flatten().flatten()).chain(&e.rare);
+        let all =
+            e.kids.iter().chain(e.teens.iter().flatten()).chain(e.adults.iter().flatten().flatten()).chain(&e.rare);
         for id in all.chain(&[e.failed]) {
             let c: CharDef = d.character(*id).unwrap_or_else(|| panic!("{id} missing"));
             assert_eq!(c.stage as u16, id / 1000 + 1, "{id}: 2xxx child, 3xxx teen, 4xxx adult");

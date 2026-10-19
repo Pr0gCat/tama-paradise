@@ -6,7 +6,8 @@ use crate::pet::{req, status, Cond, Pet};
 const RANDOM_SEQ: [u8; 27] = [5, 1, 2, 6, 4, 9, 7, 3, 8, 9, 2, 7, 1, 8, 5, 6, 3, 4, 2, 5, 3, 4, 1, 8, 7, 9, 6];
 
 /// Pending calls checked in priority order (subset of XIP 0x100a2fdf) → HOME state.
-const CALLS: [(u8, u8); 4] = [(req::EVOL_SUPPORT, 0x1a), (req::ONAKA, 0x1b), (req::GOKIGEN, 0x1c), (req::SOWASOWA, 0x11)];
+const CALLS: [(u8, u8); 4] =
+    [(req::EVOL_SUPPORT, 0x1a), (req::ONAKA, 0x1b), (req::GOKIGEN, 0x1c), (req::SOWASOWA, 0x11)];
 
 pub const STATE_IDLE: u8 = 8;
 

@@ -50,12 +50,26 @@ struct Gauge {
 
 impl Gauge {
     fn new() -> Self {
-        Gauge { from: LEFT << 16, to: LEFT << 16, t: 0, len: 0, frozen: None, back: false, running: false, blink: 0, shown: None }
+        Gauge {
+            from: LEFT << 16,
+            to: LEFT << 16,
+            t: 0,
+            len: 0,
+            frozen: None,
+            back: false,
+            running: false,
+            blink: 0,
+            shown: None,
+        }
     }
 
     fn x(&self) -> i32 {
         self.frozen.unwrap_or_else(|| {
-            if self.t >= self.len { self.to } else { self.from + ((self.to - self.from) as i64 * self.t as i64 / self.len as i64) as i32 }
+            if self.t >= self.len {
+                self.to
+            } else {
+                self.from + ((self.to - self.from) as i64 * self.t as i64 / self.len as i64) as i32
+            }
         })
     }
 
@@ -121,7 +135,16 @@ impl Default for Together06 {
 
 impl Together06 {
     pub fn new() -> Self {
-        Together06 { state: 0, wait: 0, throw: 0, zone: 0, count: [0; 4], gauge: Gauge::new(), idle: 0, pet: Self::play(OPENING) }
+        Together06 {
+            state: 0,
+            wait: 0,
+            throw: 0,
+            zone: 0,
+            count: [0; 4],
+            gauge: Gauge::new(),
+            idle: 0,
+            pet: Self::play(OPENING),
+        }
     }
 
     fn play(script: u16) -> Node {
@@ -208,9 +231,23 @@ impl MiniGame for Together06 {
         self.pet.draws(0, 0, out);
         if let Some(t) = self.gauge.shown {
             let alpha = (64 * t.min(SHOW) as u32 / SHOW as u32) as u8;
-            out.push(Draw { look: Look::Sprite { id: GAUGE.0, frame: 0 }, x: GAUGE.1, y: GAUGE.2, flip: false, alpha, palette: 0 });
+            out.push(Draw {
+                look: Look::Sprite { id: GAUGE.0, frame: 0 },
+                x: GAUGE.1,
+                y: GAUGE.2,
+                flip: false,
+                alpha,
+                palette: 0,
+            });
             let look = Look::Sprite { id: MARKER.0, frame: 0 };
-            out.push(Draw { look, x: self.gauge.x() >> 16, y: MARKER.1, flip: false, alpha, palette: self.gauge.palette() });
+            out.push(Draw {
+                look,
+                x: self.gauge.x() >> 16,
+                y: MARKER.1,
+                flip: false,
+                alpha,
+                palette: self.gauge.palette(),
+            });
         }
     }
 

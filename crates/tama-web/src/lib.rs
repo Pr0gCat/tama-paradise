@@ -112,7 +112,8 @@ impl Tama {
 
     /// Inventory as JSON `[[id, count, name], ...]`.
     pub fn inventory(&self) -> String {
-        let items: Vec<String> = self.0.inventory().into_iter().map(|(id, n, name)| format!("[{id},{n},{name:?}]")).collect();
+        let items: Vec<String> =
+            self.0.inventory().into_iter().map(|(id, n, name)| format!("[{id},{n},{name:?}]")).collect();
         format!("[{}]", items.join(","))
     }
 

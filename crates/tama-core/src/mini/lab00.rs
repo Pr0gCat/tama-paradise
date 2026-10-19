@@ -42,7 +42,18 @@ impl Lab00 {
             .collect();
         let mut bottle = Node::new(BOTTLE);
         bottle.place(CURSOR[0].0, CURSOR[0].1);
-        Lab00 { board, row: 0, frame: 0, score: 0, cursor: 0, end_wait: None, holes: [(0, 0); 6], hole_nodes, bottle, bg: Node::new(BACKGROUND) }
+        Lab00 {
+            board,
+            row: 0,
+            frame: 0,
+            score: 0,
+            cursor: 0,
+            end_wait: None,
+            holes: [(0, 0); 6],
+            hole_nodes,
+            bottle,
+            bg: Node::new(BACKGROUND),
+        }
     }
 
     fn set(&mut self, i: usize, state: u8, timer: u16) {
@@ -79,7 +90,7 @@ impl MiniGame for Lab00 {
             self.finish(sounds, 0x4a);
             return None;
         }
-        if self.frame % ROW_EVERY == 0 {
+        if self.frame.is_multiple_of(ROW_EVERY) {
             if let Some(row) = self.board.get(self.row).copied() {
                 for (i, &v) in row.iter().enumerate() {
                     if v != 0 {
@@ -127,7 +138,8 @@ impl MiniGame for Lab00 {
     }
 
     fn hud(&self) -> Vec<Hud> {
-        let mut h = vec![Hud::Sprite { id: 2062, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.score as u32, x: 15, y: 11 }];
+        let mut h =
+            vec![Hud::Sprite { id: 2062, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.score as u32, x: 15, y: 11 }];
         let left = (FRAMES.saturating_sub(self.frame)) / 20;
         if left < 10 {
             h.push(Hud::Sprite { id: 2063, frame: 0, x: 120, y: 11 });

@@ -217,7 +217,15 @@ impl Together07 {
                     c @ (b'T' | b'G') => {
                         let t = c == b'T';
                         let n = node(if t { SHIROTAMA } else { 0xffff });
-                        self.objs.push(Obj { shirotama: t, x: wx, y: wy, node: n, hit: false, fade: None, gone: false });
+                        self.objs.push(Obj {
+                            shirotama: t,
+                            x: wx,
+                            y: wy,
+                            node: n,
+                            hit: false,
+                            fade: None,
+                            gone: false,
+                        });
                     }
                     _ => {}
                 }
@@ -252,7 +260,11 @@ impl Together07 {
             sounds.push((if self.bumped { 16 } else { 52 }, 100));
             self.stun_t0 = self.time;
         } else if self.time - self.stun_t0 > STUN {
-            if self.bumped { self.bumped = false } else { self.collecting = false }
+            if self.bumped {
+                self.bumped = false
+            } else {
+                self.collecting = false
+            }
             self.v = SPEED;
             self.stunned = false;
             self.pick_walk();
@@ -275,10 +287,14 @@ impl Together07 {
         let mut dy = -((self.v as i64 * cos16(&data.mini, a) as i64) >> 16) as i32;
         let (cx, cy) = (self.x >> 21, self.y >> 21);
         let (ix, iy) = (self.x % (CELL << 16), self.y % (CELL << 16));
-        if dx < 0 && self.cell(cx - 1, cy) == b'w' && ix < 10 * ONE || dx > 0 && self.cell(cx + 1, cy) == b'w' && ix > 22 * ONE {
+        if dx < 0 && self.cell(cx - 1, cy) == b'w' && ix < 10 * ONE
+            || dx > 0 && self.cell(cx + 1, cy) == b'w' && ix > 22 * ONE
+        {
             dx = 0;
         }
-        if dy < 0 && self.cell(cx, cy - 1) == b'w' && iy < 10 * ONE || dy > 0 && self.cell(cx, cy + 1) == b'w' && iy > 22 * ONE {
+        if dy < 0 && self.cell(cx, cy - 1) == b'w' && iy < 10 * ONE
+            || dy > 0 && self.cell(cx, cy + 1) == b'w' && iy > 22 * ONE
+        {
             dy = 0;
         }
         self.x += dx;
@@ -544,7 +560,14 @@ impl MiniGame for Together07 {
                 o.node.draws(sx, sy, &mut d);
             } else {
                 let alpha = 64 - (64 * o.fade.unwrap_or(0) as u32 / 20) as u8;
-                d.push(Draw { look: Look::Sprite { id: self.look.1, frame: 0 }, x: sx, y: sy, flip: false, alpha, palette: 0 });
+                d.push(Draw {
+                    look: Look::Sprite { id: self.look.1, frame: 0 },
+                    x: sx,
+                    y: sy,
+                    flip: false,
+                    alpha,
+                    palette: 0,
+                });
             }
             items.push((sy, d));
         }
@@ -569,7 +592,8 @@ impl MiniGame for Together07 {
         if !self.built {
             return Vec::new();
         }
-        let mut h = vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.got as u32, x: 14, y: 11 }];
+        let mut h =
+            vec![Hud::Sprite { id: 0x80e, frame: 0, x: 15, y: 11 }, Hud::Number { n: self.got as u32, x: 14, y: 11 }];
         if let Some(n) = self.countdown {
             h.push(Hud::Sprite { id: 0x80f, frame: 0, x: 120, y: 11 });
             h.push(Hud::Number { n, x: 120, y: 11 });
@@ -625,13 +649,22 @@ mod tests {
 
     #[test]
     fn anims_by_heading() {
-        for (r, a) in [(128, WALK_DOWN), (0, WALK_UP), (51, WALK_UP), (52, WALK_LEFT), (105, WALK_LEFT), (106, WALK_DOWN)] {
+        for (r, a) in
+            [(128, WALK_DOWN), (0, WALK_UP), (51, WALK_UP), (52, WALK_LEFT), (105, WALK_LEFT), (106, WALK_DOWN)]
+        {
             assert_eq!(walk_anim(r), a, "r {r}");
         }
         for (r, a) in [(-54, WALK_UP), (-55, WALK_RIGHT), (-106, WALK_RIGHT), (-107, WALK_DOWN), (-128, WALK_DOWN)] {
             assert_eq!(walk_anim(r), a, "r {r}");
         }
-        for (r, a) in [(0, FOLLOW_UP), (32, FOLLOW_UP), (33, FOLLOW_LEFT), (-33, FOLLOW_RIGHT), (-97, FOLLOW_DOWN), (128, FOLLOW_DOWN)] {
+        for (r, a) in [
+            (0, FOLLOW_UP),
+            (32, FOLLOW_UP),
+            (33, FOLLOW_LEFT),
+            (-33, FOLLOW_RIGHT),
+            (-97, FOLLOW_DOWN),
+            (128, FOLLOW_DOWN),
+        ] {
             assert_eq!(follow_anim(r), a, "r {r}");
         }
     }

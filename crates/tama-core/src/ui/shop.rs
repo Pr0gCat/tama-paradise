@@ -74,7 +74,8 @@ const COOK_ICON_MATERIAL_Y: i32 = 112;
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
 /// Play-together menu (09-minigames-together §2.1): title and game number.
 /// ARROW, 3 UFOS and WALKING (games 0, 2, 3) are reachable here although the original menu has no entry.
-const TOGETHER_GAMES: [(u16, u8); 7] = [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7), (0x329, 0), (0x32b, 2), (0x32c, 3)];
+const TOGETHER_GAMES: [(u16, u8); 7] =
+    [(0x32f, 4), (0x32a, 1), (0x333, 6), (0x334, 7), (0x329, 0), (0x32b, 2), (0x32c, 3)];
 /// Play-together games playable so far.
 const TOGETHER_IMPLEMENTED: &[u8] = &[4, 1, 6, 7, 0, 2, 3];
 /// Games playable so far.
@@ -86,9 +87,12 @@ impl Game {
         let now = self.pet.last.unwrap_or(0);
         match a {
             Action::Feed => Scene::FoodCategory { idx: 0 },
-            Action::Groom => {
-                self.play(&[super::script::GROOM_INTRO, super::script::GROOM], (4, super::OnPress::Groom), None, Scene::Home)
-            }
+            Action::Groom => self.play(
+                &[super::script::GROOM_INTRO, super::script::GROOM],
+                (4, super::OnPress::Groom),
+                None,
+                Scene::Home,
+            ),
             Action::CleanPoop => self.start_poop_clean(),
             Action::Lab => Scene::Menu {
                 items: vec![
@@ -139,7 +143,9 @@ impl Game {
             Action::Code => Scene::Code { digits: [0; 8], pos: 0 },
             Action::Expand => Scene::Menu {
                 items: (0..3u8)
-                    .map(|f| (t::FIELD_NAMES[f as usize], (self.pet.areas & 1 << f == 0).then_some(Action::ExpandField(f))))
+                    .map(|f| {
+                        (t::FIELD_NAMES[f as usize], (self.pet.areas & 1 << f == 0).then_some(Action::ExpandField(f)))
+                    })
                     .collect(),
                 idx: self.pet.field as usize,
                 back: Some(Action::Shop),
@@ -153,7 +159,10 @@ impl Game {
                 let fields = self.pet.visible_fields(&self.data);
                 Scene::Menu {
                     idx: fields.iter().position(|&f| f == self.pet.field).unwrap_or(0),
-                    items: fields.into_iter().map(|f| (t::FIELD_NAMES[f as usize], Some(Action::SwitchField(f)))).collect(),
+                    items: fields
+                        .into_iter()
+                        .map(|f| (t::FIELD_NAMES[f as usize], Some(Action::SwitchField(f))))
+                        .collect(),
                     back: None,
                 }
             }
@@ -174,8 +183,12 @@ impl Game {
                     back: Some(Action::Lab),
                 }
             }
-            Action::Sitter => Scene::Ask { text: t::CALL_SITTER, yes: true, on_yes: Action::CallSitter, back: Action::Help },
-            Action::Release => Scene::Ask { text: t::RELEASE, yes: true, on_yes: Action::ReleaseNow, back: Action::Help },
+            Action::Sitter => {
+                Scene::Ask { text: t::CALL_SITTER, yes: true, on_yes: Action::CallSitter, back: Action::Help }
+            }
+            Action::Release => {
+                Scene::Ask { text: t::RELEASE, yes: true, on_yes: Action::ReleaseNow, back: Action::Help }
+            }
             Action::ReleaseNow => {
                 self.pet.release_to_field(&self.data);
                 Scene::Message { text: t::RELEASED, then: Box::new(Scene::Home) }
@@ -190,13 +203,11 @@ impl Game {
                 }
                 Scene::Breed { cands, idx: 0 }
             }
-            Action::BreedWith(id) => {
-                match self.pet.breed(&self.data, id) {
-                    Some(true) => Scene::Message { text: t::BRED, then: Box::new(Scene::Home) },
-                    Some(false) => Scene::Message { text: t::SEE_YOU_AGAIN, then: Box::new(Scene::Home) },
-                    None => self.message(t::NO_MORE_TODAY, Action::Help),
-                }
-            }
+            Action::BreedWith(id) => match self.pet.breed(&self.data, id) {
+                Some(true) => Scene::Message { text: t::BRED, then: Box::new(Scene::Home) },
+                Some(false) => Scene::Message { text: t::SEE_YOU_AGAIN, then: Box::new(Scene::Home) },
+                None => self.message(t::NO_MORE_TODAY, Action::Help),
+            },
             Action::Graves => Scene::Graves { idx: 0, back: Action::Book },
             // LABOMENU_BOOK (`FUN_100464c4`): TAMA FILE (here the graves) and MICROSCOPE.
             Action::Book => Scene::Menu {
@@ -220,13 +231,20 @@ impl Game {
                 items: LAB_GAMES
                     .iter()
                     .enumerate()
-                    .map(|(i, &(title, game))| (title, (IMPLEMENTED.contains(&game) && self.pet.lab_game_open(i)).then_some(Action::LabGame(game))))
+                    .map(|(i, &(title, game))| {
+                        (
+                            title,
+                            (IMPLEMENTED.contains(&game) && self.pet.lab_game_open(i)).then_some(Action::LabGame(game)),
+                        )
+                    })
                     .collect(),
                 idx: 0,
                 back: Some(Action::Lab),
             },
             Action::LabGame(g) => Scene::Menu {
-                items: (0..3).map(|l| (t::LEVELS[l], self.pet.lab_level_open(l).then_some(Action::PlayLab(g, l as u8)))).collect(),
+                items: (0..3)
+                    .map(|l| (t::LEVELS[l], self.pet.lab_level_open(l).then_some(Action::PlayLab(g, l as u8))))
+                    .collect(),
                 idx: 0,
                 back: Some(Action::MiniGames),
             },
@@ -238,18 +256,33 @@ impl Game {
                 }
                 let (mini, l, n) = (&self.data.mini, level as usize, n as usize);
                 let game: Box<dyn crate::mini::MiniGame> = match g {
-                    1 => Box::new(crate::mini::lab01::Lab01::new(mini.lab01_maps.get(l * 3 + n % 3).cloned().unwrap_or_default(), l)),
-                    2 => Box::new(crate::mini::lab02::Lab02::new(mini.lab02_boards.get(l * 5 + n % 5).copied().unwrap_or_default(), l)),
-                    3 => Box::new(crate::mini::lab03::Lab03::new(mini.lab03_layouts.get(l * 2 + n % 2).cloned().unwrap_or_default())),
+                    1 => Box::new(crate::mini::lab01::Lab01::new(
+                        mini.lab01_maps.get(l * 3 + n % 3).cloned().unwrap_or_default(),
+                        l,
+                    )),
+                    2 => Box::new(crate::mini::lab02::Lab02::new(
+                        mini.lab02_boards.get(l * 5 + n % 5).copied().unwrap_or_default(),
+                        l,
+                    )),
+                    3 => Box::new(crate::mini::lab03::Lab03::new(
+                        mini.lab03_layouts.get(l * 2 + n % 2).cloned().unwrap_or_default(),
+                    )),
                     4 => Box::new(crate::mini::lab04::Lab04::new(
                         l,
                         mini.lab04_launch.get(l * 3 + n % 3).copied().unwrap_or([1; 5]),
                         mini.lab04_prize_brick.get(l * 5 + n % 5).copied().unwrap_or([1; 5]),
                         mini.lab04_prize_chr.get(n % 49).copied().unwrap_or(0),
                     )),
-                    5 => Box::new(crate::mini::lab05::Lab05::new(mini.lab05_layouts.get(l * 3 + n % 3).cloned().unwrap_or_default(), l)),
-                    6 => Box::new(crate::mini::lab06::Lab06::new(mini.lab06_courses.get(l * 3 + n % 3).cloned().unwrap_or_default())),
-                    _ => Box::new(crate::mini::lab00::Lab00::new(mini.lab00_boards.get(l * 3 + n % 3).cloned().unwrap_or_default())),
+                    5 => Box::new(crate::mini::lab05::Lab05::new(
+                        mini.lab05_layouts.get(l * 3 + n % 3).cloned().unwrap_or_default(),
+                        l,
+                    )),
+                    6 => Box::new(crate::mini::lab06::Lab06::new(
+                        mini.lab06_courses.get(l * 3 + n % 3).cloned().unwrap_or_default(),
+                    )),
+                    _ => Box::new(crate::mini::lab00::Lab00::new(
+                        mini.lab00_boards.get(l * 3 + n % 3).cloned().unwrap_or_default(),
+                    )),
                 };
                 let session = crate::mini::Session::new(game, Some(l));
                 let session = match g {
@@ -294,9 +327,7 @@ impl Game {
             | Action::GiftItem(_)
             | Action::Planets
             | Action::Arcade
-            | Action::PlayArcade(_) => {
-                self.open_connect(a)
-            }
+            | Action::PlayArcade(_) => self.open_connect(a),
             Action::Together => {
                 if self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t)) {
                     return Scene::Message { text: 0x69, then: Box::new(Scene::Home) };
@@ -304,7 +335,9 @@ impl Game {
                 Scene::Menu {
                     items: TOGETHER_GAMES
                         .iter()
-                        .map(|&(title, g)| (title, TOGETHER_IMPLEMENTED.contains(&g).then_some(Action::PlayTogether(g))))
+                        .map(|&(title, g)| {
+                            (title, TOGETHER_IMPLEMENTED.contains(&g).then_some(Action::PlayTogether(g)))
+                        })
                         .collect(),
                     idx: 0,
                     back: None,
@@ -316,8 +349,14 @@ impl Game {
                 let mini = &self.data.mini;
                 let game: Box<dyn crate::mini::MiniGame> = match g {
                     // Each together game registers here: game number → constructor (n = play count).
-                    4 => Box::new(crate::mini::together04::Together04::new(mini.together04_cards.clone(), mini.together04_pet_slot.clone(), n)),
-                    1 => Box::new(crate::mini::together01::Together01::new(mini.together01_commands.get(n % 3).copied().unwrap_or([[1, 4]; 10]))),
+                    4 => Box::new(crate::mini::together04::Together04::new(
+                        mini.together04_cards.clone(),
+                        mini.together04_pet_slot.clone(),
+                        n,
+                    )),
+                    1 => Box::new(crate::mini::together01::Together01::new(
+                        mini.together01_commands.get(n % 3).copied().unwrap_or([[1, 4]; 10]),
+                    )),
                     6 => Box::new(crate::mini::together06::Together06::new()),
                     7 => Box::new(crate::mini::together07::Together07::new(
                         mini.together07_maps.get(n % 3).cloned().unwrap_or_default(),
@@ -436,7 +475,12 @@ impl Game {
                 Ok(()) => {
                     // Cooking serves the dish at once, like feeding.
                     let then = Scene::Card { kind, items, idx };
-                    return self.play(&[super::script::SERVE[0], super::script::EAT[0][0]], (0, super::OnPress::None), Some(item.eat_sprite), then);
+                    return self.play(
+                        &[super::script::SERVE[0], super::script::EAT[0][0]],
+                        (0, super::OnPress::None),
+                        Some(item.eat_sprite),
+                        then,
+                    );
                 }
                 Err(ShopError::NotOwned) => (t::NOT_ENOUGH_FOOD, false),
                 Err(_) => (t::UNAVAILABLE, false),
@@ -514,7 +558,13 @@ impl Game {
             return;
         };
         self.draw_character(g.ghost.id, Some(g.ghost.color), 64, 92);
-        let cause = if g.days >= 30 { t::CAUSES[2] } else if g.cause == 1 { t::CAUSES[0] } else { t::CAUSES[1] };
+        let cause = if g.days >= 30 {
+            t::CAUSES[2]
+        } else if g.cause == 1 {
+            t::CAUSES[0]
+        } else {
+            t::CAUSES[1]
+        };
         self.draw_text(cause, 64, 106, true, 0);
         self.draw_number(g.days as u32, 64, 120, 0);
     }
@@ -551,7 +601,15 @@ impl Game {
         if pressed & (B | PUSH) != 0 {
             pos += 1;
             if pos == 8 {
-                let code = chars.iter().map(|&c| LAB_CHARS.iter().position(|&l| l == c).map_or('0', |i| b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i] as char)).collect();
+                let code = chars
+                    .iter()
+                    .map(|&c| {
+                        LAB_CHARS
+                            .iter()
+                            .position(|&l| l == c)
+                            .map_or('0', |i| b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i] as char)
+                    })
+                    .collect();
                 return Scene::Searching { code, t: 0 };
             }
         }
@@ -614,6 +672,63 @@ impl Game {
     }
 }
 
+impl Game {
+    pub(super) fn update_breed(&mut self, cands: Vec<u16>, idx: usize, pressed: u8) -> Scene {
+        let idx = super::cycle(idx, cands.len(), pressed);
+        if pressed & C != 0 {
+            self.open(Action::Help)
+        } else if pressed & (B | PUSH) != 0 {
+            Scene::Ask { text: 0xdb, yes: true, on_yes: Action::BreedWith(cands[idx]), back: Action::Breed }
+        } else {
+            Scene::Breed { cands, idx }
+        }
+    }
+
+    pub(super) fn update_graves(&mut self, idx: usize, back: Action, pressed: u8) -> Scene {
+        let idx = super::cycle(idx, self.pet.graves.len(), pressed);
+        if pressed & C != 0 {
+            self.open(back)
+        } else {
+            Scene::Graves { idx, back }
+        }
+    }
+
+    pub(super) fn update_missions(&mut self, idx: usize, pressed: u8) -> Scene {
+        let idx = super::cycle(idx, crate::progress::TARGETS.len(), pressed);
+        if pressed & C != 0 {
+            self.open(Action::Lab)
+        } else {
+            Scene::Missions { idx }
+        }
+    }
+
+    /// A running mini-game; C quits where the game allows it.
+    pub(super) fn update_mini(
+        &mut self,
+        mut session: crate::mini::Session,
+        lab: Option<(u8, u8)>,
+        pressed: u8,
+    ) -> Scene {
+        if pressed & C != 0 && session.can_quit() {
+            self.sfx(2, 100);
+            return self.after_mini(None, lab);
+        }
+        match session.update(pressed, self.held, &self.data, &mut self.sounds) {
+            Some(r) if session.event == Some(crate::pet::req::METEOR) => {
+                // Back to HOME on the field layer (`labo05_tick` 0xdae).
+                self.pet.finish_meteor(r > 0);
+                self.level = crate::Level::Field;
+                Scene::Home
+            }
+            Some(r) => match session.arcade {
+                Some(g) => self.after_arcade(g, r),
+                None => self.after_mini(Some(r), lab),
+            },
+            None => Scene::Mini { session, lab },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::data::{Item, KIND_MEAL};
@@ -624,7 +739,8 @@ mod tests {
 
     fn game() -> Game {
         let mut d = crate::evolve::tests::data();
-        d.items = vec![Item { id: 5010, kind: KIND_MEAL, buy: 100, sell: 50, flags: 2, onaka: 1, ..Default::default() }];
+        d.items =
+            vec![Item { id: 5010, kind: KIND_MEAL, buy: 100, sell: 50, flags: 2, onaka: 1, ..Default::default() }];
         let mut g = Game::new(d, 1);
         g.pet.def = g.data.character(2113).unwrap();
         g.pet.rank = 1;

@@ -59,8 +59,16 @@ impl Tween {
 pub enum Look {
     None,
     /// Character pose. `eyes`/`mouth` = frame override or `KEEP`.
-    Chr { chr: u16, anim: u16, eyes: i16, mouth: i16 },
-    Sprite { id: u16, frame: u16 },
+    Chr {
+        chr: u16,
+        anim: u16,
+        eyes: i16,
+        mouth: i16,
+    },
+    Sprite {
+        id: u16,
+        frame: u16,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -314,19 +322,18 @@ mod tests {
             Look::Chr { anim, .. } => anim,
             _ => 0,
         };
-        let seen: Vec<u16> = (0..10).map(|_| {
-            n.tick(&s);
-            anim(&n)
-        }).collect();
+        let seen: Vec<u16> = (0..10)
+            .map(|_| {
+                n.tick(&s);
+                anim(&n)
+            })
+            .collect();
         assert_eq!(seen, [1, 1, 2, 2, 2, 1, 1, 2, 2, 2]);
     }
 
     #[test]
     fn non_looping_script_finishes_and_children_are_removed() {
-        let s = vec![
-            vec![2 << 1, 0x10 | A | C | D, 1, 5, -7i16 as u16, END],
-            vec![1 << 1, 0x01 | A | W, 99, 2, END],
-        ];
+        let s = vec![vec![2 << 1, 0x10 | A | C | D, 1, 5, -7i16 as u16, END], vec![1 << 1, 0x01 | A | W, 99, 2, END]];
         let mut n = Node::new(0);
         n.tick(&s);
         assert!(n.done);
@@ -343,7 +350,7 @@ mod tests {
     #[test]
     fn pause_waits_for_resume_then_finishes() {
         // signal 4 (pause), signal -1 (finished), wait forever
-        let s = vec![vec![3 << 1, 0x1a | C, 4, 0x1a | C, -1i16 as u16, 0x00 | W, KEEP as u16, END]];
+        let s = vec![vec![3 << 1, 0x1a | C, 4, 0x1a | C, -1i16 as u16, W, KEEP as u16, END]];
         let mut n = Node::new(0);
         n.tick(&s);
         assert!(n.is_paused() && !n.is_finished());

@@ -94,10 +94,10 @@ impl Game {
                 self.focus = 0;
             }
             self.toy_key = Some((f, a, toys));
-            self.toy_nodes = (0..6)
-                .filter_map(|s| self.data.item(toys[s]).map(|i| (s, Node::new(i.show_anim))))
-                .collect();
-            self.toy_nodes.sort_by_key(|(s, _)| self.data.decor.home_pos.get(f as usize).map_or(0, |p| p[a as usize][*s].2));
+            self.toy_nodes =
+                (0..6).filter_map(|s| self.data.item(toys[s]).map(|i| (s, Node::new(i.show_anim)))).collect();
+            self.toy_nodes
+                .sort_by_key(|(s, _)| self.data.decor.home_pos.get(f as usize).map_or(0, |p| p[a as usize][*s].2));
         }
         // A matching outfit set brings one of its two visitors, with a 1-in-3 chance a day.
         let day = self.pet.last.unwrap_or(0) / 86_400;
@@ -178,7 +178,9 @@ impl Game {
     fn setsubi_slots(&self, toy: u16, field: u8, area: u8) -> Vec<usize> {
         match self.data.item(toy) {
             Some(item) => Pet::toy_slots(item.kind).to_vec(),
-            None => REMOVE_ORDER.into_iter().filter(|&s| self.pet.toys[field as usize][area as usize][s] != 0).collect(),
+            None => {
+                REMOVE_ORDER.into_iter().filter(|&s| self.pet.toys[field as usize][area as usize][s] != 0).collect()
+            }
         }
     }
 
@@ -187,7 +189,15 @@ impl Game {
             Action::Setsubi => Scene::Menu {
                 items: vec![
                     (t::PLACE, self.toy_items().iter().any(|_| true).then_some(Action::ToyList)),
-                    (t::REMOVE, (!self.setsubi_pages(true).is_empty()).then_some(Action::SetsubiAt { toy: 0, field: 0xff, area: 0, slot: 0 })),
+                    (
+                        t::REMOVE,
+                        (!self.setsubi_pages(true).is_empty()).then_some(Action::SetsubiAt {
+                            toy: 0,
+                            field: 0xff,
+                            area: 0,
+                            slot: 0,
+                        }),
+                    ),
                 ],
                 idx: 0,
                 back: None,
@@ -201,9 +211,11 @@ impl Game {
             }
             Action::SetsubiAt { toy, field, area, slot } => {
                 let pages = self.setsubi_pages(toy == 0);
-                let Some(&(f, a)) = pages.iter().find(|p| **p == (field, area)).or_else(|| {
-                    pages.iter().find(|p| p.0 == self.pet.field).or(pages.first())
-                }) else {
+                let Some(&(f, a)) = pages
+                    .iter()
+                    .find(|p| **p == (field, area))
+                    .or_else(|| pages.iter().find(|p| p.0 == self.pet.field).or(pages.first()))
+                else {
                     return self.open(Action::Setsubi);
                 };
                 let slots = self.setsubi_slots(toy, f, a);
@@ -246,7 +258,12 @@ impl Game {
                 let slot = self.data.item(id).map_or(0, |i| i.kind.saturating_sub(5) as usize).min(2);
                 let new = if self.pet.equip[slot] == id { 0 } else { id };
                 self.pet.wear(&self.data, slot, new);
-                self.play(&[SPARKLE], (0, super::OnPress::None), None, Scene::Card { kind: CardKind::Wear, items: self.worn_items(), idx: 0 })
+                self.play(
+                    &[SPARKLE],
+                    (0, super::OnPress::None),
+                    None,
+                    Scene::Card { kind: CardKind::Wear, items: self.worn_items(), idx: 0 },
+                )
             }
             Action::Travel => {
                 let now = self.pet.last.unwrap_or(0);
@@ -259,7 +276,8 @@ impl Game {
                 } else if self.pet.unchi_meter < crate::decor::TRAVEL_COST {
                     self.message(t::COLLECT_POOPS, Action::SpaceMenu)
                 } else {
-                    let items = self.pet.destinations(&self.data).into_iter().map(|d| self.data.decor.travel[d].item).collect();
+                    let items =
+                        self.pet.destinations(&self.data).into_iter().map(|d| self.data.decor.travel[d].item).collect();
                     Scene::Card { kind: CardKind::Travel, items, idx: 0 }
                 }
             }
@@ -337,9 +355,22 @@ impl Game {
         }
     }
 
-    pub(super) fn update_setsubi(&mut self, toy: u16, mut field: u8, mut area: u8, mut idx: usize, pressed: u8) -> Scene {
+    pub(super) fn update_setsubi(
+        &mut self,
+        toy: u16,
+        mut field: u8,
+        mut area: u8,
+        mut idx: usize,
+        pressed: u8,
+    ) -> Scene {
         let n = self.setsubi_slots(toy, field, area).len().max(1);
-        let step: i32 = if pressed & (A | UP) != 0 { 1 } else if pressed & DOWN != 0 { -1 } else { 0 };
+        let step: i32 = if pressed & (A | UP) != 0 {
+            1
+        } else if pressed & DOWN != 0 {
+            -1
+        } else {
+            0
+        };
         if step != 0 {
             let next = idx as i32 + step;
             if (0..n as i32).contains(&next) {
@@ -380,11 +411,11 @@ impl Game {
             self.screen.blit(bg, 0, 64, 64, 64, false, None);
         }
         let placed = self.pet.toys[field as usize][area as usize];
-        let blink = self.frame_count / 6 % 2 == 0;
-        for s in 0..6 {
+        let blink = (self.frame_count / 6).is_multiple_of(2);
+        for (s, &id) in placed.iter().enumerate() {
             let (x, y) = self.slot_pos(field, area, s);
-            if placed[s] != 0 && !(toy == 0 && s == cur && !blink) {
-                self.draw_toy(placed[s], x, y);
+            if id != 0 && !(toy == 0 && s == cur && !blink) {
+                self.draw_toy(id, x, y);
             }
         }
         if toy != 0 {
@@ -454,7 +485,13 @@ impl Game {
                     self.sfx(40, 100);
                     return self.stars_page(idx, 1);
                 }
-                let step = if pressed & (A | UP) != 0 { 1 } else if pressed & DOWN != 0 { n - 1 } else { 0 };
+                let step = if pressed & (A | UP) != 0 {
+                    1
+                } else if pressed & DOWN != 0 {
+                    n - 1
+                } else {
+                    0
+                };
                 if step != 0 && n > 1 {
                     return Scene::Stars { idx: (idx + step) % n, page, node };
                 }
@@ -524,6 +561,24 @@ impl Game {
         }
         self.sfx(1, 100);
         self.open(Action::SpaceMenu)
+    }
+}
+
+impl Game {
+    /// PLANET LV.: B turns to the goal page (or the credits at rank 10), C or any key goes back.
+    pub(super) fn update_planet_lv(&mut self, page: u8, pressed: u8) -> Scene {
+        if pressed & C != 0 && page == 1 {
+            Scene::PlanetLv { page: 0 }
+        } else if pressed & (B | PUSH) != 0 && page == 0 && self.pet.rank < 10 {
+            Scene::PlanetLv { page: 1 }
+        } else if pressed & (B | PUSH) != 0 && page == 0 {
+            let menu = self.open(Action::SpaceMenu);
+            self.credits(menu)
+        } else if pressed & (A | B | C | PUSH) != 0 {
+            self.open(Action::SpaceMenu)
+        } else {
+            Scene::PlanetLv { page }
+        }
     }
 }
 
