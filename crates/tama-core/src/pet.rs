@@ -3,8 +3,11 @@
 //! Time is in seconds of local wall-clock time (`t % 86400` = time of day).
 //! The platform supplies `now`; the simulation advances in ≤60 s chunks like the original.
 
+use crate::data::{CharDef, Item, KIND_MEAL, KIND_SNACK};
+
 /// Request ids (EM_REQ_*), same numbering as the firmware.
 pub mod req {
+    pub const EVOLUTION: u8 = 0x01;
     pub const WAKE: u8 = 0x02;
     pub const SLEEP: u8 = 0x03;
     pub const OTEIRE: u8 = 0x05;
@@ -19,6 +22,8 @@ pub mod req {
     pub const UNCHI: u8 = 0x10;
     pub const ONAKA: u8 = 0x11;
     pub const GOKIGEN: u8 = 0x12;
+    pub const EVOL_SUPPORT: u8 = 0x13;
+    pub const METAMORPHO: u8 = 0x14;
     pub const NAP: u8 = 0x1a;
 }
 
@@ -45,36 +50,6 @@ pub const AGE_MAX: u32 = 1_209_600;
 pub const CHUNK: u64 = 60;
 pub const MAX_CHUNKS: u64 = 1440;
 const DAY: u64 = 86_400;
-
-/// Character definition record (game-spec §6). Only the fields care needs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CharDef {
-    pub id: u16,
-    pub stage: u8,
-    /// Minutes per hunger heart lost; 0 = never.
-    pub hungry_min: u16,
-    /// Minutes per mood heart lost; 0 = never.
-    pub happy_min: u16,
-    /// % chance of a cold on each new care mistake.
-    pub disease: u8,
-    /// Liked / disliked food group (ItemGrp / EvolBranch).
-    pub likes: u8,
-    pub dislikes: u8,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FoodKind {
-    Meal,
-    Snack,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Food {
-    pub kind: FoodKind,
-    pub group: u8,
-    pub onaka: u8,
-    pub gokigen: u8,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cond {
@@ -122,9 +97,25 @@ pub struct Pet {
     pub death_by_cold: u32,
     pub death_by_hungry: u32,
     pub death_cause: DeathCause,
+    /// Current area 0–2 (tropical, frozen, forest).
+    pub field: u8,
+    /// Awake seconds in each area (baby: logs every 900 s; child: metamorphosis at 3600 s).
+    pub field_timer: [u32; 3],
+    /// Baby area log (≤ 11); index 0 is the child's home area after evolving.
+    pub field_log: Vec<u8>,
+    pub support_timer: u32,
+    pub support_miss: u8,
+    /// Food points per category 1–18; every 5 pushes the category into `food_log`.
+    pub food_pts: [u8; 18],
+    /// Last 4 native-food categories (0-based) eaten before the teen stage.
+    pub food_log: Vec<u8>,
+    /// ROM types met over link during the teen stage (rare evolution).
+    pub comm: [u8; 2],
+    pub points: u32,
+    pub generation: u8,
     raised: u64,
     done: u64,
-    rng: u32,
+    pub(crate) rng: u32,
     /// Last processed time; `None` until the first `advance_to`.
     pub last: Option<u64>,
 }
@@ -162,6 +153,16 @@ impl Pet {
             death_by_cold: 0,
             death_by_hungry: 0,
             death_cause: DeathCause::Hunger,
+            field: 0,
+            field_timer: [0; 3],
+            field_log: Vec::new(),
+            support_timer: 0,
+            support_miss: 0,
+            food_pts: [0; 18],
+            food_log: Vec::new(),
+            comm: [0; 2],
+            points: 0,
+            generation: 1,
             raised: 0,
             done: 0,
             rng: seed | 1,
@@ -183,13 +184,13 @@ impl Pet {
         self.was_raised(id) && !self.is_done(id)
     }
 
-    fn clear(&mut self, id: u8) {
+    pub(crate) fn clear(&mut self, id: u8) {
         self.raised &= !(1 << id);
         self.done &= !(1 << id);
     }
 
     /// `req_raise` 0x10069218 with its side effects.
-    fn raise(&mut self, id: u8) {
+    pub(crate) fn raise(&mut self, id: u8) {
         match id {
             req::COLD => {
                 if !self.is_done(id) {
@@ -240,7 +241,7 @@ impl Pet {
 
     // ---- small helpers --------------------------------------------------
 
-    fn rand100(&mut self) -> u32 {
+    pub(crate) fn rand100(&mut self) -> u32 {
         // xorshift32; the firmware's rand() depends on frame count, so bit-exactness is not a goal.
         let mut x = self.rng;
         x ^= x << 13;
@@ -537,6 +538,8 @@ impl Pet {
             }
         }
 
+        self.evolution_tick(dt);
+
         if self.def.stage == 2 && !self.was_raised(req::COLD) && self.age > 600 {
             self.raise(req::COLD);
         }
@@ -555,23 +558,35 @@ impl Pet {
         !matches!(self.cond, Cond::Death | Cond::Dying | Cond::Dead)
     }
 
-    /// Feed a meal or snack (`care_eat_item` 0x1001021c).
-    pub fn feed(&mut self, f: Food) {
-        if !self.alive() {
-            return;
+    /// Feed a meal or snack (`care_eat_item` 0x1001021c). Returns false if refused.
+    // ponytail: special snacks (colour juices, HAPPY/LOVE/IMMUNITY, nap tea) not handled yet.
+    pub fn feed(&mut self, item: &Item) -> bool {
+        if self.cond != Cond::Normal
+            || !matches!(item.kind, KIND_MEAL | KIND_SNACK)
+            || (item.kind == KIND_MEAL && self.onaka == ONAKA_MAX)
+        {
+            return false;
         }
-        self.add_onaka(f.onaka as i32);
-        let pref = if f.group == self.def.likes {
-            1
-        } else if f.group == self.def.dislikes {
-            -1
+        self.add_onaka(item.onaka as i32);
+        self.log_food(item);
+        let mut pref = 0;
+        if item.group == self.def.likes {
+            pref += 1;
+        } else if item.group == self.def.dislikes {
+            pref -= 1;
+        }
+        if self.def.stage > 4 && item.id == 5002 {
+            pref = -1;
+        }
+        if item.kind == KIND_SNACK {
+            if self.def.stage == 5 && item.snack_flag == 1 {
+                pref += 1;
+            }
+            self.add_gokigen(item.gokigen as i32 + pref);
         } else {
-            0
-        };
-        match f.kind {
-            FoodKind::Meal => self.add_gokigen(pref),
-            FoodKind::Snack => self.add_gokigen(f.gokigen as i32),
+            self.add_gokigen(pref);
         }
+        true
     }
 
     /// Take the pet to the toilet while it is restless: no poop, mood +1.
@@ -647,11 +662,47 @@ impl Pet {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    const BABY: CharDef = CharDef { id: 1001, stage: 2, hungry_min: 3, happy_min: 5, disease: 0, likes: 0, dislikes: 0 };
-    const KID: CharDef = CharDef { id: 2113, stage: 3, hungry_min: 45, happy_min: 20, disease: 40, likes: 6, dislikes: 0 };
+    pub(crate) fn def(id: u16, stage: u8, hungry_min: u16, happy_min: u16, disease: u8) -> CharDef {
+        CharDef {
+            id,
+            chr_id: 0,
+            name_id: 0,
+            stage,
+            species: 0,
+            rank: 0,
+            likes: 6,
+            attribute: 6,
+            gender: 0,
+            hungry_min,
+            happy_min,
+            disease,
+            dislikes: 2,
+            color: 0,
+        }
+    }
+
+    pub(crate) fn meal(onaka: u8, group: u8) -> Item {
+        Item {
+            id: 5000,
+            kind: KIND_MEAL,
+            buy: 0,
+            sell: 0,
+            category: 0,
+            rank: 0,
+            group,
+            snack_flag: 0,
+            onaka,
+            gokigen: 0,
+            day_group: 0,
+            flags: 0,
+        }
+    }
+
+    const BABY: fn() -> CharDef = || def(1001, 2, 3, 5, 0);
+    const KID: fn() -> CharDef = || def(2113, 3, 45, 20, 40);
 
     /// 12:00 on day 1: awake period for stage ≥ 3.
     const NOON: u64 = DAY + 12 * 3600;
@@ -673,7 +724,7 @@ mod tests {
 
     #[test]
     fn hunger_drops_every_hungry_minutes() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         run(&mut p, 45 * 60 - 1);
         assert_eq!(p.onaka, 6);
         run(&mut p, 1);
@@ -683,7 +734,7 @@ mod tests {
 
     #[test]
     fn two_hunger_drops_then_poop_after_20s() {
-        let mut p = pet(BABY);
+        let mut p = pet(BABY());
         run(&mut p, 2 * 180);
         assert!(p.is_pending(req::SOWASOWA));
         run(&mut p, 19);
@@ -694,7 +745,7 @@ mod tests {
 
     #[test]
     fn toilet_prevents_poop() {
-        let mut p = pet(BABY);
+        let mut p = pet(BABY());
         run(&mut p, 2 * 180);
         assert!(p.toilet());
         run(&mut p, 60);
@@ -703,7 +754,7 @@ mod tests {
 
     #[test]
     fn unanswered_hunger_call_is_a_mistake_from_child_stage() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.onaka = 1;
         run(&mut p, 45 * 60);
         assert!(p.is_pending(req::ONAKA));
@@ -714,10 +765,10 @@ mod tests {
 
     #[test]
     fn feeding_answers_the_call() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.onaka = 1;
         run(&mut p, 45 * 60);
-        p.feed(Food { kind: FoodKind::Meal, group: 6, onaka: 2, gokigen: 0 });
+        assert!(p.feed(&meal(2, 6)));
         assert_eq!(p.onaka, 2);
         assert!(!p.is_pending(req::ONAKA));
         assert_eq!(p.death_by_hungry, 0);
@@ -727,7 +778,7 @@ mod tests {
 
     #[test]
     fn baby_catches_a_cold_at_600s_and_medicine_cures_it() {
-        let mut p = pet(BABY);
+        let mut p = pet(BABY());
         p.def.hungry_min = 0;
         p.def.happy_min = 0;
         run(&mut p, 601);
@@ -740,7 +791,7 @@ mod tests {
 
     #[test]
     fn fifth_cold_is_fatal() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.cold = 4;
         p.cold_up(ColdSource::Mistake);
         assert_eq!(p.cond, Cond::Death);
@@ -749,7 +800,7 @@ mod tests {
 
     #[test]
     fn starving_36h_leads_to_death_then_dying_then_dead() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.onaka = 0;
         // Missed calls would otherwise give colds, and an illness countdown can win the race.
         p.status = status::IMMUNITY;
@@ -768,7 +819,7 @@ mod tests {
 
     #[test]
     fn rescue_during_death_window() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.raise(req::DEATH);
         run(&mut p, 100);
         assert!(p.rescue());
@@ -777,7 +828,7 @@ mod tests {
 
     #[test]
     fn sleep_freezes_hunger() {
-        let mut p = Pet::new(KID, 1);
+        let mut p = Pet::new(KID(), 1);
         p.onaka = 6;
         p.advance_to(DAY + 23 * 3600);
         let start = p.last.unwrap();
@@ -790,7 +841,7 @@ mod tests {
 
     #[test]
     fn wakes_at_10_and_sleeps_at_22() {
-        let mut p = Pet::new(KID, 1);
+        let mut p = Pet::new(KID(), 1);
         p.advance_to(DAY + 5 * 3600);
         p.advance_to(DAY + 7 * 3600);
         assert!(p.is_sleeping_at(DAY + 7 * 3600), "06–09 asleep until woken");
@@ -802,7 +853,7 @@ mod tests {
 
     #[test]
     fn catch_up_is_capped_at_24h() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.def.hungry_min = 0;
         p.def.happy_min = 0;
         p.advance_to(NOON + 10 * DAY);
@@ -811,7 +862,7 @@ mod tests {
 
     #[test]
     fn clock_going_backwards_credits_nothing() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.advance_to(NOON - 3600);
         assert_eq!(p.age, 0);
         assert_eq!(p.last, Some(NOON - 3600));
@@ -819,14 +870,14 @@ mod tests {
 
     #[test]
     fn day_change_runs_once_for_many_days() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.advance_to(NOON + 3 * DAY);
         assert_eq!(p.yogore, 1);
     }
 
     #[test]
     fn dirt_shows_after_three_days_on_waking() {
-        let mut p = pet(KID);
+        let mut p = pet(KID());
         p.yogore = 3;
         p.raise(req::WAKE);
         assert!(p.wake());

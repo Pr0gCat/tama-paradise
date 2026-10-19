@@ -1,21 +1,17 @@
-use tama_core::pet::CharDef;
+use tama_core::data::Data;
 use tama_core::{Button, Game};
 use wasm_bindgen::prelude::*;
-
-/// Frozen kid (2113) from docs/spec/data/characters.csv, until data files are loaded.
-const FROZEN_KID: CharDef = CharDef { id: 2113, stage: 3, hungry_min: 45, happy_min: 20, disease: 40, likes: 0, dislikes: 0 };
 
 #[wasm_bindgen]
 pub struct Tama(Game);
 
 #[wasm_bindgen]
 impl Tama {
+    /// `data` is the contents of data/game.json.
     #[wasm_bindgen(constructor)]
-    pub fn new(seed: u32) -> Tama {
-        let mut g = Game::new(FROZEN_KID, seed);
-        g.pet.onaka = 6;
-        g.pet.gokigen = 20;
-        Tama(g)
+    pub fn new(data: &str, seed: u32) -> Result<Tama, JsError> {
+        let data = Data::from_json(data).map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(Tama(Game::new(data, seed)))
     }
 
     pub fn width() -> usize {
@@ -49,14 +45,17 @@ impl Tama {
     pub fn status(&self) -> String {
         let p = &self.0.pet;
         format!(
-            "{:?} onaka {} gokigen {} poop {} miss {} cold {} days {}",
+            "#{} stage {} {:?}\nonaka {} gokigen {} poop {}\nmiss {} cold {} days {} pts {}",
+            p.def.id,
+            p.def.stage,
             p.cond,
             p.onaka,
             p.gokigen,
             p.unchi.len(),
             p.osewamiss,
             p.cold,
-            p.days
+            p.days,
+            p.points
         )
     }
 

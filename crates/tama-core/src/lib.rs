@@ -1,8 +1,11 @@
 //! Pure game logic: button input + wall-clock time in, framebuffer out.
 
+pub mod data;
+mod evolve;
 pub mod pet;
 
-use pet::{CharDef, Cond, Food, FoodKind, Pet};
+use data::{Data, KIND_MEAL};
+use pet::{Cond, Pet};
 
 pub const WIDTH: usize = 128;
 pub const HEIGHT: usize = 128;
@@ -16,42 +19,57 @@ pub enum Button {
     C,
 }
 
-/// Placeholder meal until item data is loaded: +1 hunger heart.
-const MEAL: Food = Food { kind: FoodKind::Meal, group: 0, onaka: 1, gokigen: 0 };
-
 pub struct Game {
+    pub data: Data,
     pub pet: Pet,
     /// RGBA8888, row-major.
     fb: Vec<u8>,
 }
 
 impl Game {
-    pub fn new(def: CharDef, seed: u32) -> Self {
-        let mut g = Game { pet: Pet::new(def, seed), fb: vec![0; WIDTH * HEIGHT * 4] };
+    /// Start a new game with an egg in the device's home area.
+    pub fn new(data: Data, seed: u32) -> Self {
+        let mut pet = Pet::new(data.character(1000).expect("egg 1000 in data"), seed);
+        pet.field = data::attr_to_field(data.rom_type).unwrap_or(0);
+        let mut g = Game { data, pet, fb: vec![0; WIDTH * HEIGHT * 4] };
         g.render();
         g
     }
 
-    /// A = feed, B = toilet if restless else clean, C = medicine / wake / rescue.
+    /// A = feed, B = toilet if restless else clean,
+    /// C = medicine / wake / rescue / evolution support / new egg after death.
     pub fn press(&mut self, b: Button) {
         let p = &mut self.pet;
         match b {
-            Button::A => p.feed(MEAL),
+            Button::A => {
+                // ponytail: first meal in the table until there is a food menu.
+                if let Some(meal) = self.data.items.iter().find(|i| i.kind == KIND_MEAL) {
+                    p.feed(&meal.clone());
+                }
+            }
             Button::B => {
                 if !p.toilet() {
                     p.clean();
                 }
             }
             Button::C => {
-                let _ = p.medicine() || p.wake() || p.rescue();
+                if p.cond == Cond::Dead {
+                    p.new_egg(&self.data);
+                } else {
+                    let _ = p.medicine() || p.wake() || p.rescue() || p.support(&self.data);
+                }
             }
         }
         self.render();
     }
 
     /// Advance the pet to local wall-clock seconds `now` and redraw.
+    /// A pending evolution completes here, as the original does when the pet is on screen.
     pub fn advance_to(&mut self, now: u64) {
         self.pet.advance_to(now);
+        if self.pet.is_pending(pet::req::EVOLUTION) || self.pet.is_pending(pet::req::METAMORPHO) {
+            self.pet.evolve(&self.data);
+        }
         self.render();
     }
 
@@ -71,7 +89,7 @@ impl Game {
     // ponytail: debug meters only; real sprites arrive with the asset pipeline (M2).
     fn render(&mut self) {
         let p = &self.pet;
-        let (onaka, gokigen, unchi) = (p.onaka as usize, p.gokigen as usize, p.unchi.len());
+        let (onaka, gokigen, unchi, stage) = (p.onaka as usize, p.gokigen as usize, p.unchi.len(), p.def.stage as usize);
         let sleeping = p.last.is_some_and(|t| p.is_sleeping_at(t));
         let body = match p.cond {
             Cond::Normal if sleeping => [80, 80, 160],
@@ -82,22 +100,20 @@ impl Game {
         };
         let restless = p.is_pending(pet::req::SOWASOWA);
         self.rect(0, 0, WIDTH, HEIGHT, [24, 24, 32]);
-        // Pet: a square that jitters when restless.
+        // Pet: size grows with stage; jitters when restless.
+        let size = 12 + stage * 8;
         let off = if restless { 4 } else { 0 };
-        self.rect(44 + off, 44, 40, 40, body);
-        // Hunger: 6 hearts on top.
+        self.rect(64 - size / 2 + off, 64 - size / 2, size, size, body);
         for i in 0..6 {
             let c = if i < onaka { [240, 160, 60] } else { [60, 60, 70] };
             self.rect(8 + i * 19, 8, 15, 10, c);
         }
-        // Mood: 20 small cells.
         for i in 0..20 {
             let c = if i < gokigen { [240, 100, 160] } else { [60, 60, 70] };
             self.rect(4 + i * 6, 24, 5, 6, c);
         }
-        // Poop along the bottom.
         for i in 0..unchi {
-            self.rect(8 + i * 20, 104, 14, 14, [130, 90, 40]);
+            self.rect(8 + i * 20, 108, 14, 14, [130, 90, 40]);
         }
     }
 }
@@ -106,16 +122,15 @@ impl Game {
 mod tests {
     use super::*;
 
-    const KID: CharDef = CharDef { id: 2113, stage: 3, hungry_min: 45, happy_min: 20, disease: 40, likes: 6, dislikes: 0 };
-
     #[test]
     fn deterministic() {
         let run = || {
-            let mut g = Game::new(KID, 3);
-            g.advance_to(86_400 + 12 * 3600);
-            g.press(Button::A);
-            g.advance_to(10 * 86_400);
-            (g.framebuffer().to_vec(), g.pet.onaka, g.pet.osewamiss, g.pet.cold)
+            let mut g = Game::new(evolve::tests::data(), 3);
+            for h in 0..72 {
+                g.advance_to(86_400 + h * 3600);
+                g.press(Button::A);
+            }
+            (g.framebuffer().to_vec(), g.pet.def.id, g.pet.onaka, g.pet.osewamiss, g.pet.cold)
         };
         assert_eq!(run(), run());
     }

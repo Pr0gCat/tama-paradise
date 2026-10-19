@@ -18,7 +18,8 @@
   const speed = Number(new URLSearchParams(location.search).get("speed")) || 1;
   const localSecs = () => Date.now() / 1000 - new Date().getTimezoneOffset() * 60;
   const t0 = localSecs(), wall0 = performance.now();
-  const game = new Tama(Date.now() >>> 0);
+  const data = await (await fetch("game.json")).text();
+  const game = new Tama(data, Date.now() >>> 0);
   game.advance_to(t0);
   const w = Tama.width(), h = Tama.height(), tickMs = Tama.tick_ms();
   const c = document.getElementById("c");
