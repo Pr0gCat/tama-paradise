@@ -203,8 +203,14 @@
   const A = 1, B = 2, C = 4, PUSH = 8, DOWN = 0x40, UP = 0x80, DIAL = DOWN | UP;
   const keys = { a: A, s: B, d: C, " ": PUSH, Enter: PUSH, ArrowLeft: DOWN, ArrowRight: UP };
   let held = 0, pulses = 0;
-  const down = bit => { pulses |= bit; if (!(bit & DIAL)) held |= bit; };
-  const up = bit => { held &= ~bit; save(); };
+  // Holding a dial key keeps turning: after 300 ms, a step every 2 frames (the remake's addition;
+  // a real dial is turned, not held).
+  let dialHeld = 0, dialSince = 0, dialTick = 0;
+  const down = bit => {
+    pulses |= bit;
+    if (bit & DIAL) { dialHeld = bit; dialSince = performance.now(); } else held |= bit;
+  };
+  const up = bit => { held &= ~bit; if (bit & dialHeld) dialHeld = 0; save(); };
   // Typed text (the planet name) takes the keyboard: letters, digits, space, Backspace, arrows,
   // Enter; Esc is C. The phone keyboard comes from the hidden #kbd field (⌨ or a tap on the screen).
   const kbd = document.getElementById("kbd"), kbdBtn = document.getElementById("kbd-btn");
@@ -250,7 +256,7 @@
   c.onpointermove = e => {
     if (swipeX === null) return;
     const dx = e.clientX - swipeX;
-    if (Math.abs(dx) >= 24) { down(dx > 0 ? UP : DOWN); swipeX = e.clientX; swiped = true; }
+    if (Math.abs(dx) >= 24) { pulses |= dx > 0 ? UP : DOWN; swipeX = e.clientX; swiped = true; }
   };
   c.onpointerup = () => {
     if (swipeX !== null && !swiped) { down(PUSH); up(PUSH); }
@@ -507,7 +513,10 @@
     acc -= n * tickMs;
     if (n) {
       const t = t0 + (now - wall0) / 1000 * speed;
-      for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
+      for (let i = 0; i < Math.min(n, 5); i++) {
+        if (dialHeld && now - dialSince > 300 && ++dialTick % 2 === 0) pulses |= dialHeld;
+        game.frame(t, held | pulses); pulses = 0;
+      }
       if (debugStatus) debugStatus.textContent = game.status();
       const entry = game.text_entry();
       kbdRow.hidden = !entry;
