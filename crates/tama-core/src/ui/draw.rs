@@ -108,6 +108,20 @@ impl Game {
         }
     }
 
+    /// Poops swept by the cleaning robot (`poopclean_show_field` 0x10070194): each waits until
+    /// the robot's edge reaches it, (128 − x)·11/32 frames, then rises 128 px over 40 frames.
+    fn draw_swept_poop(&mut self, n: usize, old: usize, t: u16) {
+        let frame = t / 15 % 2;
+        for (i, &id) in elem::POOP.iter().enumerate().take(n) {
+            let x = self.ui_elem(id).x as i32;
+            let wait = (128 - x) * 11 / 32;
+            let dy = (128 * (t as i32 - wait)).clamp(0, 128 * 40) / 40;
+            self.screen.off = (0, -dy);
+            self.draw_elem(id, Some(frame), Some((i < old) as usize));
+        }
+        self.screen.off = (0, 0);
+    }
+
     /// Draw the current non-HOME scene. Returns false for HOME (drawn by the caller).
     pub(crate) fn render_scene(&mut self) -> bool {
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
@@ -167,6 +181,9 @@ impl Game {
                 self.draw_field_bg();
                 if p.food.is_some() {
                     self.screen.blit(TABLE, 0, 64, 106, 64, false, None);
+                }
+                if let Some((n, old)) = p.sweep {
+                    self.draw_swept_poop(n, old, p.frames);
                 }
                 let mut draws = Vec::new();
                 p.node.draws(64, 64, &mut draws);

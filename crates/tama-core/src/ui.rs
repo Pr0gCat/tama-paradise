@@ -311,6 +311,9 @@ pub(crate) struct Play {
     /// A melody started together with a later script of the queue: (script, sound).
     cue: Option<(u16, u16)>,
     then: Box<Scene>,
+    /// Poop cleaning: the poops swept up the screen (count, how many are old) and frames played.
+    sweep: Option<(usize, usize)>,
+    frames: u16,
 }
 
 pub(crate) enum Scene {
@@ -572,7 +575,17 @@ impl Game {
         // Ticked once so the scene's first frame already shows the animation.
         let mut node = Node::new(first);
         node.tick(&self.data.motions);
-        Scene::Play(Play { node, queue, presses: 0, on_press, food, cue: None, then: Box::new(then) })
+        Scene::Play(Play {
+            node,
+            queue,
+            presses: 0,
+            on_press,
+            food,
+            cue: None,
+            then: Box::new(then),
+            sweep: None,
+            frames: 0,
+        })
     }
 
     /// Sound ids (04-assets SND8, 08-care-ui U6): 0 cursor, 1 confirm, 2 cancel, 0xb not allowed, 0x28 zoom.

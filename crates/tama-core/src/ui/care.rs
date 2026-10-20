@@ -234,13 +234,18 @@ impl Game {
     pub(super) fn start_poop_clean(&mut self) -> Scene {
         let anim = self.ui_elem(elem::POOP_CLEAN);
         let clean = if anim.kind == UI_ANIM { anim.p[3] as u16 } else { 0 };
+        let old = self.pet.unchi.iter().filter(|&&a| a >= crate::pet::UNCHI_OLD).count();
         let had = self.pet.clean();
         let mut scripts = vec![clean];
         if had > 0 {
             self.pet.happy(1);
             scripts.push(script::HAPPY_JUMP);
         }
-        self.play(&scripts, (0, OnPress::None), None, Scene::Home)
+        let mut scene = self.play(&scripts, (0, OnPress::None), None, Scene::Home);
+        if let Scene::Play(p) = &mut scene {
+            p.sweep = Some((had.min(elem::POOP.len()), old));
+        }
+        scene
     }
 
     pub(super) fn update_play(&mut self, mut p: Play, pressed: u8) -> Scene {
@@ -256,11 +261,13 @@ impl Game {
         }
         p.node.tick(&self.data.motions);
         p.node.take_sounds(&mut self.sounds);
+        p.frames = p.frames.saturating_add(1);
         if !p.node.is_finished() {
             return Scene::Play(p);
         }
         if let Some(next) = p.queue.pop() {
             p.node = Node::new(next);
+            p.sweep = None;
             if let Some((_, snd)) = p.cue.filter(|c| c.0 == next) {
                 self.sfx(snd, 100);
             }
