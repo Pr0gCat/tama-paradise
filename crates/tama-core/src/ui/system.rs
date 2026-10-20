@@ -70,6 +70,13 @@ impl Game {
     pub(super) fn open_system(&mut self, a: Action) -> Scene {
         match a {
             Action::Settings => self.settings_menu(0),
+            Action::ToggleNotify => {
+                self.pet.notify = !self.pet.notify;
+                if self.pet.notify {
+                    self.connect = Some("notify-on".into());
+                }
+                self.settings_menu(4)
+            }
             Action::ToggleTouch => {
                 self.pet.touch = !self.pet.touch;
                 self.settings_menu(3)
@@ -93,8 +100,8 @@ impl Game {
             Action::NewGameAsk => {
                 Scene::Ask { text: REALLY_DELETE, yes: false, on_yes: Action::ResetAll, back: Action::SaveData }
             }
-            Action::SettingsAtSaveData => self.settings_menu(4),
-            Action::SettingsAtDeveloper => self.settings_menu(5),
+            Action::SettingsAtSaveData => self.settings_menu(5),
+            Action::SettingsAtDeveloper => self.settings_menu(6),
             // DEVELOPER (remake): GROW UP evolves now, +10000 points, FULL CARE fills and cures,
             // UNLOCK ALL opens everything; each asks ARE YOU SURE? first (they change the save).
             Action::Developer => self.developer_menu(0),
@@ -208,6 +215,7 @@ impl Game {
             (TIME, Some(Action::SettingsTime)),
             (super::settings::language_name(self.pet.lang), Some(Action::Language)),
             (REMAKE_TEXT + !self.pet.touch as u16, Some(Action::ToggleTouch)),
+            (REMAKE_TEXT + 14 + !self.pet.notify as u16, Some(Action::ToggleNotify)),
             (REMAKE_TEXT + 2, Some(Action::SaveData)),
             (REMAKE_TEXT + 7, Some(Action::Developer)),
         ];
@@ -448,7 +456,7 @@ mod tests {
         assert_eq!(g.pet.points, 500);
         assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == REMAKE_TEXT + 3));
         press(&mut g, C);
-        assert!(matches!(g.scene, Scene::Menu { idx: 4, .. }), "back on SAVE DATA");
+        assert!(matches!(g.scene, Scene::Menu { idx: 5, .. }), "back on SAVE DATA");
     }
 
     #[test]
@@ -530,6 +538,12 @@ mod tests {
         g.scene = g.open(Action::Settings);
         press(&mut g, UP); // DEVELOPER (last)
         press(&mut g, UP); // SAVE DATA
+        press(&mut g, UP); // NOTIFY
+        press(&mut g, B);
+        assert!(g.notify() && g.take_connect().as_deref() == Some("notify-on"), "on: the page asks");
+        assert!(matches!(&g.scene, Scene::Menu { idx: 4, items, .. } if items[4].0 == REMAKE_TEXT + 14), "NOTIFY ON");
+        press(&mut g, B);
+        assert!(!g.notify() && g.take_connect().is_none());
         press(&mut g, UP); // TOUCH ON
         press(&mut g, B);
         assert!(!g.touch());

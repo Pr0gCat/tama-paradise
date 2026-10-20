@@ -51,23 +51,23 @@ NAME = '正體中文'
 # The remake's menu texts (ui.rs REMAKE_TEXT ids), per language in data::LANGS order.
 REMAKE = [
     ['タッチ ＯＮ', 'タッチ ＯＦＦ', 'セーブデータ', 'かきだし', 'よみこみ', 'はじめから', NAME,
-     'かいはつしゃ', 'せいちょう', '+10000', 'ぜんぶおせわ', 'ゲームじょうほう', 'ぜんぶかいほう', 'つうちテスト'],
+     'かいはつしゃ', 'せいちょう', '+10000', 'ぜんぶおせわ', 'ゲームじょうほう', 'ぜんぶかいほう', 'つうちテスト', 'つうち ＯＮ', 'つうち ＯＦＦ'],
     ['TOUCH ON', 'TOUCH OFF', 'SAVE DATA', 'EXPORT', 'IMPORT', 'NEW GAME', NAME,
-     'DEVELOPER', 'GROW UP', '+10000', 'FULL CARE', 'GAME INFO', 'UNLOCK ALL', 'TEST NOTIFY'],
+     'DEVELOPER', 'GROW UP', '+10000', 'FULL CARE', 'GAME INFO', 'UNLOCK ALL', 'TEST NOTIFY', 'NOTIFY ON', 'NOTIFY OFF'],
     ['TACTILE ON', 'TACTILE OFF', 'SAUVEGARDE', 'EXPORTER', 'IMPORTER', 'NOUVEAU JEU', NAME,
-     'DÉVELOPPEUR', 'GRANDIR', '+10000', 'SOINS', 'INFOS JEU', 'TOUT OUVRIR', 'TEST NOTIF'],
+     'DÉVELOPPEUR', 'GRANDIR', '+10000', 'SOINS', 'INFOS JEU', 'TOUT OUVRIR', 'TEST NOTIF', 'ALERTES ON', 'ALERTES OFF'],
     ['TOUCH EIN', 'TOUCH AUS', 'SPIELSTAND', 'EXPORT', 'IMPORT', 'NEUES SPIEL', NAME,
-     'ENTWICKLER', 'WACHSEN', '+10000', 'PFLEGE', 'SPIELINFO', 'ALLES FREI', 'TEST MELDUNG'],
+     'ENTWICKLER', 'WACHSEN', '+10000', 'PFLEGE', 'SPIELINFO', 'ALLES FREI', 'TEST MELDUNG', 'HINWEIS EIN', 'HINWEIS AUS'],
     ['TOQUE ON', 'TOQUE OFF', 'DADOS', 'EXPORTAR', 'IMPORTAR', 'NOVO JOGO', NAME,
-     'DESENVOLV.', 'CRESCER', '+10000', 'CUIDAR', 'INFO JOGO', 'LIBERAR TUDO', 'TESTAR AVISO'],
+     'DESENVOLV.', 'CRESCER', '+10000', 'CUIDAR', 'INFO JOGO', 'LIBERAR TUDO', 'TESTAR AVISO', 'AVISOS ON', 'AVISOS OFF'],
     ['TÁCTIL ON', 'TÁCTIL OFF', 'DATOS', 'EXPORTAR', 'IMPORTAR', 'NUEVO JUEGO', NAME,
-     'DESARROLLO', 'CRECER', '+10000', 'CUIDAR', 'INFO JUEGO', 'ABRIR TODO', 'PROBAR AVISO'],
+     'DESARROLLO', 'CRECER', '+10000', 'CUIDAR', 'INFO JUEGO', 'ABRIR TODO', 'PROBAR AVISO', 'AVISOS ON', 'AVISOS OFF'],
     ['TOCCO ON', 'TOCCO OFF', 'SALVATAGGIO', 'ESPORTA', 'IMPORTA', 'NUOVO GIOCO', NAME,
-     'SVILUPPO', 'CRESCERE', '+10000', 'CURA', 'INFO GIOCO', 'SBLOCCA TUTTO', 'PROVA AVVISO'],
-    ['触屏 开', '触屏 关', '存档', '导出', '导入', '新游戏', NAME, '开发者', '成长', '+10000', '全部照顾', '游戏信息', '全部解锁', '测试通知'],
+     'SVILUPPO', 'CRESCERE', '+10000', 'CURA', 'INFO GIOCO', 'SBLOCCA TUTTO', 'PROVA AVVISO', 'AVVISI ON', 'AVVISI OFF'],
+    ['触屏 开', '触屏 关', '存档', '导出', '导入', '新游戏', NAME, '开发者', '成长', '+10000', '全部照顾', '游戏信息', '全部解锁', '测试通知', '通知 开', '通知 关'],
     ['터치 ON', '터치 OFF', '저장 데이터', '내보내기', '가져오기', '새로 하기', NAME,
-     '개발자', '성장', '+10000', '모두 돌보기', '게임 정보', '모두 해제', '알림 테스트'],
-    ['觸控 開', '觸控 關', '存檔', '匯出', '匯入', '新遊戲', NAME, '開發者', '成長', '+10000', '全部照顧', '遊戲資訊', '全部解鎖', '測試通知'],
+     '개발자', '성장', '+10000', '모두 돌보기', '게임 정보', '모두 해제', '알림 테스트', '알림 ON', '알림 OFF'],
+    ['觸控 開', '觸控 關', '存檔', '匯出', '匯入', '新遊戲', NAME, '開發者', '成長', '+10000', '全部照顧', '遊戲資訊', '全部解鎖', '測試通知', '通知 開', '通知 關'],
 ]
 
 trad = sorted({c for v in rules.values() for c in v} | set(NAME) | {c for c in ''.join(REMAKE[9]) if c >= '\u2e80'})

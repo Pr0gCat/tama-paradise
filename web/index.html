@@ -90,7 +90,6 @@
   <button data-k="0x04">C</button>
 </div>
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
-  <button id="alerts" class="small" aria-pressed="false">🔔 alerts off</button>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <div class="row" id="kbd-row" hidden><button id="kbd-btn" class="small">⌨ Keyboard</button></div>
 <input id="kbd" aria-label="Type the planet name" autocomplete="off" autocorrect="off"
@@ -331,6 +330,7 @@
 
   function connect(req) {
     if (req === "save-export" || req === "save-import") { openSaves(req === "save-export"); return; }
+    if (req === "notify-on") { askNotify(); return; }
     // DEVELOPER → TEST NOTIFY: ask for permission if needed, then show one at once.
     if (req === "notify-test") {
       (async () => {
@@ -429,25 +429,21 @@
   // Care calls light the original's screen; here a notification does it while the page is hidden.
   const CALLS = { 0x0f: "wants to see you", 0x11: "is hungry", 0x12: "is unhappy", 0x0a: "has a cold",
     0x13: "is ready to evolve", 0x1c: "is up to something" };
-  const alertsBtn = document.getElementById("alerts");
-  // Phones pause hidden pages and need a service worker to notify, so the toggle is desktop only.
-  alertsBtn.hidden = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  let alerts = (() => { try { return localStorage.getItem("tama-alerts") === "1"; } catch { return false; } })();
+  // SETTINGS → NOTIFY lives in the game; the page only asks the browser and polls.
   const canNotify = () => "Notification" in window && Notification.permission === "granted";
-  const showAlerts = () => {
-    const on = alerts && canNotify();
-    alertsBtn.textContent = on ? "🔔 alerts on" : "🔔 alerts off"; alertsBtn.setAttribute("aria-pressed", on);
-  };
-  showAlerts();
-  alertsBtn.onclick = async () => {
-    if (!("Notification" in window)) { alertsBtn.textContent = "🔔 not supported"; return; }
-    alerts = !(alerts && canNotify());
-    if (alerts && Notification.permission !== "granted") alerts = (await Notification.requestPermission()) === "granted";
-    try { localStorage.setItem("tama-alerts", alerts ? "1" : "0"); } catch {}
-    showAlerts();
-  };
+  // NOTIFY ON: ask for permission on the next tap or key release (browsers, iOS above all, only
+  // ask from a user gesture); refused or unsupported, the setting goes back off.
+  function askNotify() {
+    if (!("Notification" in window) || Notification.permission === "denied") { game.set_notify(false); return; }
+    if (Notification.permission === "granted") return;
+    const ask = async () => {
+      for (const ev of ["pointerup", "keyup"]) removeEventListener(ev, ask, true);
+      if (await Notification.requestPermission() !== "granted") { game.set_notify(false); save(); }
+    };
+    for (const ev of ["pointerup", "keyup"]) addEventListener(ev, ask, true);
+  }
   setInterval(() => {
-    if (!document.hidden || !alerts || !canNotify()) return;
+    if (!document.hidden || !game.notify() || !canNotify()) return;
     const id = game.poll_call(t0 + (performance.now() - wall0) / 1000 * speed);
     if (id === undefined) return;
     notify(`Your Tamagotchi ${CALLS[id] ?? "is calling"}!`, "tama-call");

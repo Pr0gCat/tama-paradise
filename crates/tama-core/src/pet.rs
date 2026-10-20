@@ -238,6 +238,9 @@ pub struct Pet {
     /// The remake's touch controls on the screen.
     #[serde(default = "yes")]
     pub touch: bool,
+    /// The remake's care-call notifications (SETTINGS; the page needs the browser's permission).
+    #[serde(default)]
+    pub notify: bool,
     /// The new-game setup (language, birthday, planet name) is finished; a page reloaded in the
     /// middle of it starts it again.
     #[serde(default = "yes")]
@@ -355,6 +358,7 @@ impl Pet {
             date_order: 0,
             clock_offset: 0,
             touch: true,
+            notify: false,
             set_up: true,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],

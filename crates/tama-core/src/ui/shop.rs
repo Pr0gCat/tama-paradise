@@ -117,6 +117,7 @@ impl Game {
             | Action::DateOrder
             | Action::SetDateOrder(_)
             | Action::ToggleTouch
+            | Action::ToggleNotify
             | Action::Delete
             | Action::Continue
             | Action::ResetAllAsk

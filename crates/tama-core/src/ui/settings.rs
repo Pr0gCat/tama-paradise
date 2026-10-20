@@ -384,6 +384,7 @@ mod tests {
         };
         press(&mut g, UP); // DEVELOPER (last)
         press(&mut g, UP); // SAVE DATA
+        press(&mut g, UP); // NOTIFY
         press(&mut g, UP); // TOUCH
         press(&mut g, UP); // the language entry
         press(&mut g, B);

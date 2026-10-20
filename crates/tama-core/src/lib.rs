@@ -490,6 +490,16 @@ impl Game {
         self.scene = self.open(ui::Action::Delete);
     }
 
+    /// Whether care calls should notify (SETTINGS, remake only).
+    pub fn notify(&self) -> bool {
+        self.pet.notify
+    }
+
+    /// The page turns notifications back off when the browser refuses them.
+    pub fn set_notify(&mut self, on: bool) {
+        self.pet.notify = on;
+    }
+
     /// Whether the platform's touch controls on the screen are on (SETTINGS, remake only).
     pub fn touch(&self) -> bool {
         self.pet.touch

@@ -118,6 +118,15 @@ impl Tama {
         self.0.touch()
     }
 
+    /// SETTINGS → NOTIFY: care calls become notifications while the page is hidden.
+    pub fn notify(&self) -> bool {
+        self.0.notify()
+    }
+
+    pub fn set_notify(&mut self, on: bool) {
+        self.0.set_notify(on);
+    }
+
     /// The screen takes typed text (raise a keyboard; pass keys to `type_key`).
     pub fn text_entry(&self) -> bool {
         self.0.text_entry()
