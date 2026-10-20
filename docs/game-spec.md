@@ -449,6 +449,8 @@
 
 這一節把原廠行為對應到 [重製計畫](../Tamagotchi%20Paradise%20Rust%20重製計畫.md) 的架構。標「建議」的是設計選擇，不是韌體事實。
 
+**不在重製範圍（使用者決定，2026-10-20）**：CONNECTION 的 DOWNLOAD / ADDITIONAL（DLC，需要官方伺服器）；Lab QR 匯出（Tamagotchi Lab App 互通，§11 #9）。
+
 ### `tama-core` 的 tick
 
 | 原廠 | 重製 |
