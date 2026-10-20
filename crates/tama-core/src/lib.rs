@@ -2,6 +2,7 @@
 
 pub mod data;
 pub mod decor;
+pub mod ease;
 pub(crate) mod evolve;
 pub mod family;
 pub mod home;

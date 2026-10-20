@@ -61,7 +61,7 @@ impl Tween {
         Tween { from: v, to: v, t: 0, len: 0 }
     }
 
-    // ponytail: linear; the original eases (mode 3) the slides, curve not decoded.
+    /// Slides ease out (tween curve 3).
     fn to(&self, to: i32, len: u16) -> Self {
         Tween { from: self.value(), to, t: 0, len }
     }
@@ -70,7 +70,7 @@ impl Tween {
         if self.done() {
             self.to
         } else {
-            self.from + ((self.to - self.from) as i64 * self.t as i64 / self.len as i64) as i32
+            crate::ease::ease_fixed(3, self.from, self.to, self.t as u32, self.len as u32)
         }
     }
 

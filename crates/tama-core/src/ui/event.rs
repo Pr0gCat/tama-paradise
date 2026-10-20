@@ -100,8 +100,9 @@ const RESULT_SOUNDS: [u16; 4] = [36, 41, 41, 24];
 const SUPPORT_ORDER: [usize; 4] = [0, 3, 2, 1];
 /// Where the icons fly to (`FUN_1006f290(.., 0x40, 0x36)`).
 const SUPPORT_TARGET: (i32, i32) = (64, 54);
-/// Frames an icon takes to fly in (ponytail: the firmware tween curve is not decoded; linear).
+/// An icon flies in over 1 s on curve 5 (strong ease-in), position and fade alike (`FUN_10066b34`).
 const SUPPORT_FLY: u16 = 20;
+const FLY_CURVE: u8 = 5;
 const END_SITTING: u16 = 0xd4;
 const NEW_EGG: u16 = 0x18;
 const YEARS: u16 = 0xa0;
@@ -257,9 +258,9 @@ impl Game {
                 continue;
             }
             let e = self.ui_elem(elem::MEMORY_SLOTS + slot as u16);
-            let x = e.x as i32 + (SUPPORT_TARGET.0 - e.x as i32) * flown / SUPPORT_FLY as i32;
-            let y = e.y as i32 + (SUPPORT_TARGET.1 - e.y as i32) * flown / SUPPORT_FLY as i32;
-            self.screen.blit(icon, 0, x, y, (64 - 64 * flown / SUPPORT_FLY as i32) as u8, false, None);
+            let fly = |a: i32, b: i32| crate::ease::ease(FLY_CURVE, a, b, flown as u32, SUPPORT_FLY as u32);
+            let (x, y) = (fly(e.x as i32, SUPPORT_TARGET.0), fly(e.y as i32, SUPPORT_TARGET.1));
+            self.screen.blit(icon, 0, x, y, fly(64, 0) as u8, false, None);
         }
     }
 
@@ -496,9 +497,8 @@ impl Game {
                 r if r == round && busy => (t.min(SUPPORT_FLY) as i32, SUPPORT_FLY as i32),
                 _ => (0, 1),
             };
-            let x = e.x as i32 + (SUPPORT_TARGET.0 - e.x as i32) * p.0 / p.1;
-            let y = e.y as i32 + (SUPPORT_TARGET.1 - e.y as i32) * p.0 / p.1;
-            let alpha = (64 - 64 * p.0 / p.1) as u8;
+            let fly = |a: i32, b: i32| crate::ease::ease(FLY_CURVE, a, b, p.0 as u32, p.1 as u32);
+            let (x, y, alpha) = (fly(e.x as i32, SUPPORT_TARGET.0), fly(e.y as i32, SUPPORT_TARGET.1), fly(64, 0) as u8);
             self.screen.blit(icon, 0, x, y, alpha, false, None);
         }
     }

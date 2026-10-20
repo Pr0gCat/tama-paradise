@@ -31,23 +31,21 @@ struct Tween {
     to: i32,
     t: u16,
     len: u16,
+    /// Script curve B + 1 (`crate::ease`).
+    curve: u8,
 }
 
 impl Tween {
     fn value(&self) -> i32 {
-        if self.t >= self.len {
-            self.to
-        } else {
-            // ponytail: linear; the firmware has curves 0–6 whose formulas are not decoded yet.
-            self.from + (self.to - self.from) * self.t as i32 / self.len as i32
-        }
+        crate::ease::ease(self.curve, self.from, self.to, self.t as u32, self.len as u32)
     }
 
-    fn start(&mut self, from: i16, to: i16, frames: i16) {
+    fn start(&mut self, from: i16, to: i16, frames: i16, curve: i16) {
         self.from = if from == KEEP { self.value() } else { from as i32 };
         self.to = to as i32;
         self.t = 0;
         self.len = frames.max(0) as u16;
+        self.curve = (curve.clamp(0, 6) + 1) as u8;
     }
 
     fn step(&mut self) {
@@ -127,8 +125,8 @@ impl Node {
             look: Look::None,
             x: Tween::default(),
             y: Tween::default(),
-            alpha: Tween { from: 256, to: 256, t: 0, len: 0 },
-            scale: Tween { from: 256, to: 256, t: 0, len: 0 },
+            alpha: Tween { from: 256, to: 256, ..Tween::default() },
+            scale: Tween { from: 256, to: 256, ..Tween::default() },
             flip: false,
             visible: true,
             palette: 0,
@@ -208,15 +206,15 @@ impl Node {
                 }
             }
             0x03 => self.palette = c as u8,
-            0x04 => self.x.start(c, d, e),
-            0x05 => self.y.start(c, d, e),
+            0x04 => self.x.start(c, d, e, b),
+            0x05 => self.y.start(c, d, e, b),
             0x06 => {
-                self.x.start(KEEP, c, e);
-                self.y.start(KEEP, d, e);
+                self.x.start(KEEP, c, e, b);
+                self.y.start(KEEP, d, e, b);
             }
-            0x07 => self.scale.start(c, d, e),
-            0x09 => self.scale.start(KEEP, c, e),
-            0x0a | 0x0c => self.alpha.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e),
+            0x07 => self.scale.start(c, d, e, b),
+            0x09 => self.scale.start(KEEP, c, e, b),
+            0x0a | 0x0c => self.alpha.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e, b),
             0x0d => self.flip = c & 1 != 0,
             0x0e => self.sounds.push((a as u16, c.clamp(0, 100) as u8)),
             0x10 => {
@@ -379,7 +377,8 @@ mod tests {
         for _ in 0..2 {
             n.tick(&s);
         }
-        assert_eq!(n.x.value(), 4);
+        // 2/5 of 10, floored in 16.16 like the firmware (3.99…).
+        assert_eq!(n.x.value(), 3);
         for _ in 0..5 {
             n.tick(&s);
         }

@@ -386,10 +386,11 @@ impl Together07 {
 
     fn fx_pos(&self, fx: &Fx) -> (i32, i32) {
         match fx.to {
-            // ponytail: linear; the firmware uses tween curve 7 (S-shaped).
+            // Tween curve 7 (S-shaped) over 1 s.
             Some(to) => {
-                let t = (self.time - fx.t0).clamp(0, ONE);
-                (fx.at.0 + (to.0 - fx.at.0) * t / ONE, fx.at.1 + (to.1 - fx.at.1) * t / ONE)
+                let t = (self.time - fx.t0).clamp(0, ONE) as u32;
+                let s = |a: i32, b: i32| crate::ease::ease(7, a, b, t, ONE as u32);
+                (s(fx.at.0, to.0), s(fx.at.1, to.1))
             }
             None => fx.at,
         }

@@ -238,8 +238,8 @@ impl Lab01 {
                     p.fade = Some(self.t);
                 }
             }
-            // ponytail: linear fade; the firmware uses tween curve 6 (not decoded) over 0.2 s.
-            p.alpha = p.fade.map_or(ONE, |t0| (ONE - ((self.t - t0) as i64 * ONE as i64 / 0x3333) as i32).max(0));
+            // A crumbling platform fades on tween curve 6 over 0.2 s.
+            p.alpha = p.fade.map_or(ONE, |t0| crate::ease::ease_fixed(6, ONE, 0, (self.t - t0).max(0) as u32, 0x3333));
             if p.alpha < 1 {
                 *slot = None;
                 continue;
