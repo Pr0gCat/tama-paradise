@@ -12,18 +12,19 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // The square screen a quarter of the way from the display's width to its height:
-            // a sliver of each side cropped, a band above and below. The buttons float over
-            // its bottom edge, half see-through.
-            let w = min(geo.size.width, geo.size.height), h = max(geo.size.width, geo.size.height)
-            let side = w + (h - w) / 4
-            let d = min(geo.size.width, geo.size.height) / 4.6
+            // The whole game fits the display's width (nothing cropped, the UI at its own
+            // size); the bands above and below show a blurred, dimmed copy of the screen so the
+            // display looks full. The buttons float over the bottom edge, half see-through.
+            let side = min(geo.size.width, geo.size.height)
+            let d = side / 4.6
             ZStack(alignment: .bottom) {
                 Color.black
+                backdrop
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
                 screen
                     .frame(width: side, height: side)
                     .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
                     .contentShape(Rectangle())
                     .gesture(touch)
                 HStack(spacing: d * 0.5) {
@@ -46,6 +47,17 @@ struct GameView: View {
             guard abs(d) >= 1 else { return }
             crownStep = new
             engine.send(d > 0 ? TAMA_GESTURE_SWIPE_UP : TAMA_GESTURE_SWIPE_DOWN)
+        }
+    }
+
+    /// The screen scaled to fill the display, blurred and dimmed, behind the real one.
+    @ViewBuilder private var backdrop: some View {
+        if let image = engine.image {
+            Image(decorative: image, scale: 1)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .blur(radius: 10)
+                .opacity(0.55)
         }
     }
 
