@@ -560,7 +560,10 @@ impl Game {
     pub(crate) fn play(&self, scripts: &[u16], on_press: (u8, OnPress), food: Option<u16>, then: Scene) -> Scene {
         let mut queue: Vec<u16> = scripts.iter().rev().copied().collect();
         let first = queue.pop().unwrap_or(0);
-        Scene::Play(Play { node: Node::new(first), queue, presses: 0, on_press, food, cue: None, then: Box::new(then) })
+        // Ticked once so the scene's first frame already shows the animation.
+        let mut node = Node::new(first);
+        node.tick(&self.data.motions);
+        Scene::Play(Play { node, queue, presses: 0, on_press, food, cue: None, then: Box::new(then) })
     }
 
     /// Sound ids (04-assets SND8, 08-care-ui U6): 0 cursor, 1 confirm, 2 cancel, 0xb not allowed, 0x28 zoom.

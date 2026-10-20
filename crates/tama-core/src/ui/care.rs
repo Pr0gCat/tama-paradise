@@ -261,6 +261,10 @@ impl Game {
             if let Some((_, snd)) = p.cue.filter(|c| c.0 == next) {
                 self.sfx(snd, 100);
             }
+            // Run its first frame now: a node that has not ticked draws nothing, which showed as a
+            // blank frame between two animations (e.g. serving and eating).
+            p.node.tick(&self.data.motions);
+            p.node.take_sounds(&mut self.sounds);
             return Scene::Play(p);
         }
         // Treatments complete when their animations end.
@@ -382,6 +386,31 @@ impl Game {
             *then
         } else {
             Scene::Credits { node, then }
+        }
+    }
+}
+#[cfg(test)]
+mod with_rom_data {
+    use super::*;
+
+    /// Needs data/game.json (`cargo test -- --ignored`): every frame of a meal shows the animation.
+    #[test]
+    #[ignore]
+    fn a_meal_has_no_blank_frame() {
+        let data = crate::data::Data::from_json(&std::fs::read_to_string("../../data/game.json").unwrap()).unwrap();
+        let mut g = Game::new(data, 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        g.pet.onaka = 0;
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        g.scene = g.eat(KIND_MEAL, vec![5002], 0);
+        let mut n = 0;
+        while let Scene::Play(p) = &g.scene {
+            let mut d = Vec::new();
+            p.node.draws(64, 64, &mut d);
+            assert!(!d.is_empty(), "blank at frame {n} script {}", p.node.script());
+            g.frame(t, 0);
+            n += 1;
         }
     }
 }
