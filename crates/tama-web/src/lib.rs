@@ -102,6 +102,16 @@ impl Tama {
         self.0.touch()
     }
 
+    /// The screen takes typed text (raise a keyboard; pass keys to `type_key`).
+    pub fn text_entry(&self) -> bool {
+        self.0.text_entry()
+    }
+
+    /// A `KeyboardEvent.key` typed into the text on screen; false if not used.
+    pub fn type_key(&mut self, key: &str) -> bool {
+        self.0.type_key(key)
+    }
+
     /// One-line pet status for the page.
     pub fn status(&self) -> String {
         let p = &self.0.pet;

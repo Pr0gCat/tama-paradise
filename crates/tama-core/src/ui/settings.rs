@@ -170,22 +170,68 @@ impl Game {
         if pressed & (B | PUSH) != 0 {
             pos += 1;
             if pos == chars.len() {
-                let len = chars.iter().rposition(|&c| c != crate::screen::SPACE).map_or(0, |i| i + 1);
-                self.pet.planet_name = chars[..len].to_vec();
-                if intro {
-                    // The new-game setup date, shown in USER INFO as the DAY OF THE EGG BANG.
-                    self.pet.start_date = self.pet.last.map(|t| {
-                        let (_, m, d) = crate::pet::date(t);
-                        (m as u8, d as u8)
-                    });
-                    self.pet.set_up = true;
-                    // "MAKE <planet> PROSPEROUS!", then the game starts.
-                    return Scene::Message { text: INTRO_GOAL, then: Box::new(Scene::Home) };
-                }
-                return self.edit_done();
+                return self.planet_name_done(chars, intro);
             }
         }
         Scene::PlanetName { chars, pos, intro }
+    }
+
+    fn planet_name_done(&mut self, chars: [u16; 8], intro: bool) -> Scene {
+        let len = chars.iter().rposition(|&c| c != crate::screen::SPACE).map_or(0, |i| i + 1);
+        self.pet.planet_name = chars[..len].to_vec();
+        if intro {
+            // The new-game setup date, shown in USER INFO as the DAY OF THE EGG BANG.
+            self.pet.start_date = self.pet.last.map(|t| {
+                let (_, m, d) = crate::pet::date(t);
+                (m as u8, d as u8)
+            });
+            self.pet.set_up = true;
+            // "MAKE <planet> PROSPEROUS!", then the game starts.
+            return Scene::Message { text: INTRO_GOAL, then: Box::new(Scene::Home) };
+        }
+        self.edit_done()
+    }
+
+    /// Whether the screen takes typed text (the planet name), so the page can raise a keyboard.
+    pub fn text_entry(&self) -> bool {
+        matches!(self.scene, Scene::PlanetName { .. })
+    }
+
+    /// Typing on a keyboard (the remake's addition): a letter, digit or space fills the current
+    /// place and moves on, Backspace clears back, arrows move, Enter confirms. `key` is a DOM
+    /// `KeyboardEvent.key`; returns whether it was used.
+    pub fn type_key(&mut self, key: &str) -> bool {
+        let Scene::PlanetName { mut chars, mut pos, intro } = self.scene else { return false };
+        let space = crate::screen::SPACE;
+        let mut typed = key.chars();
+        let one = typed.next().filter(|_| typed.next().is_none());
+        match (key, one.map(|c| c.to_ascii_uppercase())) {
+            ("Enter", _) => {
+                self.sfx(1, 100); // confirm
+                self.scene = self.planet_name_done(chars, intro);
+                return true;
+            }
+            ("Backspace", _) => {
+                if chars[pos] == space && pos > 0 {
+                    pos -= 1;
+                }
+                chars[pos] = space;
+            }
+            ("ArrowLeft", _) => pos = pos.saturating_sub(1),
+            ("ArrowRight", _) => pos = (pos + 1).min(chars.len() - 1),
+            (_, Some(c @ ('A'..='Z' | '0'..='9' | ' '))) => {
+                chars[pos] = match c {
+                    'A'..='Z' => 318 + (c as u16 - 'A' as u16),
+                    '0'..='9' => 306 + (c as u16 - '0' as u16),
+                    _ => space,
+                };
+                pos = (pos + 1).min(chars.len() - 1);
+            }
+            _ => return false,
+        }
+        self.sfx(0, 100); // cursor
+        self.scene = Scene::PlanetName { chars, pos, intro };
+        true
     }
 
     pub(super) fn update_birthday(&mut self, mut m: u8, mut d: u8, pos: u8, intro: bool, pressed: u8) -> Scene {
@@ -272,6 +318,20 @@ mod tests {
         assert!(matches!(g.scene, Scene::Message { text: INTRO_GOAL, .. }));
         press(&mut g, B);
         assert!(matches!(g.scene, Scene::Home));
+    }
+
+    #[test]
+    fn the_planet_name_can_be_typed() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.scene = Scene::PlanetName { chars: [crate::screen::SPACE; 8], pos: 0, intro: false };
+        assert!(g.text_entry());
+        for k in ["t", "a", "x", "Backspace", "Backspace", "M", "9", "Shift"] {
+            g.type_key(k);
+        }
+        assert!(!g.type_key("Shift"));
+        assert!(g.type_key("Enter"));
+        assert_eq!(g.pet.planet_name, vec![318 + 19, 318 + 12, 306 + 9]);
+        assert!(!g.text_entry());
     }
 
     #[test]

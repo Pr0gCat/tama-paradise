@@ -33,6 +33,7 @@
   pre[hidden] { display: none; }
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
   .row { display: flex; gap: 8px; }
+  .row[hidden] { display: none; }
   dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px);
            max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px); overflow: auto;
            margin: max(8px, env(safe-area-inset-top)) auto auto; }
@@ -42,6 +43,9 @@
   #saves [hidden] { display: none; }
   #setup button { display: block; margin: 8px 0; }
   #setup [hidden] { display: none; }
+  /* Off-screen field that brings up the phone keyboard for typed text (the planet name). */
+  #kbd { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px;
+    border: 0; padding: 0; pointer-events: none; }
   dialog label { display: block; margin: 8px 0 4px; font: 14px system-ui; }
   dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
     /* 16px: iOS zooms the page into any focused field set smaller */
@@ -56,13 +60,17 @@
              flex-direction: column; align-items: center; justify-content: center; gap: 16px; font: 16px system-ui; }
   #scanner[hidden] { display: none; }
   #scanner video { width: min(92vw, 70dvh); aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+  /* phone held upright: the screen edge to edge, no rounded frame */
+  @media (orientation: portrait) and (max-width: 600px) {
+    canvas { width: min(100vw, 100dvh - 280px); border-radius: 0; }
+  }
   /* home-screen app held upright: the screen at the top, bigger buttons down by the thumbs */
   @media (display-mode: standalone) and (orientation: portrait) {
-    body { justify-content: flex-start; padding-top: calc(env(safe-area-inset-top) + 16px);
+    body { justify-content: flex-start; padding-top: env(safe-area-inset-top);
            padding-bottom: max(16px, env(safe-area-inset-bottom)); }
     .pad { margin-top: auto; grid-template-columns: repeat(3, min(96px, 26vw)); gap: 14px 18px; }
     .pad button { height: 72px; border-radius: 36px; font-size: 26px; }
-    canvas { width: min(92vw, 100dvh - 320px, 512px); }
+    canvas { width: min(100vw, 100dvh - 320px, 512px); border-radius: 0; }
   }
   /* phone held sideways: the screen on the left, the controls beside it */
   @media (orientation: landscape) and (max-height: 500px) {
@@ -84,6 +92,9 @@
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
   <button id="alerts" class="small" aria-pressed="false">🔔 alerts off</button>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
+<div class="row" id="kbd-row" hidden><button id="kbd-btn" class="small">⌨ Keyboard</button></div>
+<input id="kbd" aria-label="Type the planet name" autocomplete="off" autocorrect="off"
+  autocapitalize="characters" spellcheck="false" enterkeyhint="done" tabindex="-1">
 <dialog id="friends">
   <form method="dialog">
     <h2 tabindex="-1" autofocus>Friends</h2>
@@ -194,8 +205,34 @@
   let held = 0, pulses = 0;
   const down = bit => { pulses |= bit; if (!(bit & DIAL)) held |= bit; };
   const up = bit => { held &= ~bit; save(); };
-  addEventListener("keydown", e => { if (e.key in keys && !e.repeat) { down(keys[e.key]); e.preventDefault(); } });
-  addEventListener("keyup", e => e.key in keys && up(keys[e.key]));
+  // Typed text (the planet name) takes the keyboard: letters, digits, space, Backspace, arrows,
+  // Enter; Esc is C. The phone keyboard comes from the hidden #kbd field (⌨ or a tap on the screen).
+  const kbd = document.getElementById("kbd"), kbdBtn = document.getElementById("kbd-btn");
+  const kbdRow = document.getElementById("kbd-row");
+  const typing = e => e.target !== kbd && e.target.closest?.("input, select, textarea, dialog");
+  addEventListener("keydown", e => {
+    if (typing(e)) return;
+    if (game.text_entry()) {
+      if (e.key === "Escape") { down(C); up(C); e.preventDefault(); return; }
+      // In #kbd only Enter comes here; characters arrive as input (phone keyboards send no keys).
+      if ((e.target !== kbd || e.key === "Enter") && game.type_key(e.key)) { e.preventDefault(); return; }
+      if (e.target === kbd) return;
+    }
+    if (e.key in keys && !e.repeat) { down(keys[e.key]); e.preventDefault(); }
+  });
+  addEventListener("keyup", e => !typing(e) && e.key in keys && up(keys[e.key]));
+  // #kbd holds one placeholder character, so a Backspace on the phone still shows up as an edit.
+  const kbdReset = () => { kbd.value = "#"; kbd.setSelectionRange(1, 1); };
+  kbd.addEventListener("focus", kbdReset);
+  const kbdRead = () => {
+    const v = kbd.value;
+    if (!v.startsWith("#")) game.type_key("Backspace");
+    for (const ch of v.replace(/^#/, "")) game.type_key(ch);
+    kbdReset();
+  };
+  kbd.addEventListener("input", e => { if (!e.isComposing) kbdRead(); });
+  kbd.addEventListener("compositionend", kbdRead);
+  kbdBtn.onclick = () => kbd.focus();
   for (const el of document.querySelectorAll("button[data-k]")) {
     const bit = Number(el.dataset.k);
     el.onpointerdown = e => { el.setPointerCapture(e.pointerId); el.classList.add("on"); down(bit); navigator.vibrate?.(8); };
@@ -206,6 +243,7 @@
   let swipeX = null, swiped = false;
   // Off in SETTINGS → TOUCH OFF.
   c.onpointerdown = e => {
+    if (game.text_entry()) { kbd.focus(); return; }
     if (!game.touch()) return;
     c.setPointerCapture(e.pointerId); swipeX = e.clientX; swiped = false;
   };
@@ -458,6 +496,9 @@
       const t = t0 + (now - wall0) / 1000 * speed;
       for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
       if (debugStatus) debugStatus.textContent = game.status();
+      const entry = game.text_entry();
+      kbdRow.hidden = !entry;
+      if (!entry && document.activeElement === kbd) kbd.blur();
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
       const req = game.take_connect();
       if (req) connect(req);
