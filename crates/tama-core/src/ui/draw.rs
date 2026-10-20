@@ -143,7 +143,10 @@ impl Game {
                     let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
                     let gray = items[i].1.is_none() as usize;
                     self.screen.blit(label, 0, x, y, 64, false, (gray > 0).then_some((label, gray)));
-                    self.draw_text(items[i].0, x, y, true, 1);
+                    // Text element 0x9e (`ringmenu_create` 0x1002af28): font 2, centred as a
+                    // block (two-line names too), palette 4 when greyed.
+                    let glyphs = self.string(items[i].0);
+                    self.draw_text_elem_at(elem::MENU_TEXT, &glyphs, x, y, (gray > 0).then_some(4));
                 }
                 true
             }

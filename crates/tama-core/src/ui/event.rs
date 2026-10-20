@@ -333,6 +333,12 @@ impl Game {
 
     /// Text in a UI text element, laid out as its p[] says (font, alignment, spacing, palette).
     pub(crate) fn draw_text_elem(&mut self, id: u16, glyphs: &[u16]) {
+        self.draw_text_elem_at(id, glyphs, 64, 64, None);
+    }
+
+    /// The same, with the element moved so its (64, 64) lands on (x, y) (a child of a moving
+    /// object, e.g. a ring-menu label), and optionally another palette.
+    pub(crate) fn draw_text_elem_at(&mut self, id: u16, glyphs: &[u16], x: i32, y: i32, palette: Option<usize>) {
         let e = self.ui_elem(id);
         let b = crate::screen::TextBox {
             font: e.p[3].max(0) as usize,
@@ -340,9 +346,9 @@ impl Game {
             v: (e.p[8] >> 6 & 3) as u8,
             space: e.p[4] as i32,
             leading: e.p[5] as i32,
-            palette: e.p[7].max(0) as usize,
+            palette: palette.unwrap_or(e.p[7].max(0) as usize),
         };
-        self.screen.text_box(&self.data.fonts, glyphs, e.x as i32, e.y as i32, b);
+        self.screen.text_box(&self.data.fonts, glyphs, x + e.x as i32 - 64, y + e.y as i32 - 64, b);
     }
 
     pub(crate) fn update_lab_result(
