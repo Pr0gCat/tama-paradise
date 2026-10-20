@@ -5,6 +5,7 @@ pub mod decor;
 pub mod ease;
 pub(crate) mod evolve;
 pub mod family;
+pub mod hant;
 pub mod home;
 pub mod hunt;
 pub mod mini;
@@ -25,6 +26,7 @@ use pet::{status, Pet};
 use screen::Screen;
 pub use screen::{HEIGHT, WIDTH};
 use sprite::Sprite;
+
 pub use ui::Level;
 use ui::Scene;
 
@@ -553,7 +555,10 @@ impl Game {
 
     /// Add a sprite in `sprite::Sprite` byte format. Returns false if the bytes are invalid.
     pub fn add_sprite(&mut self, id: u16, bytes: &[u8]) -> bool {
-        let Some(s) = Sprite::from_bytes(bytes) else { return false };
+        let Some(mut s) = Sprite::from_bytes(bytes) else { return false };
+        if self.data.fonts.get(2).is_some_and(|f| f.sprite == id) {
+            crate::hant::extend_font(&mut s);
+        }
         self.screen.sprites.insert(id, s);
         self.render();
         true

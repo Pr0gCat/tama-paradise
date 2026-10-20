@@ -539,6 +539,9 @@ impl Game {
     }
 
     pub(crate) fn string(&self, id: u16) -> Vec<u16> {
+        if id == REMAKE_TEXT + REMAKE_TEXTS.len() as u16 {
+            return crate::hant::NAME.to_vec();
+        }
         if let Some(text) = id.checked_sub(REMAKE_TEXT).and_then(|i| REMAKE_TEXTS.get(i as usize)) {
             return text
                 .bytes()

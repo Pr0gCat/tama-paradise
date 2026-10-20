@@ -15,8 +15,6 @@ const PICK_DATE_ORDER: u16 = 97;
 const SET_DATE_TIME: u16 = 95;
 /// Clock editor field titles: YEAR, MONTH, DATE, HOUR, MINUTE, AM/PM.
 const FIELD_TITLES: u16 = 235;
-/// Language names (the remake's extra SETTINGS item shows the current one).
-const LANGUAGE_NAMES: u16 = 0x56;
 /// SOUND closes itself after 200 frames without A or B.
 const LEVEL_IDLE: u16 = 200;
 /// The planet level shows the clock after 200 idle frames.
@@ -143,7 +141,7 @@ impl Game {
         let items = vec![
             (SOUND, Some(Action::Volume)),
             (TIME, Some(Action::SettingsTime)),
-            (LANGUAGE_NAMES + self.pet.lang as u16, Some(Action::Language)),
+            (super::settings::language_name(self.pet.lang), Some(Action::Language)),
             (REMAKE_TEXT + !self.pet.touch as u16, Some(Action::ToggleTouch)),
             (REMAKE_TEXT + 2, Some(Action::SaveData)),
         ];
@@ -423,7 +421,7 @@ mod tests {
         g.frame(NOON, B); // still held
         g.frame(NOON, 0);
         assert_eq!((g.pet.points, g.pet.lang, g.pet.def.id), (0, 1, 1000));
-        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items.len() == 9), "LANGUAGE");
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items.len() == 10), "LANGUAGE");
 
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         g.scene = g.open(Action::Continue);

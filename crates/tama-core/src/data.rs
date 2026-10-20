@@ -1,5 +1,6 @@
 //! Game data loaded at runtime (`data/game.json`, produced by `tama-extract`).
 
+use crate::hant;
 use serde::{Deserialize, Serialize};
 
 /// Character definition record (asset data table 11, 15 × u16). See game-spec §6.
@@ -148,7 +149,7 @@ pub struct Melody {
     pub notes: Vec<[u16; 3]>,
 }
 
-pub const LANGS: [&str; 9] = ["ja", "en", "fr", "de", "pt", "es", "it", "zh", "ko"];
+pub const LANGS: [&str; 10] = ["ja", "en", "fr", "de", "pt", "es", "it", "zh", "ko", "zh-Hant"];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Data {
@@ -295,7 +296,21 @@ pub struct MiniData {
 
 impl Data {
     pub fn from_json(s: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(s)
+        let mut d: Data = serde_json::from_str(s)?;
+        d.add_hant();
+        Ok(d)
+    }
+
+    /// The remake's zh-Hant table (`LANGS[9]`): the zh strings through `hant::RULES`, with font 2
+    /// widened for the added glyphs (their frames join the font sprite in `Game::add_sprite`).
+    fn add_hant(&mut self) {
+        let (Some(zh), Some(font)) = (self.strings.get(7), self.fonts.get_mut(2)) else { return };
+        if self.strings.len() != 9 {
+            return;
+        }
+        font.adj.resize(hant::FIRST as usize + hant::GLYPHS, 0);
+        let table = zh.iter().map(|s| hant::convert(s)).collect();
+        self.strings.push(table);
     }
 
     pub fn character(&self, id: u16) -> Option<CharDef> {

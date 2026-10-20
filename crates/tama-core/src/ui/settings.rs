@@ -6,8 +6,13 @@ use super::*;
 /// New-game setup texts: NAME YOUR PLANET, and the goal naming it.
 const INTRO_NAME: u16 = 100;
 const INTRO_GOAL: u16 = 101;
-/// Language names, Japanese first (0x56–0x5e, in `data::LANGS` order).
+/// Language names, Japanese first (0x56–0x5e, in `data::LANGS` order); the remake's zh-Hant
+/// (`LANGS[9]`) is named by `REMAKE_TEXT + 6`.
 const LANGUAGE_NAMES: u16 = 0x56;
+
+pub(super) fn language_name(i: u8) -> u16 {
+    if i < 9 { LANGUAGE_NAMES + i as u16 } else { REMAKE_TEXT + 6 }
+}
 
 /// INFORMATION submenu texts, USER INFO page titles and the DAYS label.
 const USER_INFO: u16 = 7;
@@ -55,9 +60,9 @@ impl Game {
 
     pub(super) fn open_intro(&mut self, a: Action) -> Scene {
         match a {
-            // LANGUAGE (`FUN_10038c24`): a ring menu of the nine language names.
+            // LANGUAGE (`FUN_10038c24`): a ring menu of the nine language names, and zh-Hant.
             Action::IntroLanguage => Scene::Menu {
-                items: (0..9u8).map(|i| (LANGUAGE_NAMES + i as u16, Some(Action::IntroLang(i)))).collect(),
+                items: (0..10u8).map(|i| (language_name(i), Some(Action::IntroLang(i)))).collect(),
                 idx: self.pet.lang as usize,
                 back: Some(Action::IntroLanguage),
             },
@@ -66,7 +71,7 @@ impl Game {
                 Scene::Birthday { m: 1, d: 1, pos: 0, intro: true }
             }
             Action::Language => Scene::Menu {
-                items: (0..9u8).map(|i| (LANGUAGE_NAMES + i as u16, Some(Action::SetLang(i)))).collect(),
+                items: (0..10u8).map(|i| (language_name(i), Some(Action::SetLang(i)))).collect(),
                 idx: self.pet.lang as usize,
                 back: Some(Action::Settings),
             },
@@ -276,6 +281,7 @@ mod tests {
         let save = g.save();
         let g = Game::load(crate::evolve::tests::data(), &save).unwrap();
         assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == LANGUAGE_NAMES), "LANGUAGE again");
+        assert_eq!(g.string(language_name(9)), crate::hant::NAME);
     }
 
     #[test]
