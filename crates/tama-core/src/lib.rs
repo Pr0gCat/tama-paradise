@@ -89,6 +89,10 @@ pub struct Game {
     pub(crate) fade: u8,
     /// LABOMENU cursor, kept for coming back from a lab screen.
     pub(crate) lab_idx: u8,
+    /// LABOMENU opened while the pet sleeps sick (`0x18001c6b` bit3): only SETTINGS.
+    pub(crate) lab_settings_only: bool,
+    /// The frame the C button was last let go (double-tap C cancels in the number editors).
+    pub(crate) c_released: u32,
     /// Fade colour (black; pink or white in layer changes).
     pub(crate) fade_colour: [u8; 3],
     /// A layer change in progress (kind, frame, zoom at the start) and the layer it draws.
@@ -154,6 +158,9 @@ impl Game {
             idle: 0,
             fade: 0,
             lab_idx: 0,
+            lab_settings_only: false,
+            // Long ago, so a first C press is never a double tap.
+            c_released: u32::MAX / 2,
             fade_colour: [0, 0, 0],
             change: None,
             shown: None,
@@ -178,6 +185,9 @@ impl Game {
         // Buttons act on the press edge; dial bits are already one-frame pulses.
         let dial = input::UP | input::DOWN;
         let pressed = (held & !self.held & !dial) | (held & dial);
+        if self.held & input::C != 0 && held & input::C == 0 {
+            self.c_released = self.frame_count.wrapping_add(1);
+        }
         self.held = held;
         self.idle = if held != 0 { 0 } else { self.idle.saturating_add(1) };
         self.frame_count = self.frame_count.wrapping_add(1);
@@ -206,8 +216,15 @@ impl Game {
         self.push_frames = if held & input::PUSH != 0 { self.push_frames.saturating_add(1) } else { 0 };
         // Holding the dial button for more than 13 frames opens the lab menu (08-care-ui §2.2.3).
         if self.push_frames == 14 && matches!(self.scene, Scene::Home) && self.pet.def.stage > 1 {
-            self.sfx(1, 100);
-            self.scene = self.enter_lab();
+            // Sick, hurt or dying, the lab only opens while the pet sleeps with a cold or a wound,
+            // and then only for SETTINGS (`home_cell_state` / `FUN_1006d188`, c6b bit3).
+            let asleep = self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t));
+            let sick = matches!(self.pet.cond, pet::Cond::Cold | pet::Cond::Injury | pet::Cond::Dying);
+            let settings_only = asleep && matches!(self.pet.cond, pet::Cond::Cold | pet::Cond::Injury);
+            if !sick || settings_only {
+                self.sfx(1, 100);
+                self.scene = self.enter_lab(settings_only);
+            }
         }
         // The dial and buttons wait while a layer change plays.
         let pressed = if self.change.is_some() { 0 } else { pressed };

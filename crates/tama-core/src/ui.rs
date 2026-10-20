@@ -735,6 +735,17 @@ pub(crate) fn cycle_list(idx: usize, n: usize, pressed: u8) -> usize {
     cycle(idx, n, swapped)
 }
 
+impl Game {
+    /// The number editors' keys (`numspin` 0x1002df08): A while C is held steps back, and only a
+    /// second C press 3–10 frames after letting go cancels (`key_double(4)`). Returns the presses
+    /// to step with and whether to cancel.
+    pub(crate) fn spin_keys(&self, pressed: u8) -> (u8, bool) {
+        let step = if pressed & A != 0 && self.held & C != 0 { pressed & !A | DOWN } else { pressed };
+        let since = self.frame_count.wrapping_sub(self.c_released);
+        (step, pressed & C != 0 && (3..=10).contains(&since))
+    }
+}
+
 pub(crate) fn cycle(idx: usize, n: usize, pressed: u8) -> usize {
     let n = n.max(1);
     if pressed & (A | UP) != 0 {

@@ -48,6 +48,14 @@ impl Game {
         }
     }
 
+    /// The player's birthday: the message, then the cake with the latest tama on the field.
+    pub(crate) fn birthday_event(&mut self, then: Scene) -> Scene {
+        let mate = self.pet.grazing[self.pet.field as usize].last().copied();
+        self.roles[1] = mate.and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
+        let cake = self.play(&[script::BIRTHDAY], (0, OnPress::Event(req::BIRTHDAY)), None, then);
+        Scene::Message { text: 0x102, then: Box::new(cake) }
+    }
+
     /// Start a pending calendar event when HOME allows it (`FUN_1001abd0`): checked once a minute
     /// with a fresh roll, as the original rolls each time HOME opens.
     pub(crate) fn check_events(&mut self, now: u64, r: u32) {
@@ -56,10 +64,7 @@ impl Game {
         let hour = now % 86_400 / 3600;
         let busy = [req::ONAKA, req::GOKIGEN, req::SOWASOWA].iter().any(|&q| p.is_pending(q));
         if p.is_pending(req::BIRTHDAY) && !sleeping && p.cond == Cond::Normal {
-            let mate = self.pet.grazing[self.pet.field as usize].last().copied();
-            self.roles[1] = mate.and_then(|g| self.data.character(g.id)).map(|c| c.chr_id);
-            let cake = self.play(&[script::BIRTHDAY], (0, OnPress::Event(req::BIRTHDAY)), None, Scene::Home);
-            self.scene = Scene::Message { text: 0x102, then: Box::new(cake) };
+            self.scene = self.birthday_event(Scene::Home);
             return;
         }
         // DODODO only lasts 15 minutes and does not wait for care calls.

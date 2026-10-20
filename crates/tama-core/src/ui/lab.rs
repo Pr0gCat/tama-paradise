@@ -2,6 +2,7 @@
 //! of round icons with the selected item's name on a band (docs/spec/08-care-ui.md §2.21).
 
 use super::*;
+use crate::pet::req;
 
 /// The logo shows for 20 frames (its 8-frame fade-in included).
 const SPLASH_FRAMES: u16 = 20;
@@ -18,6 +19,8 @@ mod elem {
     pub const ICONS: [u16; 6] = [0x1a0, 0x1a1, 0x1a2, 0x1a3, 0x1a4, 0x1a5];
 }
 
+/// The SETTINGS icon.
+const SETTINGS: u8 = 5;
 /// Item names and where they go (table XIP 0x10094188).
 const ITEMS: [(u16, Action); 6] = [
     (0, Action::Info),
@@ -30,8 +33,9 @@ const ITEMS: [(u16, Action); 6] = [
 
 impl Game {
     /// Long press at HOME: the logo, then the menu on INFORMATION.
-    pub(crate) fn enter_lab(&mut self) -> Scene {
-        self.lab_idx = 0;
+    pub(crate) fn enter_lab(&mut self, settings_only: bool) -> Scene {
+        self.lab_settings_only = settings_only;
+        self.lab_idx = if settings_only { SETTINGS } else { 0 };
         self.fade = FADE_FULL;
         Scene::LabSplash { t: 0 }
     }
@@ -44,6 +48,23 @@ impl Game {
 
     pub(super) fn update_lab_splash(&mut self, t: u16) -> Scene {
         if t + 1 >= SPLASH_FRAMES {
+            // A birthday or the new year waiting for an awake teen or adult plays first, then the
+            // logo again (state 100).
+            let p = &self.pet;
+            let awake = !p.last.is_some_and(|t| p.is_sleeping_at(t));
+            if !self.lab_settings_only && p.def.stage > 2 && awake {
+                if p.is_pending(req::BIRTHDAY) {
+                    return self.birthday_event(Scene::LabSplash { t: 0 });
+                }
+                if p.is_pending(req::NEWYEAR) {
+                    return self.play(
+                        &[script::HAPPY_JUMP],
+                        (0, OnPress::Event(req::NEWYEAR)),
+                        None,
+                        Scene::LabSplash { t: 0 },
+                    );
+                }
+            }
             return self.open_lab();
         }
         Scene::LabSplash { t: t + 1 }
@@ -54,7 +75,15 @@ impl Game {
         if pressed & C != 0 {
             self.sfx(2, 100);
             self.fade = FADE_FULL;
+            self.lab_settings_only = false;
             return Scene::Home;
+        }
+        if self.lab_settings_only {
+            if pressed & (B | PUSH) != 0 {
+                self.sfx(1, 100);
+                return self.open(Action::Settings);
+            }
+            return Scene::LabMenu { idx: SETTINGS };
         }
         if pressed & (B | PUSH) != 0 {
             self.sfx(1, 100);
@@ -76,7 +105,15 @@ impl Game {
         self.draw_elem(elem::BG, None, None);
         self.draw_elem(elem::BAND, None, None);
         for (i, id) in elem::ICONS.into_iter().enumerate() {
-            self.draw_elem(id, Some((i == idx as usize) as u16), None);
+            // Frame 0 normal, 1 selected, 2 greyed (only SETTINGS while the pet sleeps sick).
+            let frame = if i == idx as usize {
+                1
+            } else if self.lab_settings_only {
+                2
+            } else {
+                0
+            };
+            self.draw_elem(id, Some(frame), None);
         }
         let label = self.string(ITEMS[idx as usize].0);
         self.draw_text_elem(elem::LABEL, &label);
@@ -117,5 +154,30 @@ mod tests {
         press(&mut g, C);
         assert!(matches!(g.scene, Scene::Home));
         assert!(g.fade > 0, "HOME fades in");
+    }
+
+    #[test]
+    fn a_sick_pet_opens_the_lab_only_asleep_and_only_for_settings() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        g.pet.cond = crate::pet::Cond::Cold;
+        let night = NOON + 11 * 3600;
+        g.frame(NOON, 0);
+        for _ in 0..15 {
+            g.frame(NOON, PUSH);
+        }
+        assert!(matches!(g.scene, Scene::Home), "awake with a cold: no lab");
+        g.frame(night, 0);
+        g.scene = Scene::Home;
+        for _ in 0..15 {
+            g.frame(night, PUSH);
+        }
+        g.frame(night, 0);
+        for _ in 0..SPLASH_FRAMES {
+            g.frame(night, 0);
+        }
+        assert!(matches!(g.scene, Scene::LabMenu { idx: SETTINGS }));
+        press(&mut g, A);
+        assert!(matches!(g.scene, Scene::LabMenu { idx: SETTINGS }), "the cursor stays on SETTINGS");
     }
 }

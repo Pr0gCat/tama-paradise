@@ -24,6 +24,8 @@ pub(crate) const CLOCK_IDLE: u16 = 200;
 /// Sound level 0–3 → master volume % (`snd_set_master` 0x10030bb4).
 pub(crate) const MASTER_VOLUME: [u32; 4] = [0, 30, 60, 100];
 const YEARS: (u16, u16) = (2025, 2079);
+/// Key hint frame "−" (sprite 96).
+const MINUS_HINT: u16 = 5;
 /// DELETE texts: CONTINUE, RESET ALL, REALLY DELETE?
 const CONTINUE: u16 = 80;
 const RESET_ALL: u16 = 81;
@@ -195,6 +197,7 @@ impl Game {
     /// starts without catching up the pet (`last_tick` is set too).
     pub(super) fn update_clock(&mut self, mut vals: [u16; 6], pos: u8, boot: bool, pressed: u8) -> Scene {
         let p = pos as usize;
+        let (pressed, cancel) = self.spin_keys(pressed);
         let (lo, hi) = match p {
             0 => YEARS,
             1 => (1, 12),
@@ -208,7 +211,7 @@ impl Game {
             self.sfx(0, 100);
         }
         vals[p] = stepped;
-        if pressed & C != 0 {
+        if cancel {
             self.sfx(2, 100);
             return if p == 0 { self.clock_exit(boot, false) } else { Scene::Clock { vals, pos: pos - 1, boot } };
         }
@@ -267,8 +270,10 @@ impl Game {
         if shown(5) {
             self.draw_elem(elem::AM_PM, Some(vals[5]), None);
         }
-        for id in elem::KEYS {
-            self.draw_elem(id, None, None);
+        // The first hint turns from "+" to "−" while C is held.
+        let minus = self.held & C != 0;
+        for (i, id) in elem::KEYS.into_iter().enumerate() {
+            self.draw_elem(id, (i == 0 && minus).then_some(MINUS_HINT), None);
         }
     }
 
@@ -312,6 +317,28 @@ mod tests {
     fn press(g: &mut Game, b: u8) {
         g.frame(NOON, b);
         g.frame(NOON, 0);
+    }
+
+    /// C, let go, and C again a few frames later.
+    fn double_c(g: &mut Game) {
+        press(g, C);
+        for _ in 0..3 {
+            g.frame(NOON, 0);
+        }
+        press(g, C);
+    }
+
+    #[test]
+    fn number_editors_step_back_with_c_held() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.frame(NOON, 0);
+        g.scene = g.open(Action::DateTime);
+        press(&mut g, B); // the notice
+        press(&mut g, A); // 2026
+        g.frame(NOON, C);
+        g.frame(NOON, C | A); // A while C is held: back to 2025
+        g.frame(NOON, 0);
+        assert!(matches!(&g.scene, Scene::Clock { vals, .. } if vals[0] == 2025));
     }
 
     #[test]
@@ -402,6 +429,8 @@ mod tests {
         g.scene = g.open(Action::Continue);
         press(&mut g, B); // the notice
         press(&mut g, C);
+        assert!(matches!(g.scene, Scene::Clock { .. }), "one C does not cancel");
+        double_c(&mut g);
         assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == CONTINUE), "back to DELETE");
         press(&mut g, B);
         press(&mut g, B);

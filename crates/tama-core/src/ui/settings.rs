@@ -188,13 +188,14 @@ impl Game {
     }
 
     pub(super) fn update_birthday(&mut self, mut m: u8, mut d: u8, pos: u8, intro: bool, pressed: u8) -> Scene {
+        let (pressed, cancel) = self.spin_keys(pressed);
         if pos == 0 {
             m = cycle(m as usize - 1, 12, pressed) as u8 + 1;
         } else {
             d = cycle(d as usize - 1, MONTH_DAYS[m as usize - 1] as usize, pressed) as u8 + 1;
         }
         d = d.min(MONTH_DAYS[m as usize - 1]);
-        if pressed & C != 0 {
+        if cancel {
             match pos {
                 0 if intro => Scene::Birthday { m, d, pos, intro },
                 0 => self.edit_done(),
