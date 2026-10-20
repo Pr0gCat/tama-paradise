@@ -38,6 +38,8 @@ const EGG_ID: u16 = 1000;
 /// World point the camera centres on in the pet layer, so the field pet lands where the
 /// close-up pet stands.
 const PET_CAM: (i32, i32) = (64, 78);
+/// Past scale 3.0 (z = 16·log4 3) the pet layer plays the mouth-open column.
+const MOUTH_OPEN_ZOOM: f32 = 12.68;
 const ANCHOR: [(i32, i32); 4] = [(64, 96), (64, 100), (64, 100), (64, 96)];
 
 /// Frame step, 20 fps like the original (game-spec §2). Pet simulation runs on wall-clock seconds.
@@ -272,9 +274,13 @@ impl Game {
         }
         if matches!(self.scene, Scene::Home) && self.level == Level::Field {
             self.update_toys();
+        } else {
+            // Off the field (zoomed in, or another layer) the camera goes back to the pet.
+            self.focus = 0;
         }
         if matches!(self.scene, Scene::Home) && self.level != Level::Space {
             self.update_home(now);
+            self.update_home_column();
             self.home.tick(&self.data.motions);
             self.home.take_sounds(&mut self.sounds);
         }
@@ -345,14 +351,32 @@ impl Game {
             }
         };
         self.home_state = Some(next);
-        // The cell has its own motions; the home table's third column is the pet layer zoomed in.
-        let script = if layer == Level::Cell {
-            Some(self.cell_motion())
-        } else {
-            let slot = layer as usize;
-            self.data.home_motions.get(next.0 as usize).map(|m| if m[slot] != 0 { m[slot] } else { m[1] })
-        };
-        self.home = Node::new(script.unwrap_or(0));
+        self.home = Node::new(self.home_script(next.0, layer));
+    }
+
+    /// The HOME motion for a state on a layer (`FUN_1008467c`, table 0x1009dbd8): field, close-up,
+    /// or past 3× zoom on the pet layer the third column, the pet with its mouth open (the way
+    /// into the cell, `home_zoom_dispatch` 0x100687dc). The cell has its own motions.
+    fn home_script(&self, state: u8, layer: Level) -> u16 {
+        if layer == Level::Cell {
+            return self.cell_motion();
+        }
+        let slot = if layer == Level::Pet && self.zoom > MOUTH_OPEN_ZOOM { 2 } else { layer as usize };
+        self.data.home_motions.get(state as usize).map_or(0, |m| if m[slot] != 0 { m[slot] } else { m[1] })
+    }
+
+    /// Restart the HOME motion when its column changes with the zoom (the firmware replays only
+    /// when the script id changes).
+    fn update_home_column(&mut self) {
+        let Some((state, _)) = self.home_state else { return };
+        let layer = self.shown.unwrap_or(self.level);
+        if layer == Level::Space || layer == Level::Cell {
+            return;
+        }
+        let script = self.home_script(state, layer);
+        if script != self.home.script() {
+            self.home = Node::new(script);
+        }
     }
 
     /// Advance the pet to local wall-clock seconds `now` and redraw.

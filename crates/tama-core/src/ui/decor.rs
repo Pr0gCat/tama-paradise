@@ -135,10 +135,6 @@ impl Game {
             }
             n.tick(&self.data.motions);
         }
-        // Off the field (zoomed in, or another layer) the focus goes back to the pet.
-        if self.level != crate::Level::Field {
-            self.focus = 0;
-        }
         let pts = self.focus_points();
         let target = pts.get(self.focus).copied().unwrap_or(PET_FOCUS);
         // Half the distance a frame along the line, at most 16 px; within 1 px it stays put.
