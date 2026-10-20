@@ -121,8 +121,8 @@ mod with_rom_data {
                 seed ^= seed << 13;
                 seed ^= seed >> 17;
                 seed ^= seed << 5;
-                let gesture = if frames % 5 == 0 { [SWIPE_UP, SWIPE_DOWN, TAP, TAP][(seed >> 9) as usize % 4] } else { NONE };
-                g.frame_touch(t + frames / 20, gesture, seed % 7 == 0);
+                let gesture = if frames.is_multiple_of(5) { [SWIPE_UP, SWIPE_DOWN, TAP, TAP][(seed >> 9) as usize % 4] } else { NONE };
+                g.frame_touch(t + frames / 20, gesture, seed.is_multiple_of(7));
                 frames += 1;
             }
             assert!(frames < 20_000, "{a:?} never ended");
