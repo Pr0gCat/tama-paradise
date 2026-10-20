@@ -30,8 +30,12 @@ const CAMERA_Y: i32 = 48 * ONE;
 /// Objects spawn 256 px ahead; recycled past these bounds.
 const AHEAD: i32 = 256;
 const SLOTS: usize = 32;
-// ponytail: fades are not drawn; the ~8 frames the original waits for each one are kept.
+/// A screen fade (8 frames): after a knock-back the screen goes black, the pet is put back, and
+/// it fades in again (main callback 0xbb9–0xbbb).
 const FADE: u16 = 8;
+/// Coin sparkle sprite and life (10 in, 10 held, 10 out).
+const SPARK: u16 = 0x70f;
+const SPARK_LIFE: u8 = 30;
 const THRESHOLDS: [u32; 3] = [40, 25, 1];
 /// Pose → cloud frame (XIP 0x100938ee). Poses 0–2 make the sage bob, 3–5 show sage frame 1.
 const CLOUD_FRAME: [u16; 6] = [0, 0, 1, 1, 0, 0];
@@ -90,11 +94,23 @@ struct Obj {
     bumped: bool,
     got: bool,
     front: bool,
+    /// A collected coin fades out, 8 a frame (`FUN_10026224`).
+    alpha: u8,
 }
 
 impl Obj {
     fn new(x: i32, y: i32, kind: i16) -> Self {
-        Obj { x: x * ONE, y: y * ONE, y_prev: y * ONE, accel: 0, kind, bumped: false, got: false, front: false }
+        Obj {
+            x: x * ONE,
+            y: y * ONE,
+            y_prev: y * ONE,
+            accel: 0,
+            kind,
+            bumped: false,
+            got: false,
+            front: false,
+            alpha: 64,
+        }
     }
 
     /// `labo06_obj_scroll` 0x10026224 for one object. Returns false when it is recycled.
@@ -109,6 +125,7 @@ impl Obj {
         } else if self.got {
             self.x += delta - 3 * ONE / 2;
             self.front = true;
+            self.alpha = self.alpha.saturating_sub(8);
         } else {
             self.x += delta;
             self.y_prev = self.y;
@@ -153,6 +170,23 @@ pub struct Lab06 {
     cloud: u16,
     frame: u32,
     go: Option<Node>,
+    /// Coin sparkles (particle def #1): emitters (x, y, age) and their particles.
+    emitters: Vec<(i32, i32, u8)>,
+    sparks: Vec<Spark>,
+    seed: u32,
+}
+
+/// One sparkle: 16.16 position and speed, look, age, brightness (0.8..1.0 of full).
+#[derive(Clone, Copy, Debug)]
+struct Spark {
+    x: i32,
+    y: i32,
+    vx: i32,
+    vy: i32,
+    frame: u16,
+    palette: u8,
+    age: u8,
+    bright: u8,
 }
 
 impl Lab06 {
@@ -182,6 +216,9 @@ impl Lab06 {
             cloud: 0,
             frame: 0,
             go: None,
+            emitters: Vec::new(),
+            sparks: Vec::new(),
+            seed: 0x1234_5678,
         }
     }
 
@@ -263,6 +300,7 @@ impl Lab06 {
                 o.got = true;
                 sounds.push((0x3b, 100));
                 self.coins += 1;
+                self.emitters.push((o.x >> 16, o.y >> 16, 0));
             } else {
                 // ponytail: the bounce height is rand(4.0..6.0), only visual; fixed at 5.
                 o.bumped = true;
@@ -289,6 +327,45 @@ impl Lab06 {
             self.goal = Some(Obj::new(s + PET_X - GOAL, 104, KIND_GOAL));
             self.next += 1;
         }
+    }
+
+    fn rand(&mut self) -> u32 {
+        self.seed ^= self.seed << 13;
+        self.seed ^= self.seed >> 17;
+        self.seed ^= self.seed << 5;
+        self.seed
+    }
+
+    /// Coin sparkles: an emitter lives 30 frames and lets out a particle on its frames 1, 5, 10 …
+    /// 30, anywhere in 48×32 around it, drifting up; each glows in over 10 frames, holds 10 and
+    /// fades over 10 (particle def #1).
+    fn sparkle(&mut self) {
+        for i in 0..self.emitters.len() {
+            let (x, y, age) = self.emitters[i];
+            let age = age + 1;
+            self.emitters[i].2 = age;
+            if age == 1 || (age % 5 == 0 && age <= 30) {
+                let mut r = |n: u32| (self.rand() % n) as i32;
+                let spark = Spark {
+                    x: (x - 24 + r(48)) * ONE,
+                    y: (y - 16 + r(32)) * ONE,
+                    vx: (r(17) - 8) * ONE / 16,
+                    vy: -(12 + r(13)) * ONE / 16,
+                    frame: r(4) as u16,
+                    palette: r(4) as u8,
+                    age: 0,
+                    bright: 52 + r(13) as u8,
+                };
+                self.sparks.push(spark);
+            }
+        }
+        self.emitters.retain(|e| e.2 < 30);
+        for s in &mut self.sparks {
+            s.x += s.vx;
+            s.y += s.vy;
+            s.age += 1;
+        }
+        self.sparks.retain(|s| s.age < SPARK_LIFE);
     }
 
     fn bob(&self) -> i32 {
@@ -379,6 +456,7 @@ impl MiniGame for Lab06 {
         self.physics(held);
         let base = self.base_y;
         self.objs.retain_mut(|o| o.scroll(delta, base));
+        self.sparkle();
         if self.goal.as_mut().is_some_and(|g| !g.scroll(delta, base)) {
             self.goal = None;
         }
@@ -409,9 +487,9 @@ impl MiniGame for Lab06 {
                 k if k >= KIND_COIN => (COIN, bob),
                 _ => (ROCK, 0),
             };
-            // ponytail: a collected coin shrinks away with sparkles; it just disappears here.
-            if !o.got {
-                out.push(sprite(id, 0, o.x >> 16, (o.y >> 16) + bob + cam));
+            // A collected coin fades out as it drifts away.
+            if !o.got || o.alpha > 0 {
+                out.push(Draw { alpha: o.alpha, ..sprite(id, 0, o.x >> 16, (o.y >> 16) + bob + cam) });
             }
         };
         let objs = || self.goal.iter().chain(&self.objs);
@@ -424,6 +502,15 @@ impl MiniGame for Lab06 {
         out.push(sprite(SAGE, still as u16, x, y - 15 + if still { 0 } else { bob }));
         for o in objs().filter(|o| o.front) {
             obj(o, out);
+        }
+        for s in &self.sparks {
+            let env = match s.age {
+                0..10 => s.age as u32 * 64 / 10,
+                10..20 => 64,
+                a => (SPARK_LIFE - a) as u32 * 64 / 10,
+            };
+            let alpha = (env * s.bright as u32 / 64) as u8;
+            out.push(Draw { alpha, palette: s.palette, ..sprite(SPARK, s.frame, s.x >> 16, (s.y >> 16) + cam) });
         }
         if let Some(n) = &self.go {
             n.draws(0, 0, out);
@@ -439,6 +526,16 @@ impl MiniGame for Lab06 {
             h.push(Hud::Number { n: secs as u32, x: 120, y: 11 });
         }
         h
+    }
+
+    fn screen_fade(&self) -> Option<super::Fade> {
+        let t = |w: u16| (FADE.saturating_sub(w)) as u8;
+        match self.state {
+            3002 => Some(super::Fade { white: false, out: true, t: t(self.wait) }),
+            3004 if self.wait > FADE => Some(super::Fade { white: false, out: true, t: super::Fade::FRAMES }),
+            3004 => Some(super::Fade { white: false, out: false, t: t(self.wait) }),
+            _ => None,
+        }
     }
 
     fn result_script(&self, result: u8) -> u16 {
@@ -491,6 +588,34 @@ mod tests {
         run(&mut g, 120, 0);
         assert_eq!(g.coins, 2);
         assert_eq!(g.result(), 1);
+    }
+
+    #[test]
+    fn a_collected_coin_fades_with_sparkles() {
+        let mut g = playing(vec![[200, 120, KIND_COIN]]);
+        while g.coins == 0 {
+            run(&mut g, 1, 0);
+        }
+        run(&mut g, 1, 0);
+        assert_eq!(g.sparks.len(), 1, "the first sparkle on the next frame");
+        run(&mut g, 7, 0);
+        assert!(g.objs.iter().all(|o| !o.got || o.alpha == 0), "faded out in 8 frames");
+        run(&mut g, 30, 0);
+        assert!(g.emitters.is_empty());
+        run(&mut g, 30, 0);
+        assert!(g.sparks.is_empty(), "7 sparkles came and went");
+    }
+
+    #[test]
+    fn knockback_blacks_the_screen_out_and_back() {
+        let mut g = playing(vec![[200, 120, 0]]);
+        let mut levels = Vec::new();
+        for _ in 0..200 {
+            run(&mut g, 1, 0);
+            levels.push(g.screen_fade().map_or(0, |f| f.level()));
+        }
+        assert!(levels.contains(&32), "black");
+        assert_eq!(levels.last(), Some(&0), "clear again");
     }
 
     #[test]

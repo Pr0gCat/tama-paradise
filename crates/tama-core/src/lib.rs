@@ -567,11 +567,19 @@ impl Game {
             self.draw_warp();
             self.draw_indicator();
         }
-        // The fade covers the screen with its colour by `fade` / 32.
-        if self.fade > 0 {
-            let (f, full) = (self.fade.min(ui::FADE_FULL) as u32, ui::FADE_FULL as u32);
+        // The fade covers the screen with its colour by `fade` / 32 (a mini-game's own if deeper).
+        let mini = match &self.scene {
+            Scene::Mini { session, .. } => session.screen_fade(),
+            _ => None,
+        };
+        let (fade, colour) = match mini {
+            Some(f) if f.level() > self.fade => (f.level(), f.colour()),
+            _ => (self.fade, self.fade_colour),
+        };
+        if fade > 0 {
+            let (f, full) = (fade.min(ui::FADE_FULL) as u32, ui::FADE_FULL as u32);
             for px in self.screen.fb.as_chunks_mut::<4>().0 {
-                for (c, &to) in px[..3].iter_mut().zip(&self.fade_colour) {
+                for (c, &to) in px[..3].iter_mut().zip(&colour) {
                     *c = ((*c as u32 * (full - f) + to as u32 * f) / full) as u8;
                 }
             }

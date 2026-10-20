@@ -282,6 +282,11 @@ impl MiniGame for Together02 {
         Vec::new()
     }
 
+    /// The result fades in from black (4000 / 0xfa1).
+    fn result_fade(&self) -> Option<bool> {
+        Some(false)
+    }
+
     fn result_script(&self, result: u8) -> u16 {
         RESULTS[result as usize]
     }

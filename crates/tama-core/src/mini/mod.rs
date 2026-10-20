@@ -220,6 +220,53 @@ pub(crate) fn push_sprite(out: &mut Vec<Draw>, id: u16, frame: u16, x: i32, y: i
 }
 
 /// One mini-game. The session runs READY/GO, then `update` each frame until it returns a result.
+/// A screen fade (`fade_set` 0x1007b40c with speed 4): 4 of 32 levels a frame, so 8 frames from
+/// clear to full colour or back. `t` counts frames since it started.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Fade {
+    pub white: bool,
+    pub out: bool,
+    pub t: u8,
+}
+
+impl Fade {
+    pub const FRAMES: u8 = 8;
+
+    pub fn out(white: bool) -> Self {
+        Fade { white, out: true, t: 0 }
+    }
+
+    pub fn into(white: bool) -> Self {
+        Fade { white, out: false, t: 0 }
+    }
+
+    /// Cover 0..=32 shown this frame (the call frame already shows one step).
+    pub fn level(&self) -> u8 {
+        let k = (self.t.min(Self::FRAMES) + 1) * 4;
+        if self.out {
+            k.min(32)
+        } else {
+            32u8.saturating_sub(k)
+        }
+    }
+
+    pub fn colour(&self) -> [u8; 3] {
+        if self.white {
+            [255, 255, 255]
+        } else {
+            [0, 0, 0]
+        }
+    }
+
+    pub fn step(&mut self) {
+        self.t = self.t.saturating_add(1);
+    }
+
+    pub fn done(&self) -> bool {
+        self.t + 1 >= Self::FRAMES
+    }
+}
+
 pub trait MiniGame {
     /// One 20 fps frame (`pressed` = press edges and dial pulses, `held` = buttons down).
     /// Returns the result (0–3) when the game is over.
@@ -239,6 +286,15 @@ pub trait MiniGame {
     /// Where the result script plays (its UI element), (64,64) by default.
     fn result_at(&self) -> (i32, i32) {
         (64, 64)
+    }
+    /// A fade the game is running itself (between its opening and its field, a knock-back…).
+    fn screen_fade(&self) -> Option<Fade> {
+        None
+    }
+    /// The colour the screen fades out to and back in from between the game and its result
+    /// (white for the walking and SHIROTAMAS games, black for 3 UFOS), if any.
+    fn result_fade(&self) -> Option<bool> {
+        None
     }
 }
 
@@ -260,11 +316,26 @@ pub struct Session {
     pub event: Option<u8>,
     /// Tama Space Arcade game 0/1: pays arcade points and returns to the arcade menu.
     pub arcade: Option<u8>,
+    /// The session's own fades: in from black at the start, out to black when it ends, and
+    /// around the result. While one fades out nothing else moves (`task_pre_update` 0x100695b8).
+    pub fade: Option<Fade>,
+    /// A result waiting for the fade-out to finish, and the result left to report after it.
+    pub(crate) pending: Option<u8>,
+    pub(crate) finished: Option<u8>,
 }
 
 impl Session {
     pub fn new(game: Box<dyn MiniGame>, level: Option<usize>) -> Self {
-        Session { game, phase: Phase::Ready(Node::new(READY_GO)), level, event: None, arcade: None }
+        Session {
+            game,
+            phase: Phase::Ready(Node::new(READY_GO)),
+            level,
+            event: None,
+            arcade: None,
+            fade: Some(Fade::into(false)),
+            pending: None,
+            finished: None,
+        }
     }
 
     /// A play-together game: no READY/GO, the game plays its own opening (09-minigames-together).
@@ -290,6 +361,25 @@ impl Session {
 
     /// Returns the result once the result animation has finished.
     pub fn update(&mut self, pressed: u8, held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
+        if let Some(f) = &mut self.fade {
+            f.step();
+            let (out, done, white) = (f.out, f.done(), f.white);
+            if done {
+                self.fade = None;
+            }
+            if out {
+                if !done {
+                    return None;
+                }
+                // Faded out: the result screen fades in, or the session is over.
+                if let Some(r) = self.pending.take() {
+                    self.show_result(r);
+                    self.fade = Some(Fade::into(white));
+                    return None;
+                }
+                return self.finished.take();
+            }
+        }
         let free = self.event.is_none();
         let skip = free && pressed & (crate::input::A | crate::input::B | crate::input::PUSH) != 0;
         match &mut self.phase {
@@ -314,19 +404,39 @@ impl Session {
             }
             Phase::Play => {
                 if let Some(r) = self.game.update(pressed, held, data, sounds) {
-                    let mut node = Node::new(self.game.result_script(r));
-                    let (x, y) = self.game.result_at();
-                    node.place(x - 64, y - 64);
-                    self.phase = Phase::Result(node, r);
+                    match self.game.result_fade() {
+                        Some(white) => {
+                            self.pending = Some(r);
+                            self.fade = Some(Fade::out(white));
+                        }
+                        None => self.show_result(r),
+                    }
                 }
                 None
             }
             Phase::Result(node, r) => {
                 node.tick(&data.motions);
                 node.take_sounds(sounds);
-                (node.is_finished() || node.done || free && pressed & 3 != 0).then_some(*r)
+                if node.is_finished() || node.done || free && pressed & 3 != 0 {
+                    // Leaving: the screen fades out to black first (0x7fe0).
+                    self.finished = Some(*r);
+                    self.fade = Some(Fade::out(false));
+                }
+                None
             }
         }
+    }
+
+    fn show_result(&mut self, r: u8) {
+        let mut node = Node::new(self.game.result_script(r));
+        let (x, y) = self.game.result_at();
+        node.place(x - 64, y - 64);
+        self.phase = Phase::Result(node, r);
+    }
+
+    /// The fade to draw over everything this frame: the session's, else the game's.
+    pub fn screen_fade(&self) -> Option<Fade> {
+        self.fade.or_else(|| matches!(self.phase, Phase::Play).then(|| self.game.screen_fade()).flatten())
     }
 
     pub fn draws(&self, out: &mut Vec<Draw>) {

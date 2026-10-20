@@ -45,6 +45,8 @@ pub struct Together03 {
     look: [u16; 5],
     state: u16,
     wait: u16,
+    /// The game's own screen fade.
+    fx: Option<super::Fade>,
     frames: u16,
     time: i32,
     built_at: i32,
@@ -90,6 +92,7 @@ impl Together03 {
             look,
             state: 1000,
             wait: 0,
+            fx: None,
             frames: 0,
             time: 0,
             built_at: 0,
@@ -287,18 +290,26 @@ impl MiniGame for Together03 {
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         let turn = (pressed & UP != 0) as i32 - (pressed & DOWN != 0) as i32;
         self.dial = (self.dial + turn).rem_euclid(24);
+        if let Some(f) = &mut self.fx {
+            f.step();
+            if f.done() && !f.out {
+                self.fx = None;
+            }
+        }
         if self.wait > 0 {
             self.wait -= 1;
         } else {
             match self.state {
-                // ponytail: the white fades between opening, maze and result are not drawn.
+                // The opening fades out to white, and the maze fades in from it.
                 1000 => {
                     self.frames += 1;
                     if self.frames > OPENING_FRAMES {
                         (self.wait, self.state) = (10, 2000);
+                        self.fx = Some(super::Fade::out(true));
                     }
                 }
                 2000 => {
+                    self.fx = Some(super::Fade::into(true));
                     self.build();
                     self.state = 0x7d1;
                 }
@@ -395,6 +406,14 @@ impl MiniGame for Together03 {
             Some(n) => vec![Hud::Sprite { id: 0x80f, frame: 0, x: 120, y: 11 }, Hud::Number { n, x: 120, y: 11 }],
             None => Vec::new(),
         }
+    }
+
+    fn screen_fade(&self) -> Option<super::Fade> {
+        self.fx
+    }
+
+    fn result_fade(&self) -> Option<bool> {
+        Some(true)
     }
 
     fn result_script(&self, result: u8) -> u16 {

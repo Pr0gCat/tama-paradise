@@ -118,6 +118,8 @@ pub struct Together06 {
     /// `osewagame06_throws` 0x100804e0 sub-state and its wait.
     state: u16,
     wait: u16,
+    /// The game's own screen fade.
+    fx: Option<super::Fade>,
     throw: usize,
     zone: usize,
     /// Catches by zone.
@@ -138,6 +140,7 @@ impl Together06 {
         Together06 {
             state: 0,
             wait: 0,
+            fx: None,
             throw: 0,
             zone: 0,
             count: [0; 4],
@@ -171,13 +174,28 @@ impl Together06 {
 impl MiniGame for Together06 {
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         self.idle = if pressed != 0 { 0 } else { self.idle + 1 };
+        if let Some(f) = &mut self.fx {
+            f.step();
+            if f.done() && !f.out {
+                self.fx = None;
+            }
+        }
         if self.wait > 0 {
             self.wait -= 1;
         } else {
             match self.state {
                 // Opening (state 1000.0–1): the pet shows a throw.
-                // ponytail: the fades between the opening, the throws and the result are not drawn.
-                0 if self.pet.is_finished() => self.state = 1000,
+                // The opening fades out to black and the throws fade in (1000.1, 2000.0).
+                0 if self.pet.is_finished() => {
+                    self.fx = Some(super::Fade::out(false));
+                    self.wait = super::Fade::FRAMES as u16;
+                    self.state = 999;
+                }
+                999 => {
+                    self.fx = Some(super::Fade::into(false));
+                    self.wait = super::Fade::FRAMES as u16;
+                    self.state = 1000;
+                }
                 1000 => {
                     self.pet = Self::play(IDLE);
                     self.gauge.reset(false);
@@ -257,6 +275,10 @@ impl MiniGame for Together06 {
 
     fn hud(&self) -> Vec<Hud> {
         Vec::new()
+    }
+
+    fn screen_fade(&self) -> Option<super::Fade> {
+        self.fx
     }
 
     fn result_script(&self, result: u8) -> u16 {

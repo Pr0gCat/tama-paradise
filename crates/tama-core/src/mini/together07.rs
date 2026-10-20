@@ -113,6 +113,8 @@ pub struct Together07 {
     /// `osewagame07_tick` 0x1005a9b4 state and its wait.
     state: u16,
     wait: u16,
+    /// The game's own screen fade.
+    fade_fx: Option<super::Fade>,
     time: i32,
     t0: i32,
     x: i32,
@@ -160,6 +162,7 @@ impl Together07 {
             look: LOOKS[(field as usize).min(2)],
             state: 0,
             wait: 0,
+            fade_fx: None,
             time: 0,
             t0: 0,
             x: 0,
@@ -463,12 +466,24 @@ impl MiniGame for Together07 {
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         let turn = (pressed & UP != 0) as i32 - (pressed & DOWN != 0) as i32;
         self.dial = (self.dial + turn).rem_euclid(24);
+        if let Some(f) = &mut self.fade_fx {
+            f.step();
+            if f.done() && !f.out {
+                self.fade_fx = None;
+            }
+        }
         if self.wait > 0 {
             self.wait -= 1;
         } else {
             match self.state {
-                // ponytail: the white fades between opening, field and result are not drawn.
+                // The opening fades out to white (0x3e9), the field is built under it and fades in.
                 0 if self.pet.is_finished() => {
+                    self.fade_fx = Some(super::Fade::out(true));
+                    self.wait = 10;
+                    self.state = 0x3e9;
+                }
+                0x3e9 => {
+                    self.fade_fx = Some(super::Fade::into(true));
                     self.build();
                     self.t0 = self.time;
                     self.state = 0x7d1;
@@ -604,6 +619,14 @@ impl MiniGame for Together07 {
         h
     }
 
+    fn screen_fade(&self) -> Option<super::Fade> {
+        self.fade_fx
+    }
+
+    fn result_fade(&self) -> Option<bool> {
+        Some(true)
+    }
+
     fn result_script(&self, result: u8) -> u16 {
         RESULTS[result as usize]
     }
@@ -645,7 +668,7 @@ mod tests {
     /// Past the opening and the 1 s hold: walking.
     fn walking(objs: &[(usize, usize, u8)]) -> Together07 {
         let mut g = Together07::new(field(objs), 1);
-        run(&mut g, 30, 0);
+        run(&mut g, 41, 0); // the opening, 10 frames of white, the 1 s hold
         assert_eq!((g.state, g.v), (0xbba, SPEED));
         g
     }
