@@ -41,10 +41,11 @@ impl Game {
             let after = if r >= 10 { self.credits(Scene::Home) } else { Scene::Home };
             let then = Scene::Message { text, then: Box::new(after) };
             self.scene = self.play(&[script::RANK_UP], (0, OnPress::None), None, then);
-        } else if !self.pet.claim_missions().is_empty() {
-            // Mission clear jingle (PSID_INFO_MISSION `FUN_10048bd0`).
-            self.sfx(SND_MISSION_CLEAR, 100);
-            self.scene = Scene::Message { text: 0xa8, then: Box::new(Scene::Home) };
+        } else {
+            let queue = self.pet.claim_missions();
+            if !queue.is_empty() {
+                self.scene = Scene::MissionClear { queue, reward: false, t: 0 };
+            }
         }
     }
 

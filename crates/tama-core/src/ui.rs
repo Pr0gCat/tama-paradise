@@ -349,6 +349,13 @@ pub(crate) enum Scene {
         digits: [u8; 8],
         pos: usize,
     },
+    /// MISSION COMPLETE from HOME (`FUN_10048bd0` states 4000 / 5000): each new mission's page,
+    /// then its reward page (+1000); `t` = frames on the page.
+    MissionClear {
+        queue: Vec<usize>,
+        reward: bool,
+        t: u16,
+    },
     /// MISSION (PSID_INFO_MISSION 0x39): `view` 0 = overview (cleared / 22), 1 = 2×2 icon list,
     /// 2 = one mission; `idx` = mission, `t` = frames on the page (ticker, idle exit).
     Missions {
@@ -671,6 +678,7 @@ impl Game {
             Scene::Breed { cands, idx } => self.update_breed(cands, idx, pressed),
             Scene::Graves { idx, back } => self.update_graves(idx, back, pressed),
             Scene::Missions { view, idx, t } => self.update_missions(view, idx, t, pressed),
+            Scene::MissionClear { queue, reward, t } => self.update_mission_clear(queue, reward, t, pressed),
             Scene::Mini { session, lab } => self.update_mini(session, lab, pressed),
             // Settings (ui/settings.rs).
             Scene::PlanetName { chars, pos, intro } => self.update_planet_name(chars, pos, intro, pressed),
@@ -736,6 +744,7 @@ impl Scene {
                 | Scene::Ask { .. }
                 | Scene::Code { .. }
                 | Scene::Missions { .. }
+                | Scene::MissionClear { .. }
                 | Scene::UserInfo { .. }
                 | Scene::Breed { .. }
                 | Scene::Graves { .. }

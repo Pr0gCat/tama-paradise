@@ -588,6 +588,65 @@ impl Game {
     }
 
     /// One mission: description, progress / target, "CLEARED" when paid out.
+    /// Ticker text (`FUN_100661a8`): from x 128 leftwards 2 px a frame, a second copy w + 48
+    /// behind, looping; the element gives the line and font.
+    fn draw_ticker(&mut self, id: u16, text: u16, t: u16) {
+        let text: Vec<u16> = self.string(text).into_iter().filter(|&c| c != crate::screen::NEWLINE).collect();
+        let w = crate::screen::Screen::text_width(&self.data.fonts, &text);
+        let lap = w + 48;
+        let left = 128 - (2 * t as i32) % lap;
+        for x in [left, left + lap] {
+            self.draw_text_elem_at(id, &text, x + w / 2, 64, None);
+        }
+    }
+
+    /// MISSION COMPLETE (elements 0x219–0x222) and its reward page (0x223–0x22a).
+    pub(super) fn draw_mission_clear(&mut self, i: usize, reward: bool, t: u16) {
+        use crate::progress::{REWARD, TARGETS, TEXT_FIRST};
+        if reward {
+            for id in [0x223, 0x224, 0x226, 0x22a, 0x229, 0x228] {
+                self.draw_elem(id, None, None);
+            }
+            self.draw_number_elem(0x225, self.pet.points);
+            self.draw_number_elem(0x227, REWARD);
+            return;
+        }
+        for id in [0x219, 0x21b] {
+            self.draw_elem(id, None, None);
+        }
+        let e = self.ui_elem(0x21c);
+        self.screen.blit(157 + i as u16, 0, e.x as i32, e.y as i32, 64, false, None);
+        for id in [0x21e, 0x222, 0x220] {
+            self.draw_elem(id, None, None);
+        }
+        let s = self.string(168);
+        self.draw_text_elem(0x21a, &s);
+        self.draw_ticker(0x21d, TEXT_FIRST + i as u16, t);
+        let (have, need) = (self.pet.mission_progress(i), TARGETS[i]);
+        self.draw_number_elem(0x21f, have.min(need));
+        self.draw_number_elem(0x221, need);
+    }
+
+    /// MISSION COMPLETE: its jingle after 2 frames; a key or 600 frames → the reward page (paid,
+    /// sound 0x21); a key there → the next mission, or HOME.
+    pub(super) fn update_mission_clear(&mut self, mut queue: Vec<usize>, reward: bool, t: u16, pressed: u8) -> Scene {
+        let key = super::pressed_any(pressed);
+        if !reward {
+            if t == 2 {
+                self.sfx(super::SND_MISSION_CLEAR, 100);
+            }
+            if key || t >= 600 {
+                self.pet.pay_mission();
+                self.sfx(0x21, 100);
+                return Scene::MissionClear { queue, reward: true, t: 0 };
+            }
+        } else if key {
+            queue.remove(0);
+            return if queue.is_empty() { Scene::Home } else { Scene::MissionClear { queue, reward: false, t: 0 } };
+        }
+        Scene::MissionClear { queue, reward, t: t.saturating_add(1) }
+    }
+
     /// MISSION pages (UI elements 0x1f1–0x218, `FUN_10048bd0`).
     pub(super) fn draw_mission(&mut self, view: u8, i: usize, t: u16) {
         use crate::progress::{REWARD, TARGETS, TEXT_FIRST};
@@ -651,16 +710,7 @@ impl Game {
                     let e = self.ui_elem(id);
                     self.screen.blit(super::ARROWS, k as u16, e.x as i32, e.y as i32, 64, false, None);
                 }
-                // Ticker (`FUN_100661a8`): from x 128 leftwards 2 px a frame, a second copy w + 48
-                // behind, looping.
-                let text: Vec<u16> =
-                    self.string(TEXT_FIRST + i as u16).into_iter().filter(|&c| c != crate::screen::NEWLINE).collect();
-                let w = crate::screen::Screen::text_width(&self.data.fonts, &text);
-                let lap = w + 48;
-                let left = 128 - (2 * t as i32) % lap;
-                for x in [left, left + lap] {
-                    self.draw_text_elem_at(0x20d, &text, x + w / 2, 64, None);
-                }
+                self.draw_ticker(0x20d, TEXT_FIRST + i as u16, t);
                 let (have, need) = (self.pet.mission_progress(i), TARGETS[i]);
                 self.draw_number_elem(0x20f, have.min(need));
                 self.draw_number_elem(0x211, need);
@@ -1120,5 +1170,26 @@ mod tests {
         press(&mut g, crate::input::C);
         press(&mut g, crate::input::C);
         assert!(matches!(g.scene, super::Scene::Missions { view: 0, .. }));
+    }
+
+    #[test]
+    fn a_new_mission_is_announced_then_paid() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.missions[crate::progress::m::MEALS] = 500;
+        g.pet.missions[crate::progress::m::SNACKS] = 500;
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        assert!(matches!(&g.scene, super::Scene::MissionClear { queue, reward: false, .. } if queue.len() == 2));
+        let points = g.pet.points;
+        g.frame(t, crate::input::B);
+        g.frame(t, 0);
+        assert!(matches!(g.scene, super::Scene::MissionClear { reward: true, .. }));
+        assert_eq!(g.pet.points, points + 1000);
+        for _ in 0..3 {
+            g.frame(t, crate::input::B);
+            g.frame(t, 0);
+        }
+        assert_eq!(g.pet.points, points + 2000);
+        assert!(!matches!(g.scene, super::Scene::MissionClear { .. }));
     }
 }

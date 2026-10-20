@@ -294,6 +294,10 @@ impl Game {
                 self.draw_code(digits, *pos);
                 true
             }
+            Scene::MissionClear { queue, reward, t } => {
+                self.draw_mission_clear(queue[0], *reward, *t);
+                true
+            }
             Scene::Missions { view, idx, t } => {
                 self.draw_mission(*view, *idx, *t);
                 true

@@ -58,15 +58,19 @@ impl Pet {
         }
     }
 
-    /// Newly completed missions: marks and pays them (+1000 each, `FUN_10025368` / `FUN_10048bd0`).
+    /// Newly completed missions, marked as achieved (`FUN_10025368`); each is paid on its reward
+    /// page (`pay_mission`, `FUN_10048bd0` state 5000).
     pub fn claim_missions(&mut self) -> Vec<usize> {
         let new: Vec<usize> =
             (0..22).filter(|&i| self.claimed & 1 << i == 0 && self.mission_progress(i) >= TARGETS[i]).collect();
         for &i in &new {
             self.claimed |= 1 << i;
-            self.earn(REWARD);
         }
         new
+    }
+
+    pub fn pay_mission(&mut self) {
+        self.earn(REWARD);
     }
 
     /// Planet rank +1 (old value kept for the rank-up screen).
@@ -96,6 +100,7 @@ mod tests {
         p.missions[m::MEALS] = 499;
         p.feed(&Item { id: 5000, kind: KIND_MEAL, onaka: 1, ..Default::default() });
         assert_eq!(p.claim_missions(), vec![m::MEALS]);
+        p.pay_mission();
         assert_eq!(p.points, 1000);
         assert!(p.claim_missions().is_empty());
         assert_eq!(p.mission_progress(m::EARNED), 1000, "earned points count too");
