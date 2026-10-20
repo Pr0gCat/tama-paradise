@@ -32,19 +32,22 @@
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
   .row { display: flex; gap: 8px; }
-  dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px); }
-  dialog h2 { margin: 0 0 8px; font: 600 18px system-ui; }
+  dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px);
+           max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px); overflow: auto;
+           margin: max(8px, env(safe-area-inset-top)) auto auto; }
+  dialog h2 { margin: 0 0 8px; font: 600 18px system-ui; outline: none; }
   dialog label { display: block; margin: 8px 0 4px; font: 14px system-ui; }
   dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
-    font: 14px ui-monospace, monospace; background: #1c1c22; color: var(--fg); border: 1px solid #555; border-radius: 6px; }
+    /* 16px: iOS zooms the page into any focused field set smaller */
+    font: 16px ui-monospace, monospace; background: #1c1c22; color: var(--fg); border: 1px solid #555; border-radius: 6px; }
   dialog .check input { display: inline; width: auto; }
   canvas.qr { display: block; width: 168px; height: 168px; margin: 8px auto; image-rendering: pixelated;
               border-radius: 4px; }
   canvas.qr[hidden] { display: none; }
   dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
   .inline { display: flex; gap: 8px; align-items: center; }
-  #scanner { position: fixed; inset: 0; z-index: 10; background: #000; display: flex; flex-direction: column;
-             align-items: center; justify-content: center; gap: 16px; }
+  #scanner { position: fixed; inset: 0; height: 100lvh; z-index: 10; background: #000; display: flex;
+             flex-direction: column; align-items: center; justify-content: center; gap: 16px; font: 16px system-ui; }
   #scanner[hidden] { display: none; }
   #scanner video { width: min(92vw, 70dvh); aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
   /* phone held sideways: the screen on the left, the controls beside it */
@@ -69,7 +72,7 @@
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <dialog id="friends">
   <form method="dialog">
-    <h2>Friends</h2>
+    <h2 tabindex="-1" autofocus>Friends</h2>
     <label>Your friend code<input id="my-code" readonly></label>
     <canvas id="my-qr" class="qr" aria-label="QR code of your friend code"></canvas>
     <button type="button" id="copy-code" class="small">Copy</button>
