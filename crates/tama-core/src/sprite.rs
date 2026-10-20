@@ -1,13 +1,15 @@
 //! Sprite format shared by tama-extract (writer) and the renderer (reader).
 //!
 //! "TSP1" little-endian: u16 width, u16 height, u16 frames, u8 palette sets, u8 bits per index (colours = 1 << bits),
-//! u8 flags (bit0 = transparency on), u8 transparent index, then sets × colours × u16 RGB565,
+//! u8 flags (bit0 = transparency on, bit1 = origin follows), u8 transparent index, [i8 origin x,
+//! i8 origin y], then sets × colours × u16 RGB565,
 //! then frames × width × height u8 palette indices. Files are gzipped on disk.
 
 pub const MAGIC: &[u8; 4] = b"TSP1";
 pub const TRANSPARENT: u8 = 1;
+pub const ORIGIN: u8 = 2;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Sprite {
     pub w: u16,
     pub h: u16,
@@ -21,6 +23,9 @@ pub struct Sprite {
     pub palettes: Vec<Vec<u16>>,
     /// frames × h × w indices.
     pub pixels: Vec<u8>,
+    /// Where the sprite is drawn relative to its position (sprite record bytes 10/11): added to
+    /// the centre, x mirrored when flipped.
+    pub origin: (i8, i8),
 }
 
 impl Sprite {
@@ -29,7 +34,12 @@ impl Sprite {
         for v in [self.w, self.h, self.frames] {
             b.extend_from_slice(&v.to_le_bytes());
         }
-        b.extend_from_slice(&[self.palettes.len() as u8, self.bits, self.transparent as u8 * TRANSPARENT, self.key]);
+        let origin = self.origin != (0, 0);
+        let flags = (self.transparent as u8 * TRANSPARENT) | (origin as u8 * ORIGIN);
+        b.extend_from_slice(&[self.palettes.len() as u8, self.bits, flags, self.key]);
+        if origin {
+            b.extend_from_slice(&[self.origin.0 as u8, self.origin.1 as u8]);
+        }
         for c in self.palettes.iter().flatten() {
             b.extend_from_slice(&c.to_le_bytes());
         }
@@ -46,6 +56,12 @@ impl Sprite {
         let (sets, bits, flags, key) = (*b.get(10)? as usize, *b.get(11)?, *b.get(12)?, *b.get(13)?);
         let colors = 1usize << bits;
         let mut o = 14;
+        let origin = if flags & ORIGIN != 0 {
+            o += 2;
+            (*b.get(14)? as i8, *b.get(15)? as i8)
+        } else {
+            (0, 0)
+        };
         let mut palettes = Vec::with_capacity(sets);
         for _ in 0..sets {
             palettes.push((0..colors).map(|i| u16_at(o + i * 2)).collect::<Option<Vec<_>>>()?);
@@ -53,7 +69,7 @@ impl Sprite {
         }
         let n = frames as usize * w as usize * h as usize;
         let pixels = b.get(o..o + n)?.to_vec();
-        Some(Sprite { w, h, frames, bits, transparent: flags & TRANSPARENT != 0, key, palettes, pixels })
+        Some(Sprite { w, h, frames, bits, transparent: flags & TRANSPARENT != 0, key, palettes, pixels, origin })
     }
 
     /// RGBA of index `i` in palette `set` (falls back to set 0).
@@ -82,8 +98,11 @@ mod tests {
             key: 0,
             palettes: vec![vec![0x07e0, 0, 0xffff, 0xf800]],
             pixels: vec![0, 1, 2, 3],
+            origin: (3, -16),
         };
         assert_eq!(Sprite::from_bytes(&s.to_bytes()), Some(s.clone()));
+        let plain = Sprite { origin: (0, 0), ..s.clone() };
+        assert_eq!(Sprite::from_bytes(&plain.to_bytes()), Some(plain));
         assert_eq!(s.rgba(0, 0), [0; 4]);
         assert_eq!(s.rgba(0, 3), [255, 0, 0, 255]);
     }

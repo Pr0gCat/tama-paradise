@@ -82,6 +82,8 @@ impl Screen {
             }
         }
         let (w, h) = (s.w as i32, s.h as i32);
+        // The sprite's own origin (record bytes 10/11), mirrored with the sprite.
+        let (cx, cy) = (cx + if flip { -s.origin.0 } else { s.origin.0 } as i32, cy + s.origin.1 as i32);
         let f = (frame % s.frames.max(1)) as usize * (w * h) as usize;
         // A palette borrowed from another sprite (pet colours, sprite 206) only defines entries
         // 0–7; the body keeps its own 8–15 (blush, shading).
@@ -305,6 +307,7 @@ mod tests {
             key: 0,
             palettes: vec![vec![0xffff; 4]],
             pixels: vec![0; 2 * 2 * 12],
+            origin: (0, 0),
         };
         s.sprites.insert(900, sprite);
         let b = TextBox { font: 2, h: 2, v: 1, space: 0, leading: 0, palette: 0 };
@@ -338,6 +341,7 @@ mod tests {
             key: 0,
             palettes: vec![pal],
             pixels,
+            origin: (0, 0),
         };
         let mut body_pal = vec![0; 16];
         body_pal[2] = 0x001f; // blue body

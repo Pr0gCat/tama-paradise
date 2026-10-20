@@ -280,6 +280,7 @@ fn decode_sprite(rec: &[u8]) -> Option<Sprite> {
         key: u16_at(rec, 16) as u8,
         palettes,
         pixels,
+        origin: (rec[10] as i8, rec[11] as i8),
     })
 }
 
