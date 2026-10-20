@@ -624,6 +624,7 @@ impl Game {
     }
 
     fn render(&mut self) {
+        self.screen.evict();
         self.screen.wanted.clear();
         self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [0, 0, 0]);
         if !self.render_scene() {
