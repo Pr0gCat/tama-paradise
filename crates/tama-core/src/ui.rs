@@ -103,6 +103,9 @@ const SND_FIRST_START: u16 = 60;
 const SND_HUNT_TRIP: u16 = 80;
 /// String insert code for the planet name.
 const PLANET_NAME: u16 = 0xF003;
+/// Texts the remake adds (no firmware string): ids from 0xE000, spelled in the font's A–Z / 0–9.
+pub(crate) const REMAKE_TEXT: u16 = 0xE000;
+const REMAKE_TEXTS: [&str; 2] = ["TOUCH ON", "TOUCH OFF"];
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
 const TABLE: u16 = 0x786;
@@ -211,6 +214,8 @@ pub(crate) enum Action {
     DateTime,
     DateOrder,
     SetDateOrder(u8),
+    /// The remake's touch controls on the screen (swipe = dial, tap = dial press).
+    ToggleTouch,
     /// DELETE (cold start with a save): CONTINUE (set the clock), RESET ALL (asks first).
     Delete,
     Continue,
@@ -519,6 +524,16 @@ impl Game {
     }
 
     pub(crate) fn string(&self, id: u16) -> Vec<u16> {
+        if let Some(text) = id.checked_sub(REMAKE_TEXT).and_then(|i| REMAKE_TEXTS.get(i as usize)) {
+            return text
+                .bytes()
+                .map(|b| match b {
+                    b'A'..=b'Z' => 318 + (b - b'A') as u16,
+                    b'0'..=b'9' => DIGIT_0 + (b - b'0') as u16,
+                    _ => crate::screen::SPACE,
+                })
+                .collect();
+        }
         let s = self
             .data
             .strings

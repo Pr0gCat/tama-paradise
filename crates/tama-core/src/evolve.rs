@@ -256,6 +256,7 @@ impl Pet {
         fresh.brightness = self.brightness;
         fresh.date_order = self.date_order;
         fresh.clock_offset = self.clock_offset;
+        fresh.touch = self.touch;
         fresh.toys = self.toys;
         fresh.equip = self.equip;
         fresh.travel_toggle = self.travel_toggle;

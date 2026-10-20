@@ -61,6 +61,11 @@ impl Tama {
         self.0.begin_delete();
     }
 
+    /// SETTINGS → TOUCH: swipe / tap on the screen turns and presses the dial.
+    pub fn touch(&self) -> bool {
+        self.0.touch()
+    }
+
     /// SETTINGS → BRIGHTNESS level 0–3 (the original's backlight).
     pub fn brightness(&self) -> u8 {
         self.0.brightness()

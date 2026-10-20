@@ -71,7 +71,9 @@
 </dialog>
 <pre id="s"></pre>
 <script type="module">
-  import init, { Tama, qr } from "./pkg/tama_web.js";
+  // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
+  const glue = await (await fetch("./pkg/tama_web.js", { cache: "no-cache" })).text();
+  const { default: init, Tama, qr } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
   // Revalidate the engine and data on every load (cheap 304s) so a rebuilt game is never stale.
   await init({ module_or_path: fetch("./pkg/tama_web_bg.wasm", { cache: "no-cache" }) });
   const params = new URLSearchParams(location.search);
@@ -129,7 +131,11 @@
   }
   // Touch screen: swipe sideways turns the dial (one step per 24 px), a tap presses it.
   let swipeX = null, swiped = false;
-  c.onpointerdown = e => { c.setPointerCapture(e.pointerId); swipeX = e.clientX; swiped = false; };
+  // Off in SETTINGS → TOUCH OFF.
+  c.onpointerdown = e => {
+    if (!game.touch()) return;
+    c.setPointerCapture(e.pointerId); swipeX = e.clientX; swiped = false;
+  };
   c.onpointermove = e => {
     if (swipeX === null) return;
     const dx = e.clientX - swipeX;

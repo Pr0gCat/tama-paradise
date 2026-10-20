@@ -234,6 +234,9 @@ pub struct Pet {
     pub date_order: u8,
     #[serde(default)]
     pub clock_offset: i64,
+    /// The remake's touch controls on the screen.
+    #[serde(default = "yes")]
+    pub touch: bool,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -265,6 +268,10 @@ pub const NO_COLOR: u8 = 0x1f;
 
 fn english() -> u8 {
     1
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn one() -> u8 {
@@ -346,6 +353,7 @@ impl Pet {
             brightness: 1,
             date_order: 0,
             clock_offset: 0,
+            touch: true,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,

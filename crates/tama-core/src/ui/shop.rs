@@ -105,6 +105,7 @@ impl Game {
             | Action::DateTime
             | Action::DateOrder
             | Action::SetDateOrder(_)
+            | Action::ToggleTouch
             | Action::Delete
             | Action::Continue
             | Action::ResetAllAsk

@@ -278,7 +278,8 @@ mod tests {
             g.frame(86_400 * 3 + 12 * 3600, b);
             g.frame(86_400 * 3 + 12 * 3600, 0);
         };
-        press(&mut g, DOWN); // the language entry (last)
+        press(&mut g, DOWN); // TOUCH (last)
+        press(&mut g, DOWN); // the language entry
         press(&mut g, B);
         assert!(matches!(&g.scene, Scene::Menu { idx: 1, .. }), "current language selected");
         press(&mut g, DOWN); // にほんご

@@ -365,6 +365,11 @@ impl Game {
         self.scene = self.open(ui::Action::Delete);
     }
 
+    /// Whether the platform's touch controls on the screen are on (SETTINGS, remake only).
+    pub fn touch(&self) -> bool {
+        self.pet.touch
+    }
+
     /// BRIGHTNESS level 0–3 (the original's backlight), for the platform to apply.
     pub fn brightness(&self) -> u8 {
         self.pet.brightness

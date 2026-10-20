@@ -67,6 +67,10 @@ impl Game {
     pub(super) fn open_system(&mut self, a: Action) -> Scene {
         match a {
             Action::Settings => self.settings_menu(0),
+            Action::ToggleTouch => {
+                self.pet.touch = !self.pet.touch;
+                self.settings_menu(4)
+            }
             Action::SettingsTime => self.time_menu(0),
             Action::Volume => Scene::Level { bright: false, level: self.pet.volume, idle: 0 },
             Action::Brightness => Scene::Level { bright: true, level: self.pet.brightness, idle: 0 },
@@ -117,13 +121,14 @@ impl Game {
         }
     }
 
-    /// SETTINGS: SOUND, BRIGHTNESS, TIME; the remake adds the language at the end.
+    /// SETTINGS: SOUND, BRIGHTNESS, TIME; the remake adds the language and touch controls.
     fn settings_menu(&self, idx: usize) -> Scene {
         let items = vec![
             (SOUND, Some(Action::Volume)),
             (BRIGHTNESS, Some(Action::Brightness)),
             (TIME, Some(Action::SettingsTime)),
             (LANGUAGE_NAMES + self.pet.lang as u16, Some(Action::Language)),
+            (REMAKE_TEXT + !self.pet.touch as u16, Some(Action::ToggleTouch)),
         ];
         Scene::Menu { items, idx, back: Some(Action::Lab) }
     }
@@ -386,6 +391,20 @@ mod tests {
             press(&mut g, B);
         }
         assert!(matches!(g.scene, Scene::Home));
+    }
+
+    #[test]
+    fn touch_toggles_in_settings() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        assert!(g.touch(), "on by default");
+        g.scene = g.open(Action::Settings);
+        press(&mut g, DOWN); // TOUCH ON (last)
+        press(&mut g, B);
+        assert!(!g.touch());
+        assert!(matches!(&g.scene, Scene::Menu { idx: 4, items, .. } if items[4].0 == REMAKE_TEXT + 1), "TOUCH OFF");
+        assert_eq!(g.string(REMAKE_TEXT + 1)[..2], [337, 332], "T, O");
+        press(&mut g, B);
+        assert!(g.touch());
     }
 
     #[test]
