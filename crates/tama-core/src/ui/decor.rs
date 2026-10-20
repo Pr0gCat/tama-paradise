@@ -29,6 +29,8 @@ mod t {
 
 /// World point the camera centres on when the pet is focused (keeps the classic field view).
 pub(crate) const PET_FOCUS: (i32, i32) = (64, 64);
+/// Where the pet stands on the field when the camera is on `PET_FOCUS` (lib.rs ANCHOR[Field]).
+const FIELD_ANCHOR: (i32, i32) = (64, 96);
 /// Placement markers: small 32×32, large 64×64.
 const MARKER: [u16; 2] = [0x455, 0x456];
 const STARFIELD: u16 = 0x450;
@@ -65,23 +67,35 @@ impl Game {
     fn focus_points(&self) -> Vec<(i32, i32)> {
         let (f, a) = (self.pet.field, self.pet.in_area2 as u8);
         let toys = &self.pet.toys[f as usize][a as usize];
-        let mut pts = vec![PET_FOCUS];
+        // The pet is followed as it moves (`home_camera_update` 0x100793fc: its screen position
+        // refreshed each frame), from where it was last drawn on the field.
+        let pet = self
+            .draws
+            .iter()
+            .find(|d| matches!(d.look, crate::motion::Look::Chr { chr: crate::motion::PET, .. }))
+            .map_or(PET_FOCUS, |d| (PET_FOCUS.0 + d.x - FIELD_ANCHOR.0, PET_FOCUS.1 + d.y - FIELD_ANCHOR.1));
+        let mut pts = vec![pet];
         pts.extend((0..6).filter(|&s| toys[s] != 0).map(|s| self.slot_pos(f, a, s)).take(4));
         pts
     }
 
     /// C on the field (`home_field_tama_state`): next focus; after the last one, the expansion area.
+    /// Ignored while the camera is still travelling (`FUN_10005ea8(4)`, `+0xba` bit1).
     pub(crate) fn field_c(&mut self) {
+        if self.cam_moving {
+            return;
+        }
         let n = self.focus_points().len();
         let unlocked = self.pet.areas & 1 << self.pet.field != 0;
         if n >= 2 {
             self.focus = (self.focus + 1) % n;
+        }
+        if n >= 2 || unlocked {
             self.sfx(0, 100);
         }
         if (n < 2 || self.focus == 0) && unlocked {
             self.focus = 0;
             self.pet.in_area2 = !self.pet.in_area2;
-            self.sfx(9, 100);
         }
     }
 
@@ -121,10 +135,20 @@ impl Game {
             }
             n.tick(&self.data.motions);
         }
+        // Off the field (zoomed in, or another layer) the focus goes back to the pet.
+        if self.level != crate::Level::Field {
+            self.focus = 0;
+        }
         let pts = self.focus_points();
         let target = pts.get(self.focus).copied().unwrap_or(PET_FOCUS);
-        let step = |c: i32, t: i32| c + ((t - c) / 2).clamp(-16, 16) + (t - c).signum() * ((t - c).abs() == 1) as i32;
-        self.cam = (step(self.cam.0, target.0), step(self.cam.1, target.1));
+        // Half the distance a frame along the line, at most 16 px; within 1 px it stays put.
+        let (dx, dy) = ((target.0 - self.cam.0) as f32, (target.1 - self.cam.1) as f32);
+        let d = dx.hypot(dy);
+        if d > 1.0 {
+            let k = (d / 2.0).min(16.0) / d;
+            self.cam = (self.cam.0 + (dx * k).round() as i32, self.cam.1 + (dy * k).round() as i32);
+        }
+        self.cam_moving = d > 4.0;
     }
 
     pub(crate) fn draw_toys(&mut self) {
