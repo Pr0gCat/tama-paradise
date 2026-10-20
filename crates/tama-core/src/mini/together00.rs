@@ -199,6 +199,7 @@ impl MiniGame for Together00 {
                     alpha,
                     palette: 0,
                     scale: 256,
+                    rot: 0,
                 });
             }
         }

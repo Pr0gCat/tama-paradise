@@ -85,6 +85,8 @@ pub struct Node {
     alpha: Tween,
     /// 256 = 1.0.
     scale: Tween,
+    /// 256 = a full turn (script value >> 4).
+    rot: Tween,
     pub flip: bool,
     pub visible: bool,
     /// Palette set of the node's sprite (op 0x03, or set by game code).
@@ -112,6 +114,8 @@ pub struct Draw {
     pub palette: u8,
     /// Size about (x, y), 256 = 1.0 (ops 0x07 / 0x09).
     pub scale: u16,
+    /// Turn about (x, y), 256 = a full turn clockwise (ops 0x08 / 0x09).
+    pub rot: i16,
 }
 
 impl Node {
@@ -127,6 +131,7 @@ impl Node {
             y: Tween::default(),
             alpha: Tween { from: 256, to: 256, ..Tween::default() },
             scale: Tween { from: 256, to: 256, ..Tween::default() },
+            rot: Tween::default(),
             flip: false,
             visible: true,
             palette: 0,
@@ -153,6 +158,7 @@ impl Node {
         self.y.step();
         self.alpha.step();
         self.scale.step();
+        self.rot.step();
         if self.done || self.paused || self.wait == KEEP as u16 {
             return;
         }
@@ -213,7 +219,11 @@ impl Node {
                 self.y.start(KEEP, d, e, b);
             }
             0x07 => self.scale.start(c, d, e, b),
-            0x09 => self.scale.start(KEEP, c, e, b),
+            0x08 => self.rot.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e, b),
+            0x09 => {
+                self.scale.start(KEEP, c, e, b);
+                self.rot.start(KEEP, d >> 4, e, b);
+            }
             0x0a | 0x0c => self.alpha.start(if c == KEEP { KEEP } else { c >> 4 }, d >> 4, e, b),
             0x0d => self.flip = c & 1 != 0,
             0x0e => self.sounds.push((a as u16, c.clamp(0, 100) as u8)),
@@ -286,7 +296,8 @@ impl Node {
         if self.visible && self.look != Look::None {
             let alpha = (self.alpha.value().clamp(0, 256) / 4) as u8;
             let scale = self.scale.value().clamp(0, u16::MAX as i32) as u16;
-            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha, palette: self.palette, scale });
+            let rot = self.rot.value() as i16;
+            out.push(Draw { look: self.look, x: px, y: py, flip: self.flip, alpha, palette: self.palette, scale, rot });
         }
         for c in kids.iter().filter(|c| c.z >= 0) {
             c.draws_tinted(px, py, self.palette, out);

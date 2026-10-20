@@ -18,6 +18,8 @@ pub struct Screen {
     pub off: (i32, i32),
     /// Scale about the screen centre applied to every blit (1.0 = none).
     pub zoom: f32,
+    /// Turn of the next sprites about their centre, in turns (0..1, clockwise).
+    pub rot: f32,
 }
 
 impl Default for Screen {
@@ -28,6 +30,7 @@ impl Default for Screen {
             wanted: BTreeSet::new(),
             off: (0, 0),
             zoom: 1.0,
+            rot: 0.0,
         }
     }
 }
@@ -78,10 +81,30 @@ impl Screen {
         let (dw, dh) = ((w as f32 * k).round() as i32, (h as f32 * k).round() as i32);
         let (x0, y0) =
             (64 + ((cx - 64) as f32 * k).round() as i32 - dw / 2, 64 + ((cy - 64) as f32 * k).round() as i32 - dh / 2);
-        for py in y0.max(0)..(y0 + dh).min(HEIGHT as i32) {
-            let y = (((py - y0) as f32 / k) as i32).min(h - 1);
-            for px in x0.max(0)..(x0 + dw).min(WIDTH as i32) {
-                let x = (((px - x0) as f32 / k) as i32).min(w - 1);
+        // Turned: walk a square covering the turned sprite and map each pixel back.
+        let (sin, cos) = (std::f32::consts::TAU * self.rot).sin_cos();
+        let turned = self.rot != 0.0;
+        let (cxf, cyf) = (x0 as f32 + dw as f32 / 2.0, y0 as f32 + dh as f32 / 2.0);
+        let r = if turned { ((dw * dw + dh * dh) as f32).sqrt() / 2.0 + 1.0 } else { 0.0 };
+        let (bx0, by0, bx1, by1) = if turned {
+            ((cxf - r) as i32, (cyf - r) as i32, (cxf + r) as i32 + 1, (cyf + r) as i32 + 1)
+        } else {
+            (x0, y0, x0 + dw, y0 + dh)
+        };
+        for py in by0.max(0)..by1.min(HEIGHT as i32) {
+            for px in bx0.max(0)..bx1.min(WIDTH as i32) {
+                let (x, y) = if turned {
+                    let (dx, dy) = (px as f32 + 0.5 - cxf, py as f32 + 0.5 - cyf);
+                    let (ux, uy) = (cos * dx + sin * dy, -sin * dx + cos * dy);
+                    let (x, y) =
+                        (((ux + dw as f32 / 2.0) / k).floor() as i32, ((uy + dh as f32 / 2.0) / k).floor() as i32);
+                    if x < 0 || y < 0 || x >= w || y >= h {
+                        continue;
+                    }
+                    (x, y)
+                } else {
+                    ((((px - x0) as f32 / k) as i32).min(w - 1), (((py - y0) as f32 / k) as i32).min(h - 1))
+                };
                 let sx = if flip { w - 1 - x } else { x };
                 let idx = s.pixels[f + (y * w + sx) as usize];
                 if s.transparent && idx == s.key {

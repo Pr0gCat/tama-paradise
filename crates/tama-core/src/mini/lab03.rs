@@ -295,6 +295,7 @@ impl MiniGame for Lab03 {
             alpha,
             palette: 0,
             scale: 256,
+            rot: 0,
         };
         let phase = self.dist % 128;
         for k in 0..2 {

@@ -379,6 +379,7 @@ impl MiniGame for Lab04 {
             alpha,
             palette: 0,
             scale: 256,
+            rot: 0,
         };
         out.push(sprite(BG, 64, 64, false, 64));
         for (i, b) in self.bricks.iter().enumerate() {
@@ -408,6 +409,7 @@ impl MiniGame for Lab04 {
                 alpha: 64,
                 palette: 0,
                 scale: 256,
+                rot: 0,
             });
         }
         out.push(sprite(BALL.0, self.ball.0 >> 16, (self.ball.1 >> 16) + BALL.1, self.ball_flip, 64));

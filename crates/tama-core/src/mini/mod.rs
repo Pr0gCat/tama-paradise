@@ -176,7 +176,16 @@ pub const READY_GO: u16 = 0x952;
 
 /// A plain sprite draw (opaque, default palette).
 pub(crate) fn sprite(id: u16, frame: u16, x: i32, y: i32) -> Draw {
-    Draw { look: crate::motion::Look::Sprite { id, frame }, x, y, flip: false, alpha: 64, palette: 0, scale: 256 }
+    Draw {
+        look: crate::motion::Look::Sprite { id, frame },
+        x,
+        y,
+        flip: false,
+        alpha: 64,
+        palette: 0,
+        scale: 256,
+        rot: 0,
+    }
 }
 
 /// Something a game draws besides its motion nodes.
@@ -206,6 +215,7 @@ pub(crate) fn push_sprite(out: &mut Vec<Draw>, id: u16, frame: u16, x: i32, y: i
         alpha,
         palette: 0,
         scale: 256,
+        rot: 0,
     });
 }
 

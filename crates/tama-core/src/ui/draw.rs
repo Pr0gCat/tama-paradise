@@ -393,6 +393,8 @@ impl Game {
     pub(crate) fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
         let saved = (self.screen.zoom, self.screen.off);
         for d in draws {
+            // ponytail: a turn applies to each sprite about its own centre (character parts too).
+            self.screen.rot = d.rot as f32 / 256.0;
             if d.scale == 0 {
                 continue;
             }
@@ -422,6 +424,7 @@ impl Game {
                 crate::motion::Look::None => {}
             }
             (self.screen.zoom, self.screen.off) = saved;
+            self.screen.rot = 0.0;
         }
     }
 

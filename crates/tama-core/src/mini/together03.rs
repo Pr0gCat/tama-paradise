@@ -362,12 +362,14 @@ impl MiniGame for Together03 {
         for (i, j) in [(0, 0), (-128, 0), (0, -128), (-128, -128)] {
             out.push(sprite(self.look[1], 0, 64 + gx + i, 64 + gy + j));
         }
-        // ponytail: tile positions turn with the maze but the sprites are drawn unrotated (Draw has no rotation).
+        // Maze sprites turn with the maze (256 = a full turn, clockwise like `turn`).
+        let rot = ((self.rot.1 as f64).atan2(self.rot.0 as f64) / std::f64::consts::TAU * 256.0).round() as i16;
+        let turned = |id: u16, x: i32, y: i32| Draw { rot, ..sprite(id, 0, x, y) };
         let mut items: Vec<(i32, Vec<Draw>)> = Vec::new();
         for (c, (x, y)) in self.tiles() {
             match c {
-                b'G' => out.push(sprite(self.look[4], 0, x, y)),
-                b'w' => items.push((y, vec![sprite(self.look[3], 0, x, y)])),
+                b'G' => out.push(turned(self.look[4], x, y)),
+                b'w' => items.push((y, vec![turned(self.look[3], x, y)])),
                 _ => {}
             }
         }
@@ -375,7 +377,7 @@ impl MiniGame for Together03 {
             let (ox, oy) = self.obstacle_at(o);
             let (x, y) = self.screen(ox, oy);
             if (-64..192).contains(&x) && (-64..192).contains(&y) {
-                items.push((y, vec![sprite(self.look[2], 0, x, y)]));
+                items.push((y, vec![turned(self.look[2], x, y)]));
             }
         }
         let hidden = self.blink.is_some_and(|t0| (self.time - t0) % BLINK >= BLINK / 2);

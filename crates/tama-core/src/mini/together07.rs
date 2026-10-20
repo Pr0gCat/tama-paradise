@@ -569,6 +569,7 @@ impl MiniGame for Together07 {
                     alpha,
                     palette: 0,
                     scale: 256,
+                    rot: 0,
                 });
             }
             items.push((sy, d));

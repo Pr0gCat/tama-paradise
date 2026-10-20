@@ -434,7 +434,7 @@ impl Game {
     /// The planet with its outfits (CHARA placeholder 2), awake pose 1 or asleep 15.
     fn draw_planet(&mut self, x: i32, y: i32) {
         let asleep = self.pet.last.is_some_and(|t| self.pet.is_sleeping_at(t));
-        let d = crate::motion::Draw { look: Look::None, x, y, flip: false, alpha: 64, palette: 0, scale: 256 };
+        let d = crate::motion::Draw { look: Look::None, x, y, flip: false, alpha: 64, palette: 0, scale: 256, rot: 0 };
         self.draw_chr(&d, PLANET, if asleep { 15 } else { 1 }, crate::motion::KEEP, crate::motion::KEEP);
     }
 
