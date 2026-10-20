@@ -99,6 +99,11 @@ impl Game {
             // UNLOCK ALL opens everything; each asks ARE YOU SURE? first (they change the save).
             Action::Developer => self.developer_menu(0),
             Action::DeveloperAt(i) => self.developer_menu(i as usize),
+            Action::DevNotify => {
+                self.connect = Some("notify-test".into());
+                self.sfx(1, 100);
+                self.developer_menu(4)
+            }
             Action::DevAsk(i) => Scene::Ask {
                 text: ARE_YOU_SURE,
                 yes: false,
@@ -210,7 +215,9 @@ impl Game {
     }
 
     fn developer_menu(&self, idx: usize) -> Scene {
-        let items = [8, 9, 10, 12].iter().zip(0u8..).map(|(&t, i)| (REMAKE_TEXT + t, Some(Action::DevAsk(i)))).collect();
+        let mut items: Vec<_> =
+            [8, 9, 10, 12].iter().zip(0u8..).map(|(&t, i)| (REMAKE_TEXT + t, Some(Action::DevAsk(i)))).collect();
+        items.push((REMAKE_TEXT + 13, Some(Action::DevNotify)));
         Scene::Menu { items, idx, back: Some(Action::SettingsAtDeveloper) }
     }
 

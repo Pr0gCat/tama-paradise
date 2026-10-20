@@ -331,6 +331,15 @@
 
   function connect(req) {
     if (req === "save-export" || req === "save-import") { openSaves(req === "save-export"); return; }
+    // DEVELOPER → TEST NOTIFY: ask for permission if needed, then show one at once.
+    if (req === "notify-test") {
+      (async () => {
+        if (!("Notification" in window)) { console.warn("notifications not supported"); return; }
+        if (Notification.permission !== "granted" && await Notification.requestPermission() !== "granted") return;
+        notify("This is a test notification.", "tama-test");
+      })();
+      return;
+    }
     $("friends-btn").click();
     if (req.startsWith("gift:")) {
       const code = req.slice(5);
@@ -441,11 +450,18 @@
     if (!document.hidden || !alerts || !canNotify()) return;
     const id = game.poll_call(t0 + (performance.now() - wall0) / 1000 * speed);
     if (id === undefined) return;
+    notify(`Your Tamagotchi ${CALLS[id] ?? "is calling"}!`, "tama-call");
+  }, 10_000);
+  // Phones only show notifications through the service worker (`new Notification` throws there).
+  async function notify(body, tag) {
+    const opts = { body, tag, icon: "icons/icon-192.png" };
     try {
-      const n = new Notification("Tamagotchi Paradise", { body: `Your Tamagotchi ${CALLS[id] ?? "is calling"}!`, tag: "tama-call" });
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) return await reg.showNotification("Tamagotchi Paradise", opts);
+      const n = new Notification("Tamagotchi Paradise", opts);
       n.onclick = () => { window.focus(); n.close(); };
     } catch (e) { console.warn("notification:", e); }
-  }, 10_000);
+  }
   // Browsers only allow audio after a user gesture.
   // iOS: "playback" keeps the sounds on with the silent switch set (iOS 17+); the context is
   // suspended or "interrupted" after a lock or app switch, so every gesture and return resumes it.

@@ -3,6 +3,14 @@
 const CACHE = "tama";
 
 self.addEventListener("install", () => self.skipWaiting());
+// A tap on a care-call notification brings the game forward.
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const [win] = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    return win ? win.focus() : clients.openWindow("./");
+  })());
+});
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
   const req = e.request;

@@ -105,6 +105,7 @@ impl Game {
             | Action::DevCare
             | Action::DevUnlock
             | Action::DevAsk(_)
+            | Action::DevNotify
             | Action::DeveloperAt(_)
             | Action::SettingsAtDeveloper
             | Action::ExportSave
