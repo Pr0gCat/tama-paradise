@@ -40,7 +40,7 @@ open watch/TamaWatch.xcodeproj
 ```
 
 A build phase copies your local `data/game.json` and `data/sprites` into that build only (they
-are never committed). Controls: the A / B / C buttons under the screen as on the device; on the
+are never committed). Controls: the A / B / C buttons floating over the screen as on the device; on the
 screen, swipe up / down or the Digital Crown turn the dial, tap selects, swipe left goes back, a
 long press is the dial's long press.
 

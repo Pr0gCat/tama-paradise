@@ -18,6 +18,7 @@ final class Engine: ObservableObject {
     /// (a tap shorter than a frame still counts).
     private var buttons: UInt8 = 0
     private var latched: UInt8 = 0
+    private var seen: UInt8 = 0
     private let sound = Sound()
     nonisolated private static let saveKey = "tama-save"
 
@@ -82,9 +83,17 @@ final class Engine: ObservableObject {
         if down {
             buttons |= b
             latched |= b
+            seen |= b
         } else {
             buttons &= ~b
         }
+    }
+
+    /// The end of a tap: press it only if no press was seen during it.
+    func tap(_ bit: UInt32) {
+        let b = UInt8(bit)
+        if seen & b == 0 { latched |= b }
+        seen &= ~b
     }
 
     func resume() {

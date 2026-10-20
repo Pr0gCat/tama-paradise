@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The 128×128 screen with the A / B / C buttons under it. On the screen: swipe up / down turn
+/// The 128×128 screen filling the display, the A / B / C buttons floating over it. On the screen: swipe up / down turn
 /// the dial (the Digital Crown does too), a tap selects, swipe left goes back, a long press is
 /// the dial's long press.
 struct GameView: View {
@@ -11,22 +11,28 @@ struct GameView: View {
     @State private var holdTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 4) {
-            screen
-                .aspectRatio(1, contentMode: .fit)
-                .contentShape(Rectangle())
-                .gesture(touch)
-            Spacer(minLength: 0)
-            HStack(spacing: 6) {
-                key("A", TAMA_A)
-                key("B", TAMA_B)
-                key("C", TAMA_C)
+        GeometryReader { geo in
+            // The screen fills the display (square, centred); the buttons float over its
+            // bottom edge, half see-through.
+            let side = min(geo.size.width, geo.size.height)
+            let d = side / 4.6
+            ZStack(alignment: .bottom) {
+                Color.black
+                screen
+                    .frame(width: side, height: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(touch)
+                HStack(spacing: d * 0.5) {
+                    key("A", TAMA_A, d)
+                    key("B", TAMA_B, d)
+                    key("C", TAMA_C, d)
+                }
+                .padding(.bottom, d * 0.25)
             }
-            .frame(height: 34)
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 6)
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea()
+        .persistentSystemOverlays(.hidden)
         .focusable()
         .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .medium,
                               isContinuous: true, isHapticFeedbackEnabled: true)
@@ -53,16 +59,17 @@ struct GameView: View {
     }
 
     /// One of the device's buttons: held while the finger is on it.
-    private func key(_ label: String, _ bit: UInt32) -> some View {
+    private func key(_ label: String, _ bit: UInt32, _ d: CGFloat) -> some View {
         Text(label)
-            .font(.system(size: 15, weight: .semibold))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Capsule().fill(Color(white: 0.25)))
-            .contentShape(Capsule())
+            .font(.system(size: d * 0.42, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.9))
+            .frame(width: d, height: d)
+            .background(Circle().fill(.black.opacity(0.35)))
+            .overlay(Circle().stroke(.white.opacity(0.45), lineWidth: 1.5))
+            .contentShape(Circle())
             .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
-                // A tap too short to be seen pressing still counts once.
-                engine.button(bit, down: true)
-                engine.button(bit, down: false)
+                // A tap too short to be seen pressing still counts, once.
+                engine.tap(bit)
             } onPressingChanged: { pressing in
                 engine.button(bit, down: pressing)
             }
