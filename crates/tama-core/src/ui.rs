@@ -109,9 +109,9 @@ const SND_FIRST_START: u16 = 60;
 const SND_HUNT_TRIP: u16 = 80;
 /// String insert code for the planet name.
 const PLANET_NAME: u16 = 0xF003;
-/// Texts the remake adds (no firmware string): ids from 0xE000, spelled in the font's A–Z / 0–9.
+/// Texts the remake adds (no firmware string), ids from 0xE000: TOUCH ON, TOUCH OFF, SAVE DATA,
+/// EXPORT, IMPORT, NEW GAME in every language (`hant::REMAKE`), then the name of zh-Hant.
 pub(crate) const REMAKE_TEXT: u16 = 0xE000;
-const REMAKE_TEXTS: [&str; 6] = ["TOUCH ON", "TOUCH OFF", "SAVE DATA", "EXPORT", "IMPORT", "NEW GAME"];
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
 const TABLE: u16 = 0x786;
@@ -541,18 +541,9 @@ impl Game {
     }
 
     pub(crate) fn string(&self, id: u16) -> Vec<u16> {
-        if id == REMAKE_TEXT + REMAKE_TEXTS.len() as u16 {
-            return crate::hant::NAME.to_vec();
-        }
-        if let Some(text) = id.checked_sub(REMAKE_TEXT).and_then(|i| REMAKE_TEXTS.get(i as usize)) {
-            return text
-                .bytes()
-                .map(|b| match b {
-                    b'A'..=b'Z' => 318 + (b - b'A') as u16,
-                    b'0'..=b'9' => DIGIT_0 + (b - b'0') as u16,
-                    _ => crate::screen::SPACE,
-                })
-                .collect();
+        if let Some(i) = id.checked_sub(REMAKE_TEXT).map(usize::from).filter(|&i| i <= 6) {
+            let texts = crate::hant::REMAKE.get(self.pet.lang as usize).unwrap_or(&crate::hant::REMAKE[1]);
+            return texts.get(i).copied().unwrap_or(crate::hant::NAME).to_vec();
         }
         let s = self
             .data
