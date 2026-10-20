@@ -18,7 +18,9 @@ pub(crate) use lab::{FADE_FULL, FADE_STEP};
 mod settings;
 mod shop;
 mod system;
+mod zoom;
 pub(crate) use system::{CLOCK_IDLE, MASTER_VOLUME};
+pub(crate) use zoom::Change;
 
 pub(crate) use connect::PLAYDATE_ANIM;
 pub(crate) use decor::PET_FOCUS;

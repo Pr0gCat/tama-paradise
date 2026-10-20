@@ -19,7 +19,7 @@ mod ui;
 pub mod world;
 
 use data::{Data, PART_BODY, PART_DIRT, PART_EYES, PART_MOUTH};
-use motion::{Draw, Look, Node, KEEP};
+use motion::{Draw, Node, KEEP};
 use pet::{status, Pet};
 use screen::Screen;
 pub use screen::{HEIGHT, WIDTH};
@@ -89,6 +89,17 @@ pub struct Game {
     pub(crate) fade: u8,
     /// LABOMENU cursor, kept for coming back from a lab screen.
     pub(crate) lab_idx: u8,
+    /// Fade colour (black; pink or white in layer changes).
+    pub(crate) fade_colour: [u8; 3],
+    /// A layer change in progress (kind, frame, zoom at the start) and the layer it draws.
+    pub(crate) change: Option<(ui::Change, u16, f32)>,
+    pub(crate) shown: Option<Level>,
+    /// Warp overlay of a layer change, the indicator's frame count, the cell layer's scene.
+    pub(crate) warp: Option<Node>,
+    pub(crate) indicator: Option<u16>,
+    pub(crate) cell_scene: Node,
+    /// The layer the zoom last settled on (field ↔ pet arrival sound; none before the first).
+    settled: Option<Level>,
     /// Planet ranks shown for planet roles 0 and 1 (rank-up: old, new).
     pub(crate) planet_ranks: Option<[u8; 2]>,
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
@@ -143,6 +154,13 @@ impl Game {
             idle: 0,
             fade: 0,
             lab_idx: 0,
+            fade_colour: [0, 0, 0],
+            change: None,
+            shown: None,
+            warp: None,
+            indicator: None,
+            cell_scene: Game::new_cell_scene(),
+            settled: None,
             calls_heard: 0,
             planet_ranks: None,
             connect: None,
@@ -191,13 +209,27 @@ impl Game {
             self.sfx(1, 100);
             self.scene = self.enter_lab();
         }
+        // The dial and buttons wait while a layer change plays.
+        let pressed = if self.change.is_some() { 0 } else { pressed };
         self.update_scene(pressed);
-        // HOME zoom (`zoom_update` 0x1000ed48): close a quarter of the gap per frame.
-        let target = ui::zoom_stop(self.level);
-        self.zoom += (target - self.zoom) / 4.0;
-        if (target - self.zoom).abs() <= 0.125 {
-            self.zoom = target;
+        if self.change.is_some() {
+            self.step_change();
+        } else {
+            // HOME zoom (`zoom_update` 0x1000ed48): close a quarter of the gap per frame.
+            let target = ui::zoom_stop(self.level);
+            self.zoom += (target - self.zoom) / 4.0;
+            if (target - self.zoom).abs() <= 0.125 {
+                self.zoom = target;
+                if self.settled != Some(self.level) {
+                    let between = |l: Level| matches!(l, Level::Field | Level::Pet);
+                    if self.settled.is_some_and(between) && between(self.level) && matches!(self.scene, Scene::Home) {
+                        self.arrive();
+                    }
+                    self.settled = Some(self.level);
+                }
+            }
         }
+        self.tick_overlays();
         if matches!(self.scene, Scene::Home) {
             self.route_home();
         }
@@ -220,7 +252,12 @@ impl Game {
             self.home.tick(&self.data.motions);
             self.home.take_sounds(&mut self.sounds);
         }
-        self.fade = self.fade.saturating_sub(ui::FADE_STEP);
+        if self.change.is_none() {
+            self.fade = self.fade.saturating_sub(ui::FADE_STEP);
+            if self.fade == 0 {
+                self.fade_colour = [0, 0, 0];
+            }
+        }
         self.render();
     }
 
@@ -248,8 +285,13 @@ impl Game {
     /// Choose the HOME behaviour; restart its motion when it changes.
     fn update_home(&mut self, now: u64) {
         let forced = home::forced_state(&self.pet, now);
-        let level_changed = self.home_level != Some(self.level);
-        self.home_level = Some(self.level);
+        let layer = self.shown.unwrap_or(self.level);
+        // The planet has no pet behaviour (its first half of a change to the field draws it).
+        if layer == Level::Space {
+            return;
+        }
+        let level_changed = self.home_level != Some(layer);
+        self.home_level = Some(layer);
         let next = match (forced, self.home_state) {
             (_, Some(cur)) if level_changed && forced.map_or(!cur.1, |f| f == cur.0) => cur,
             (Some(s), Some((cur, true))) if s == cur => return,
@@ -262,8 +304,13 @@ impl Game {
             }
         };
         self.home_state = Some(next);
-        let slot = self.level as usize;
-        let script = self.data.home_motions.get(next.0 as usize).map(|m| if m[slot] != 0 { m[slot] } else { m[1] });
+        // The cell has its own motions; the home table's third column is the pet layer zoomed in.
+        let script = if layer == Level::Cell {
+            Some(self.cell_motion())
+        } else {
+            let slot = layer as usize;
+            self.data.home_motions.get(next.0 as usize).map(|m| if m[slot] != 0 { m[slot] } else { m[1] })
+        };
         self.home = Node::new(script.unwrap_or(0));
     }
 
@@ -393,7 +440,9 @@ impl Game {
             motion::PET if self.old_chr.is_some() => (self.old_chr.unwrap_or(0), true, true),
             motion::PET if self.roles[0].is_some() => (self.roles[0].unwrap_or(0), false, true),
             // 0 = the pet, 1 = the pet inside the cell (medicine), 0xbd–0xdc = pet slots.
-            motion::PET | motion::PET_IN_CELL | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
+            // 1 = the pet as a cell (HOME_CELL, medicine), its own model.
+            motion::PET_IN_CELL => (1, false, true),
+            motion::PET | 0xbd..=0xdc => (self.pet.def.chr_id, true, true),
             motion::EGG => (self.data.character(EGG_ID).map_or(self.pet.def.chr_id, |c| c.chr_id), false, true),
             motion::PLANET => (self.planet_chr_at(self.planet_ranks.map_or(self.pet.rank, |r| r[0])), false, true),
             c if (motion::PLANET_ROLE..motion::ROLE).contains(&c) => {
@@ -411,9 +460,19 @@ impl Game {
     /// Draw one character pose (`chara_draw_pose` 0x100075c4).
     pub(crate) fn draw_chr(&mut self, d: &Draw, chr: u16, anim: u16, eyes: i16, mouth: i16) -> bool {
         let (chr_id, is_pet, face) = self.resolve_chr(chr);
-        let Some(parts) = self.data.model(chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else {
+        let Some(mut parts) = self.data.model(chr_id).and_then(|m| m.anims.get(anim as usize)).cloned() else {
             return false;
         };
+        // The cell (chr 1) wears the pet's own eyes from the same pose (`FUN_100075c4` case 1).
+        if chr == motion::PET_IN_CELL {
+            let eye =
+                |m: &data::Model| m.anims.get(anim as usize)?.iter().find(|p| p.kind == PART_EYES).map(|p| p.sprite);
+            if let Some(sprite) = self.data.model(self.pet.def.chr_id).and_then(eye) {
+                for part in parts.iter_mut().filter(|p| p.kind == PART_EYES) {
+                    part.sprite = sprite;
+                }
+            }
+        }
         let p = &self.pet;
         let color = p.body_color();
         let pal = (is_pet && p.def.stage > 1 && color < 16).then_some((COLOR_PALETTES, color as usize));
@@ -477,13 +536,15 @@ impl Game {
         self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [0, 0, 0]);
         if !self.render_scene() {
             self.render_layers();
+            self.draw_warp();
+            self.draw_indicator();
         }
-        // The fade covers the screen with black by `fade` / 32.
+        // The fade covers the screen with its colour by `fade` / 32.
         if self.fade > 0 {
-            let keep = ui::FADE_FULL.saturating_sub(self.fade) as u32;
+            let (f, full) = (self.fade.min(ui::FADE_FULL) as u32, ui::FADE_FULL as u32);
             for px in self.screen.fb.as_chunks_mut::<4>().0 {
-                for c in &mut px[..3] {
-                    *c = (*c as u32 * keep / ui::FADE_FULL as u32) as u8;
+                for (c, &to) in px[..3].iter_mut().zip(&self.fade_colour) {
+                    *c = ((*c as u32 * (full - f) + to as u32 * f) / full) as u8;
                 }
             }
         }
@@ -492,10 +553,12 @@ impl Game {
     fn render_layers(&mut self) {
         // Mid-zoom, draw the layer nearest the zoom value, scaled by the remaining distance.
         let real = self.level;
-        let shown = [Level::Space, Level::Field, Level::Pet, Level::Cell]
-            .into_iter()
-            .min_by(|a, b| (ui::zoom_stop(*a) - self.zoom).abs().total_cmp(&(ui::zoom_stop(*b) - self.zoom).abs()))
-            .unwrap_or(real);
+        let shown = self.shown.unwrap_or_else(|| {
+            [Level::Space, Level::Field, Level::Pet, Level::Cell]
+                .into_iter()
+                .min_by(|a, b| (ui::zoom_stop(*a) - self.zoom).abs().total_cmp(&(ui::zoom_stop(*b) - self.zoom).abs()))
+                .unwrap_or(real)
+        });
         self.level = shown;
         self.screen.zoom = 4f32.powf((self.zoom - ui::zoom_stop(shown)) / 16.0);
         self.render_home();
@@ -512,7 +575,7 @@ impl Game {
                 }
                 return;
             }
-            Level::Cell => self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [250, 220, 230]),
+            Level::Cell => self.draw_cell(),
             _ => {
                 // The world layer scales with the real zoom (1× field, 2× pet); the camera moves
                 // from the field focus to the pet as it zooms in (`home_camera_update` 0x100793fc).
@@ -535,7 +598,8 @@ impl Game {
                 }
             }
         }
-        let (ax, ay) = ANCHOR[self.level as usize];
+        // The cell's motions are placed at the screen centre.
+        let (ax, ay) = if self.level == Level::Cell { (64, 64) } else { ANCHOR[self.level as usize] };
         let mut draws = Vec::new();
         self.home.draws(ax, ay, &mut draws);
         self.draw_all(&draws);
@@ -545,25 +609,7 @@ impl Game {
 
     /// Draw motion output: characters and sprites.
     pub(crate) fn draw_all(&mut self, draws: &[Draw]) {
-        for d in draws {
-            match d.look {
-                Look::Chr { chr, anim, eyes, mouth } => {
-                    self.draw_chr(d, chr, anim, eyes, mouth);
-                }
-                Look::Sprite { id, frame } => {
-                    self.screen.blit(
-                        id,
-                        frame,
-                        d.x,
-                        d.y,
-                        d.alpha,
-                        d.flip,
-                        (d.palette > 0).then_some((id, d.palette as usize)),
-                    );
-                }
-                Look::None => {}
-            }
-        }
+        self.draw_list_of(draws, None);
     }
 }
 

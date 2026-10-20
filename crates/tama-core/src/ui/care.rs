@@ -131,21 +131,18 @@ impl Game {
             self.sfx(0x28, 40);
         }
         if pressed & UP != 0 {
-            self.level = match self.level {
-                Level::Field => Level::Pet,
-                _ if self.pet.def.stage > 1 => Level::Cell,
-                l => l,
-            };
+            match self.level {
+                Level::Field => self.level = Level::Pet,
+                Level::Pet if self.pet.def.stage > 1 => self.begin_change(Change::ToCell),
+                _ => {}
+            }
         }
         if pressed & DOWN != 0 {
-            self.level = match self.level {
-                Level::Cell => Level::Pet,
-                Level::Field if self.pet.def.stage > 1 => {
-                    self.sfx(0x2b, 100);
-                    Level::Space
-                }
-                _ => Level::Field,
-            };
+            match self.level {
+                Level::Cell => self.begin_change(Change::FromCell),
+                Level::Field if self.pet.def.stage > 1 => self.begin_change(Change::ToSpace),
+                _ => self.level = Level::Field,
+            }
         }
         if !pressed_any(pressed) || self.pet.def.stage == 1 {
             return Scene::Home;

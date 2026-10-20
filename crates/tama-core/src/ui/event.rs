@@ -214,12 +214,7 @@ impl Game {
         if p.def.stage < 2 || (p.def.stage == 2 && p.age < SUPPORT_LIMIT) {
             return self.evolution();
         }
-        // Areas lived in (≤ 10), native foods (≤ 4), care mistakes, full hunger and mood (≤ 6 each).
-        let mut icons: Vec<u16> = p.field_log.iter().take(10).map(|&f| AREA_ICONS[(f as usize).min(2)]).collect();
-        icons.extend(p.food_log.iter().take(4).map(|&c| FOOD_ICONS.get(c as usize).copied().unwrap_or(FOOD_ICONS[0])));
-        for (n, icon) in [(p.miss_count, MISS_ICON), (p.onaka_max, ONAKA_ICON), (p.gokigen_max, GOKIGEN_ICON)] {
-            icons.extend(std::iter::repeat_n(icon, n.min(6) as usize));
-        }
+        let icons = self.memory_icons();
         // They fly in in random order.
         let mut order: Vec<u8> = (0..icons.len() as u8).collect();
         for i in (1..order.len()).rev() {
@@ -228,6 +223,18 @@ impl Game {
         }
         let icons = icons.into_iter().zip(order).collect();
         Scene::Memories { pet: Node::new(script::SUPPORT_WAIT), icons, t: 0 }
+    }
+
+    /// What the pet lived through, as icons (also shown in the cell): areas (≤ 10), native foods
+    /// (≤ 4), care mistakes, full hunger and full mood (≤ 6 each).
+    pub(crate) fn memory_icons(&self) -> Vec<u16> {
+        let p = &self.pet;
+        let mut icons: Vec<u16> = p.field_log.iter().take(10).map(|&f| AREA_ICONS[(f as usize).min(2)]).collect();
+        icons.extend(p.food_log.iter().take(4).map(|&c| FOOD_ICONS.get(c as usize).copied().unwrap_or(FOOD_ICONS[0])));
+        for (n, icon) in [(p.miss_count, MISS_ICON), (p.onaka_max, ONAKA_ICON), (p.gokigen_max, GOKIGEN_ICON)] {
+            icons.extend(std::iter::repeat_n(icon, n.min(6) as usize));
+        }
+        icons
     }
 
     pub(crate) fn update_memories(&mut self, mut pet: Node, icons: Vec<(u16, u8)>, t: u16) -> Scene {

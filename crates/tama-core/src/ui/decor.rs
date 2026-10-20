@@ -1,7 +1,7 @@
 //! Outside toys on the field (SETSUBI), the planet level (HOME_SPACE) and its menu:
 //! TAMA STARS, DECO PLANET, TRAVEL, PLANET LV. (docs/spec/10-decor-planet.md).
 
-use super::{Action, CardKind, Level, Scene};
+use super::{Action, CardKind, Scene};
 use crate::input::{A, B, C, DOWN, PUSH, UP};
 use crate::motion::{Look, Node, PLANET};
 use crate::pet::Pet;
@@ -548,7 +548,7 @@ impl Game {
     pub(super) fn update_space_input(&mut self, pressed: u8) -> Scene {
         if pressed & UP != 0 {
             self.sfx(0x28, 40);
-            self.level = Level::Field;
+            self.begin_change(super::Change::FromSpace);
             return Scene::Home;
         }
         if pressed & A == 0 || self.pet.def.stage == 1 {
@@ -586,6 +586,7 @@ impl Game {
 mod tests {
     use super::*;
     use crate::data::{Destination, Item};
+    use crate::ui::Level;
 
     const NOON: u64 = 86_400 * 3 + 12 * 3600;
 
@@ -646,6 +647,9 @@ mod tests {
         g.level = Level::Field;
         press(&mut g, DOWN);
         assert_eq!(g.level, Level::Space);
+        while g.change.is_some() {
+            g.frame(NOON, 0); // the zoom out to the planet
+        }
         g.pet.unchi_meter = 60;
         press(&mut g, A);
         for _ in 0..3 {

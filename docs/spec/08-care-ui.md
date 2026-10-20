@@ -427,6 +427,24 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 輸入：A / UP → +1、DN → −1（循環 6），音效 0；B/P → 音效 1、進子畫面；C → 音效 2、回 HOME。「只限設定」模式（c6b bit3）：游標固定 5、其他圖示灰、選灰項音效 0xb。
 - 重製：`ui/lab.rs`（`Scene::LabSplash`、`Scene::LabMenu`、`Game::lab_idx`）；全畫面黑色淡入 `Game::fade`（每 frame −4），用於 logo、選單與回 HOME。BIRTHDAY/NEWYEAR 轉跳與「只限設定」模式未做（事件在重製是由 HOME 觸發）。
 
+### 2.22 細胞層（HOME_CELL 0x20）、換層過場與分層指示條 [確認]
+
+- **細胞層是獨立場景**（init 0x10019eb0、`home_cell_state` 0x100398c8、建構 `FUN_10084974`）：背景 0x356（sprite 1160，256×256 兩幀：0 組織、1 半尺寸組織；縮放 < 0.5 時改用幀 1 並放大 2 倍）；胞器 script 0xf8（4 個子動畫 0x10b–0x10e 用 sprite 1161 漂移／脈動）；照顧紀錄 icon 於 0x35a + i（同 §2.17 state 3000 的清單，靜止）。
+- 細胞寵物：`FUN_1006d188` 選行為 → 表 `0x10091f58` → script 0xf9–0x101 / 0x548，子動畫 0x102–0x10a 用 **chr 1**（sprite 213 粉紅細胞 + 寵物自己同姿勢的眼睛 + 嘴 sprite 215），90 frames 晃動，部分加白線 1162／病菌 1164／黃六角 1163。HOME_TAMA 的第三欄（0xe3 等，張嘴）只在寵物層縮放 3.0–4.0 之間用，不是細胞。
+- **淡入淡出顏色**：0 黑、7 白；細胞粉紅 = RGB565 0xF43B。換層時轉盤無效。
+- **放射線特效**：sprite 1102（4 幀速度線），script 0xbe；元件 0x2c6（script 0xbc：10 frames 淡入後停住，離開時）、0x2c7（0xbd：15 frames 後 10 frames 淡出刪除，到達時）。
+
+| 換層 | 前半（畫的層、縮放、淡出） | 後半（畫的層、縮放、淡入） | 音效 |
+|---|---|---|---|
+| 場地/寵物 → 細胞 | 寵物層 z → 36 / 12 f；粉紅，延遲 8 f、速度 8 | 細胞 z −16 → 0 / 20 f、0x2c7；粉紅速度 4 | 0x28 |
+| 細胞 → 寵物 | 細胞 z 0 → −16 / 12 f、0x2c6；粉紅延遲 8、速度 8 | 寵物層 z 36 → 8 / 16 f；粉紅速度 4 | 0x2b |
+| 場地 → 星球 | 場地 z → −20 / 16 f、0x2c6；白色速度 4 | 星球 z 32 → 0 / 12 f；白色速度 4 | 0x2b |
+| 星球 → 場地 | 星球 z 0 → 32 / 12 f；白色速度 4 | 場地 z −16 → 0 / 24 f、0x2c7；白色速度 4 | 0x28 |
+
+  場地 ↔ 寵物同一場景、不淡出，只在到達時播音效 9 並顯示指示條。每格轉盤音效 0x28（vol 40）。
+- **分層指示條**（`FUN_1001afa0(layer, idx)`，idx 0 星球 / 1 場地 / 2 寵物 / 3 細胞）：到達某層時建立。條 0x2bd（sprite 1100，(64,120)），從下方 8 px 滑上 + alpha 0→1（5 frames），停 100 frames 後滑下淡出；游標 sprite 1101 於 0x2be + idx 的 x、y = 條 y − 8；提醒 sprite 1103 於 0x2c2 + n 的 x：EVOLUTION/ONAKA/GOKIGEN → 寵物層、EVOL_SUPPORT → 細胞、DODODO → 場地，否則感冒 → 細胞、受傷/瀕死 → 寵物；睡覺時不顯示。
+- 重製：`ui/zoom.rs`（`Change`、`Game::begin_change/step_change`、`draw_cell`、`cell_motion`、`draw_indicator`）；`resolve_chr` 把 chr 1 畫成細胞模型。縮放用線性插值、放射線畫在畫面固定位置（[推測] 原版不隨縮放）。
+
 ---
 
 ## 3. 資料表與格式

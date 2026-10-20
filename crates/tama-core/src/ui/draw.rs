@@ -390,7 +390,7 @@ impl Game {
     }
 
     /// Draw motion-script output with the food placeholder replaced.
-    pub(super) fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
+    pub(crate) fn draw_list_of(&mut self, draws: &[crate::motion::Draw], food: Option<u16>) {
         let saved = (self.screen.zoom, self.screen.off);
         for d in draws {
             if d.scale == 0 {
