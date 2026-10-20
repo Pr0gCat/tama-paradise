@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The 128×128 screen filling the display, the A / B / C buttons floating over it. On the screen: swipe up / down turn
+/// The 128×128 screen filling the whole display, the A / B / C buttons floating over it. On the screen: swipe up / down turn
 /// the dial (the Digital Crown does too), a tap selects, swipe left goes back, a long press is
 /// the dial's long press.
 struct GameView: View {
@@ -12,15 +12,16 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // The screen fills the display (square, centred); the buttons float over its
-            // bottom edge, half see-through.
-            let side = min(geo.size.width, geo.size.height)
-            let d = side / 4.6
+            // The square screen fills the whole display: scaled to its height, the sides
+            // cropped evenly. The buttons float over its bottom edge, half see-through.
+            let side = max(geo.size.width, geo.size.height)
+            let d = min(geo.size.width, geo.size.height) / 4.6
             ZStack(alignment: .bottom) {
                 Color.black
                 screen
                     .frame(width: side, height: side)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
                     .contentShape(Rectangle())
                     .gesture(touch)
                 HStack(spacing: d * 0.5) {
