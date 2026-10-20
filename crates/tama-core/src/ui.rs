@@ -354,6 +354,12 @@ pub(crate) enum Scene {
         digits: [u8; 8],
         pos: usize,
     },
+    /// Points received (the mission reward page, elements 0x223–0x22a): `amount` G, then `then`
+    /// on a key.
+    Reward {
+        amount: u32,
+        then: Box<Scene>,
+    },
     /// MISSION COMPLETE from HOME (`FUN_10048bd0` states 4000 / 5000): each new mission's page,
     /// then its reward page (+1000); `t` = frames on the page.
     MissionClear {
@@ -691,6 +697,8 @@ impl Game {
             Scene::Graves { idx, back } => self.update_graves(idx, back, pressed),
             Scene::Missions { view, idx, t } => self.update_missions(view, idx, t, pressed),
             Scene::MissionClear { queue, reward, t } => self.update_mission_clear(queue, reward, t, pressed),
+            Scene::Reward { then, .. } if pressed_any(pressed) => *then,
+            s @ Scene::Reward { .. } => s,
             Scene::Mini { session, lab } => self.update_mini(session, lab, pressed),
             // Settings (ui/settings.rs).
             Scene::PlanetName { chars, pos, intro } => self.update_planet_name(chars, pos, intro, pressed),
@@ -768,6 +776,7 @@ impl Scene {
                 | Scene::Code { .. }
                 | Scene::Missions { .. }
                 | Scene::MissionClear { .. }
+                | Scene::Reward { .. }
                 | Scene::UserInfo { .. }
                 | Scene::GameInfo
                 | Scene::Breed { .. }

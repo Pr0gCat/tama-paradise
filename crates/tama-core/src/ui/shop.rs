@@ -616,16 +616,20 @@ impl Game {
         }
     }
 
+    /// The reward page (0x223–0x22a): points balance, the bag of coins, `amount` G.
+    pub(super) fn draw_reward(&mut self, amount: u32) {
+        for id in [0x223, 0x224, 0x226, 0x22a, 0x229, 0x228] {
+            self.draw_elem(id, None, None);
+        }
+        self.draw_number_elem(0x225, self.pet.points);
+        self.draw_number_elem(0x227, amount);
+    }
+
     /// MISSION COMPLETE (elements 0x219–0x222) and its reward page (0x223–0x22a).
     pub(super) fn draw_mission_clear(&mut self, i: usize, reward: bool, t: u16) {
         use crate::progress::{REWARD, TARGETS, TEXT_FIRST};
         if reward {
-            for id in [0x223, 0x224, 0x226, 0x22a, 0x229, 0x228] {
-                self.draw_elem(id, None, None);
-            }
-            self.draw_number_elem(0x225, self.pet.points);
-            self.draw_number_elem(0x227, REWARD);
-            return;
+            return self.draw_reward(REWARD);
         }
         for id in [0x219, 0x21b] {
             self.draw_elem(id, None, None);

@@ -315,6 +315,10 @@ impl Game {
                 self.draw_code(digits, *pos);
                 true
             }
+            Scene::Reward { amount, .. } => {
+                self.draw_reward(*amount);
+                true
+            }
             Scene::MissionClear { queue, reward, t } => {
                 self.draw_mission_clear(queue[0], *reward, *t);
                 true

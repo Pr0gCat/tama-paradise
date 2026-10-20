@@ -101,10 +101,11 @@ impl Game {
                 self.sfx(0x0b, 100);
                 self.developer_menu(0)
             }
+            // Feedback: +10000 shows the reward page, FULL CARE the pet jumping for joy.
             Action::DevPoints => {
                 self.pet.earn(10_000);
-                self.sfx(1, 100);
-                self.developer_menu(1)
+                self.sfx(0x21, 100);
+                Scene::Reward { amount: 10_000, then: Box::new(self.developer_menu(1)) }
             }
             Action::DevCare => {
                 let p = &mut self.pet;
@@ -119,7 +120,8 @@ impl Game {
                     p.clear(r);
                 }
                 self.sfx(1, 100);
-                self.developer_menu(2)
+                let back = self.developer_menu(2);
+                self.play(&[super::script::HAPPY_JUMP], (0, super::OnPress::None), None, back)
             }
             Action::DateOrder => {
                 let items = (0..3u8).map(|i| (DATE_ORDERS + i as u16, Some(Action::SetDateOrder(i)))).collect();
@@ -525,11 +527,10 @@ mod tests {
         g.pet.onaka = 0;
         g.scene = g.open(Action::Developer);
         let before = g.pet.points;
-        g.scene = g.open(Action::DevPoints);
-        g.scene = g.open(Action::DevCare);
+        assert!(matches!(g.open(Action::DevPoints), Scene::Reward { amount: 10_000, .. }));
+        assert!(matches!(g.open(Action::DevCare), Scene::Play(_)));
         assert_eq!(g.pet.points, before + 10_000);
         assert_eq!(g.pet.onaka, g.pet.onaka_max);
-        assert!(matches!(&g.scene, Scene::Menu { idx: 2, .. }));
         g.pet.def.stage = 3;
         assert!(matches!(g.open(Action::DevGrow), Scene::Home));
         assert!(g.pet.is_pending(crate::pet::req::EVOLUTION));
