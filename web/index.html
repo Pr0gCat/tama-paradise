@@ -443,9 +443,12 @@
   // iOS: "playback" keeps the sounds on with the silent switch set (iOS 17+); the context is
   // suspended or "interrupted" after a lock or app switch, so every gesture and return resumes it.
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
-  const unlock = () => { audio ??= new AudioContext(); if (audio.state !== "running") audio.resume(); };
+  const unlock = () => {
+    if (!audio || audio.state === "closed") audio = new AudioContext();
+    if (audio.state !== "running") audio.resume().catch(() => {});
+  };
   for (const ev of ["pointerdown", "touchend", "keydown"]) addEventListener(ev, unlock);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && audio) audio.resume(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && audio) audio.resume().catch(() => {}); });
   function pulseWave(duty) {
     const n = 48, re = new Float32Array(n), im = new Float32Array(n);
     for (let k = 1; k < n; k++) re[k] = 2 * Math.sin(Math.PI * k * duty) / (Math.PI * k);
@@ -455,7 +458,7 @@
     const m = melodies[id];
     if (!m || !audio || muted) return;
     // Not running yet (resuming after a lock): the notes wait on the context's clock.
-    if (audio.state !== "running") audio.resume();
+    if (audio.state !== "running") audio.resume().catch(() => {});
     voice?.osc.stop();
     const osc = audio.createOscillator(), gain = audio.createGain();
     osc.setPeriodicWave(pulseWave(0.1));
