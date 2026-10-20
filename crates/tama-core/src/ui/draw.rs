@@ -37,13 +37,6 @@ impl Game {
         self.screen.text(&self.data.fonts, &glyphs, x, y, true, palette);
     }
 
-    /// A number whose right edge is at `right` (balances that must stay on screen).
-    pub(crate) fn draw_number_right(&mut self, n: u32, right: i32, y: i32, palette: usize) {
-        let glyphs = self.digits(n);
-        let w = crate::screen::Screen::text_width(&self.data.fonts, &glyphs);
-        self.screen.text(&self.data.fonts, &glyphs, right - w, y, false, palette);
-    }
-
     /// Field background sprite for the current field and time of day (`field_bg_create` 0x10015d90).
     pub(crate) fn field_bg(&self) -> Option<u16> {
         self.field_bg_at(self.pet.field, self.pet.in_area2)
@@ -412,23 +405,55 @@ impl Game {
 
     /// One food card of the carousel (`itemlist_create` 0x1002cc90, mode 2).
     pub(crate) fn draw_food_card(&mut self, items: &[u16], idx: usize) {
-        self.draw_elem(elem::LIST_BG, None, None);
+        // Free food counts as infinite.
+        let count = self.data.item(items[idx]).map(|i| if i.buy == 0xffff { -1 } else { self.pet.count(i.id) as i32 });
+        self.draw_item_card(elem::LIST_BG, items, idx, count, None, false);
+    }
+
+    /// An item card (`itemlist_create` 0x1002cc90): background `bg`, the panel with the item, its
+    /// name, the count box top left (`count`, −1 = infinity) and in the shop the capsule with
+    /// the price and G (0 = FREE), with 50%OFF on a half-price day.
+    pub(crate) fn draw_item_card(
+        &mut self,
+        bg: u16,
+        items: &[u16],
+        idx: usize,
+        count: Option<i32>,
+        price: Option<u32>,
+        half: bool,
+    ) {
+        self.draw_elem(bg, None, None);
         self.draw_elem(elem::CARD_PANEL, None, None);
         let Some(item) = self.data.item(items[idx]) else { return };
         self.screen.blit(item.icon_sprite, 0, 64, 40, 64, false, None);
+        if price.is_some() && half {
+            self.draw_elem(0xe2, None, None);
+        }
         self.draw_elem(elem::CARD_NAME_BAR, None, None);
-        self.draw_text(item.name, 64, 92, true, 0);
-        // The count top left (element 0xd9); free items show the infinity sign instead. The
-        // capsule element 0xe6 is not shown on the card.
-        if item.buy != 0xffff {
-            self.draw_number_elem(elem::CARD_COUNT, self.pet.count(item.id) as u32);
-        } else {
-            let e = self.ui_elem(elem::CARD_COUNT);
-            self.screen.blit(INFINITY, 0, e.x as i32, e.y as i32, 64, false, None);
+        let name = self.string(item.name);
+        self.draw_text_elem(0xde, &name);
+        if let Some(n) = count {
+            self.draw_elem(0xda, None, None);
+            if n < 0 {
+                let e = self.ui_elem(elem::CARD_COUNT);
+                self.screen.blit(INFINITY, 0, e.x as i32, e.y as i32, 64, false, None);
+            } else {
+                self.draw_number_elem(elem::CARD_COUNT, n as u32);
+            }
+        }
+        if let Some(p) = price {
+            self.draw_elem(0xe6, None, None);
+            if p == 0 {
+                let free = self.string(0xc5);
+                self.draw_text_elem(0xe4, &free);
+            } else {
+                self.draw_number_elem(0xe3, p);
+                self.draw_elem(0xe5, None, None);
+            }
         }
         if items.len() > 1 {
             self.screen.blit(ARROWS, 2, 10, 116, 64, false, None);
-            self.screen.blit(ARROWS, 3, 118, 116, 64, false, None);
+            self.screen.blit(ARROWS, 3, 120, 116, 64, false, None);
         }
     }
 

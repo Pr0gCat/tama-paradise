@@ -68,6 +68,8 @@ const FOUND_NEW: u16 = 0x274;
 const FOUND_NAME_BAR: u16 = 0x276;
 
 const COOK_ICON_MATERIAL_Y: i32 = 112;
+/// BUY / SELL card background (element 0x1b3, the purple stripes).
+const SHOP_BG: u16 = 0x1b3;
 
 /// Lab game menu (index = menu position): title string and game number (scenes 0x5d–0x64).
 const LAB_GAMES: [(u16, u8); 7] = [(0x323, 0), (0x324, 1), (0x325, 2), (0x326, 3), (0x32e, 6), (0x328, 5), (0x327, 4)];
@@ -557,35 +559,45 @@ impl Game {
         Scene::Code { digits, pos }
     }
 
+    /// Shop and inventory cards as `itemlist_create` builds them: BUY / SELL on the striped
+    /// background with the owned (SELL: free) count and the price capsule; toys, outfits and
+    /// gifts with the count free to place. No points balance, except COOK's top left.
     pub(super) fn draw_card(&mut self, kind: CardKind, items: &[u16], idx: usize) {
-        self.draw_food_card(items, idx);
         let Some(item) = items.get(idx).and_then(|&id| self.data.item(id)) else { return };
         let now = self.pet.last.unwrap_or(0);
+        let free = self.pet.free(item.id) as i32;
         match kind {
             CardKind::Buy(_) => {
+                let count = (self.pet.count(item.id) & 0xf) as i32;
                 let price = crate::pet::Pet::price(&item, now);
-                self.draw_number(price, 64, 115, 1);
+                self.draw_item_card(SHOP_BG, items, idx, Some(count), Some(price), price < item.buy as u32);
             }
-            CardKind::Sell => self.draw_number(item.sell as u32, 64, 115, 1),
-            // How many are free to place; a mark on the outfit being worn.
-            CardKind::Toy => self.draw_number(self.pet.free(item.id) as u32, 64, 115, 1),
+            CardKind::Sell => self.draw_item_card(SHOP_BG, items, idx, Some(free), Some(item.sell as u32), false),
+            CardKind::Toy | CardKind::Gift => self.draw_item_card(super::elem::LIST_BG, items, idx, Some(free), None, false),
+            // The remake's outfit list: a mark on the one being worn.
             CardKind::Wear => {
+                self.draw_item_card(super::elem::LIST_BG, items, idx, Some(free), None, false);
                 if self.pet.equip.contains(&item.id) {
                     self.draw_text(0xa5, 64, 115, true, 1);
                 }
             }
-            CardKind::Travel => self.draw_number(self.pet.unchi_meter as u32, 64, 115, 1),
-            CardKind::Gift => self.draw_number(self.pet.free(item.id) as u32, 64, 115, 1),
+            CardKind::Travel => {
+                self.draw_item_card(super::elem::LIST_BG, items, idx, None, None, false);
+                self.draw_number(self.pet.unchi_meter as u32, 64, 115, 1);
+            }
             CardKind::Cook => {
+                self.draw_item_card(super::elem::LIST_BG, items, idx, Some(self.pet.count(item.id) as i32), None, false);
                 let material = self.data.recipes.iter().find(|r| r.0 == item.id).map_or(0, |r| r.1);
                 if let Some(m) = self.data.item(material) {
                     self.screen.blit(m.icon_sprite, 0, 40, COOK_ICON_MATERIAL_Y, 64, false, None);
                 }
                 self.draw_number(self.pet.count(material) as u32, 72, 115, 1);
+                // Points balance top left (elements 0x1ab coin, 0x1a9 box, 0x1aa number).
+                self.draw_elem(0x1ab, None, None);
+                self.draw_elem(0x1a9, None, None);
+                self.draw_number_elem(0x1aa, self.pet.points);
             }
         }
-        // Points balance, top right.
-        self.draw_number_right(self.pet.points, 124, 8, 1);
     }
 
     /// One grave: the tama, cause of death (illness / hunger / old age) and age.
