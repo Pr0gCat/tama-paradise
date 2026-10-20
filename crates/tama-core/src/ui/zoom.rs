@@ -150,7 +150,8 @@ impl Game {
         let first = t < halves[0].frames;
         let (h, u) = if first { (&halves[0], t) } else { (&halves[1], t - halves[0].frames) };
         if u == 0 {
-            self.warp = h.warp.map(|id| Node::new(self.ui_elem(id).p[3] as u16));
+            let warp = h.warp.map(|id| Node::started(self.ui_elem(id).p[3] as u16, &self.data.motions));
+            self.warp = warp;
         }
         let k = (u + 1).min(h.frames) as f32 / h.frames as f32;
         self.zoom = h.zoom.0 + (h.zoom.1 - h.zoom.0) * k;

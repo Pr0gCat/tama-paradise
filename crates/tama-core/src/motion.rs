@@ -119,6 +119,14 @@ pub struct Draw {
 }
 
 impl Node {
+    /// A node already on its first frame: a node that has not ticked draws nothing, which shows
+    /// as one frame of bare background when a scene starts or switches animation.
+    pub fn started(script: u16, motions: &[Vec<u16>]) -> Self {
+        let mut n = Node::new(script);
+        n.tick(motions);
+        n
+    }
+
     pub fn new(script: u16) -> Self {
         Node {
             script,

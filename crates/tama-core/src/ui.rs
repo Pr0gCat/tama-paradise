@@ -605,9 +605,7 @@ impl Game {
     pub(crate) fn play(&self, scripts: &[u16], on_press: (u8, OnPress), food: Option<u16>, then: Scene) -> Scene {
         let mut queue: Vec<u16> = scripts.iter().rev().copied().collect();
         let first = queue.pop().unwrap_or(0);
-        // Ticked once so the scene's first frame already shows the animation.
-        let mut node = Node::new(first);
-        node.tick(&self.data.motions);
+        let node = Node::started(first, &self.data.motions);
         Scene::Play(Play {
             node,
             queue,

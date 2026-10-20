@@ -29,7 +29,7 @@ impl Game {
     pub(crate) fn credits(&mut self, then: Scene) -> Scene {
         self.sfx(0x54, 100);
         let script = if self.pet.lang == 1 { script::CREDITS_EN } else { script::CREDITS };
-        Scene::Credits { node: Node::new(script), then: Box::new(then) }
+        Scene::Credits { node: Node::started(script, &self.data.motions), then: Box::new(then) }
     }
 
     /// Rank-up and mission-clear notices when the pet is back at HOME.
@@ -267,14 +267,11 @@ impl Game {
             return Scene::Play(p);
         }
         if let Some(next) = p.queue.pop() {
-            p.node = Node::new(next);
+            p.node = Node::started(next, &self.data.motions);
             p.sweep = None;
             if let Some((_, snd)) = p.cue.filter(|c| c.0 == next) {
                 self.sfx(snd, 100);
             }
-            // Run its first frame now: a node that has not ticked draws nothing, which showed as a
-            // blank frame between two animations (e.g. serving and eating).
-            p.node.tick(&self.data.motions);
             p.node.take_sounds(&mut self.sounds);
             return Scene::Play(p);
         }

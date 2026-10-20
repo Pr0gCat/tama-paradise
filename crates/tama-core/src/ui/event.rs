@@ -130,16 +130,16 @@ impl Game {
             Cond::Dead => self.tomb(),
             Cond::Dying => {
                 let old = (self.pet.days >= 30) as usize;
-                Scene::Dying { node: Node::new(script::DYING[old]) }
+                Scene::Dying { node: Node::started(script::DYING[old], &self.data.motions) }
             }
-            Cond::Sitter => Scene::Sitter { node: Node::new(script::SITTER_STAY[0]) },
+            Cond::Sitter => Scene::Sitter { node: Node::started(script::SITTER_STAY[0], &self.data.motions) },
             _ => return,
         };
     }
 
     pub(crate) fn open_event(&mut self, a: Action) -> Scene {
         match a {
-            Action::SitterView => Scene::Sitter { node: Node::new(script::SITTER_STAY[0]) },
+            Action::SitterView => Scene::Sitter { node: Node::started(script::SITTER_STAY[0], &self.data.motions) },
             Action::EndSitter => self.play(&[script::SITTER_LEAVE], (0, OnPress::EndSitter), None, Scene::Home),
             Action::Tomb => self.tomb(),
             Action::NewEgg => {
@@ -151,7 +151,7 @@ impl Game {
     }
 
     pub(crate) fn sitter_arrives(&self) -> Scene {
-        Scene::Sitter { node: Node::new(script::SITTER_ARRIVE) }
+        Scene::Sitter { node: Node::started(script::SITTER_ARRIVE, &self.data.motions) }
     }
 
     /// Pet layer, first-aid call (HOME state 0x19): any key starts EVENT_RESCUE.
@@ -166,7 +166,7 @@ impl Game {
     /// Cell layer, support call (HOME state 0x1a): any key starts EVENT_EVOL_SUPPORT.
     pub(crate) fn support(&mut self) -> Scene {
         self.sfx(SFX_OK, 100);
-        Scene::Support { pet: Node::new(script::SUPPORT_WAIT), round: 0, t: 0, busy: false }
+        Scene::Support { pet: Node::started(script::SUPPORT_WAIT, &self.data.motions), round: 0, t: 0, busy: false }
     }
 
     pub(crate) fn update_sitter(&mut self, mut node: Node, pressed: u8) -> Scene {
@@ -182,8 +182,7 @@ impl Game {
         node.take_sounds(&mut self.sounds);
         if node.is_finished() {
             let stay = (self.rand() % 100 >= 80) as usize;
-            node = Node::new(script::SITTER_STAY[stay]);
-            node.tick(&self.data.motions);
+            node = Node::started(script::SITTER_STAY[stay], &self.data.motions);
         }
         Scene::Sitter { node }
     }
@@ -203,7 +202,7 @@ impl Game {
         t += 1;
         if busy {
             if t >= 40 {
-                (pet, busy, round, t) = (Node::new(script::SUPPORT_WAIT), false, round + 1, 0);
+                (pet, busy, round, t) = (Node::started(script::SUPPORT_WAIT, &self.data.motions), false, round + 1, 0);
             }
         } else if round == 4 {
             if t >= 20 {
@@ -211,7 +210,7 @@ impl Game {
             }
         } else if pressed & (A | B | C | crate::input::PUSH) != 0 || t >= 200 {
             self.sfx(SFX_OK, 100);
-            (pet, busy, t) = (Node::new(script::SUPPORT_TAKE), true, 0);
+            (pet, busy, t) = (Node::started(script::SUPPORT_TAKE, &self.data.motions), true, 0);
         }
         Scene::Support { pet, round, t, busy }
     }
@@ -222,7 +221,7 @@ impl Game {
     pub(crate) fn begin_evolution(&mut self) -> Scene {
         let p = &self.pet;
         if p.def.stage == 2 && p.age < SUPPORT_LIMIT && p.is_pending(req::EVOL_SUPPORT) {
-            return Scene::Support { pet: Node::new(script::SUPPORT_WAIT), round: 0, t: 0, busy: false };
+            return Scene::Support { pet: Node::started(script::SUPPORT_WAIT, &self.data.motions), round: 0, t: 0, busy: false };
         }
         if p.def.stage < 2 || (p.def.stage == 2 && p.age < SUPPORT_LIMIT) {
             return self.evolution();
@@ -235,7 +234,7 @@ impl Game {
             order.swap(i, j);
         }
         let icons = icons.into_iter().zip(order).collect();
-        Scene::Memories { pet: Node::new(script::SUPPORT_WAIT), icons, t: 0 }
+        Scene::Memories { pet: Node::started(script::SUPPORT_WAIT, &self.data.motions), icons, t: 0 }
     }
 
     /// What the pet lived through, as icons (also shown in the cell): areas (≤ 10), native foods
@@ -363,7 +362,7 @@ impl Game {
             n.tick(&self.data.motions);
         }
         if t == RESULT_STARS_AT {
-            nodes = (0..stars).map(|_| Node::new(script::RESULT_STAR)).collect();
+            nodes = (0..stars).map(|_| Node::started(script::RESULT_STAR, &self.data.motions)).collect();
         }
         if t == RESULT_STARS_AT + if stars > 0 { RESULT_STAR_LAND } else { 0 } {
             self.sfx(RESULT_SOUNDS[stars as usize], 100);
@@ -420,9 +419,9 @@ impl Game {
             (e.x as i32, e.y as i32)
         };
         let (gx, gy) = at(elem::GRAVE_SLOTS + slot as u16);
-        let mut nodes: Vec<(Node, i32, i32)> = script::GRAVES_BG.iter().map(|&s| (Node::new(s), 64, 64)).collect();
-        nodes.push((Node::new(script::NEW_GRAVE + old as u16), gx, gy));
-        nodes.push((Node::new(script::GRAVES), 90, 92));
+        let mut nodes: Vec<(Node, i32, i32)> = script::GRAVES_BG.iter().map(|&s| (Node::started(s, &self.data.motions), 64, 64)).collect();
+        nodes.push((Node::started(script::NEW_GRAVE + old as u16, &self.data.motions), gx, gy));
+        nodes.push((Node::started(script::GRAVES, &self.data.motions), 90, 92));
         let graves = Scene::Graveyard { nodes };
         let scripts: &[u16] = if old { &script::OLD_AGE } else { &[script::DEATH] };
         if old {
@@ -455,11 +454,11 @@ impl Game {
             .map(|&f| {
                 // The flowers drop in from 256 px above (`FUN_10066968`).
                 let (x, y) = at(f);
-                (Node::new(script::FLOWERS), x, y - FLOWER_DROP)
+                (Node::started(script::FLOWERS, &self.data.motions), x, y - FLOWER_DROP)
             })
             .collect();
         let (x, y) = at(elem::TOMB);
-        nodes.push((Node::new(script::TOMB + old), x, y));
+        nodes.push((Node::started(script::TOMB + old, &self.data.motions), x, y));
         Scene::Dead { page: 0, nodes }
     }
 
@@ -742,6 +741,7 @@ mod tests {
         let mut g = game(2113);
         g.pet.field_log = vec![1; 4];
         g.pet.miss_count = 2;
+        g.pet.raise(crate::pet::req::EVOLUTION);
         g.pet.raise(req::EVOLUTION);
         g.frame(NOON, 0);
         let Scene::Memories { icons, .. } = &g.scene else { panic!("memories") };
@@ -796,5 +796,38 @@ mod tests {
         }
         press(&mut g, B);
         assert!(matches!(g.scene, Scene::Menu { .. }), "back to the game menu");
+    }
+}
+#[cfg(test)]
+mod with_rom_data {
+    use super::*;
+
+    /// Needs data/game.json (`cargo test -- --ignored`): the memories fly in with the pet drawn
+    /// on every frame, straight into the evolution.
+    #[test]
+    #[ignore]
+    fn memories_have_no_blank_frame() {
+        let data = crate::data::Data::from_json(&std::fs::read_to_string("../../data/game.json").unwrap()).unwrap();
+        let mut g = Game::new(data, 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        g.pet.field_log = vec![0, 1, 2];
+        g.pet.miss_count = 2;
+        g.pet.raise(crate::pet::req::EVOLUTION);
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        g.scene = g.begin_evolution();
+        let mut n = 0;
+        loop {
+            let pet = match &g.scene {
+                Scene::Memories { pet, .. } | Scene::Support { pet, .. } => pet,
+                _ => break,
+            };
+            let mut d = Vec::new();
+            pet.draws(64, 64, &mut d);
+            assert!(!d.is_empty(), "blank pet at frame {n}");
+            g.frame(t, 0);
+            n += 1;
+        }
+        assert!(matches!(g.scene, Scene::Play(_)), "then the evolution");
     }
 }

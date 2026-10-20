@@ -486,9 +486,9 @@ impl Game {
             (1, Some(g)) => {
                 // The ghost stands in for the pet placeholder (role 0).
                 self.roles[0] = self.data.character(g.ghost.id).map(|c| c.chr_id);
-                Node::new(if g.days > 29 { GHOST_OLD } else { GHOST })
+                Node::started(if g.days > 29 { GHOST_OLD } else { GHOST }, &self.data.motions)
             }
-            _ => Node::new(STAR_CURSOR),
+            _ => Node::started(STAR_CURSOR, &self.data.motions),
         };
         Scene::Stars { idx, page, node }
     }
