@@ -145,7 +145,7 @@
 <script type="module">
   // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
   const glue = await (await fetch("./pkg/tama_web.js", { cache: "no-cache" })).text();
-  const { default: init, Tama, Dump, qr } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
+  const { default: init, Tama, Dump, qr, set_build } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
   // Revalidate the engine and data on every load (cheap 304s) so a rebuilt game is never stale.
   await init({ module_or_path: fetch("./pkg/tama_web_bg.wasm", { cache: "no-cache" }) });
   const params = new URLSearchParams(location.search);
@@ -532,6 +532,9 @@
   const version = () => fetch("version.txt", { cache: "no-store" }).then(r => r.ok ? r.text() : null).catch(() => null);
   version().then(running => {
     if (!running) return;
+    // GAME INFO shows the published commit.
+    set_build(running.trim().slice(0, 7));
+    game.set_build(running.trim().slice(0, 7));
     const check = async () => {
       const now = await version();
       if (now && now !== running) { save(); location.reload(); }

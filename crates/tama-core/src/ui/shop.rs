@@ -338,6 +338,8 @@ impl Game {
             | Action::UserEdit
             | Action::Info
             | Action::InfoFromMissions
+            | Action::GameInfo
+            | Action::InfoFromGameInfo
             | Action::UserInfo => self.open_intro(a),
             Action::EditPlanetName => {
                 let mut chars = [crate::screen::SPACE; 8];

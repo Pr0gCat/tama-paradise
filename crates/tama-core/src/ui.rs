@@ -115,7 +115,7 @@ const SND_HUNT_TRIP: u16 = 80;
 const PLANET_NAME: u16 = 0xF003;
 /// Texts the remake adds (no firmware string), ids from 0xE000 (`hant::REMAKE`, every language):
 /// TOUCH ON, TOUCH OFF, SAVE DATA, EXPORT, IMPORT, NEW GAME, the name of zh-Hant, DEVELOPER,
-/// GROW UP, +10000, FULL CARE.
+/// GROW UP, +10000, FULL CARE, GAME INFO.
 pub(crate) const REMAKE_TEXT: u16 = 0xE000;
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
@@ -246,6 +246,9 @@ pub(crate) enum Action {
     /// edit menu.
     Info,
     InfoFromMissions,
+    /// INFORMATION → GAME INFO (remake): this build's version.
+    GameInfo,
+    InfoFromGameInfo,
     UserInfo,
     UserEdit,
     EditBirthday,
@@ -522,6 +525,8 @@ pub(crate) enum Scene {
     UserInfo {
         page: u8,
     },
+    /// INFORMATION → GAME INFO (remake).
+    GameInfo,
     /// EVENT_DYING (`FUN_1003d474`) until DeathRemain runs out.
     Dying {
         node: Node,
@@ -664,6 +669,11 @@ impl Game {
             Scene::Memories { pet, icons, t } => self.update_memories(pet, icons, t),
             Scene::EvolvePoints { t } => self.update_evolve_points(t, pressed),
             Scene::UserInfo { page } => self.update_user_info(page, pressed),
+            Scene::GameInfo if pressed_any(pressed) => {
+                self.sfx(2, 100);
+                self.open(Action::InfoFromGameInfo)
+            }
+            Scene::GameInfo => Scene::GameInfo,
             Scene::LabSplash { t } => self.update_lab_splash(t),
             Scene::LabMenu { idx } => self.update_lab_menu(idx, pressed),
             Scene::Level { level, idle } => self.update_level(level, idle, pressed),
@@ -748,6 +758,7 @@ impl Scene {
                 | Scene::Missions { .. }
                 | Scene::MissionClear { .. }
                 | Scene::UserInfo { .. }
+                | Scene::GameInfo
                 | Scene::Breed { .. }
                 | Scene::Graves { .. }
                 | Scene::Setsubi { .. }

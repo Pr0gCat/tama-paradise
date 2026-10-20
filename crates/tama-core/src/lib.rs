@@ -120,6 +120,8 @@ pub struct Game {
     visitor_day: Option<u64>,
     /// A request for the platform's connection panel ("playdate", "receive", "gift:<code>").
     connect: Option<String>,
+    /// The build shown in GAME INFO (set by the platform: the published commit).
+    build: String,
     /// Calls already announced with the call melody (bit per request id).
     calls_heard: u64,
     /// HOME zoom value z (scale 4^(z/16)); eases towards the current level's stop each frame.
@@ -182,6 +184,7 @@ impl Game {
             calls_heard: 0,
             planet_ranks: None,
             connect: None,
+            build: "DEV".into(),
             visitor: None,
             visitor_day: None,
         };
@@ -584,6 +587,11 @@ impl Game {
             drawn |= self.screen.blit(part.sprite, frame, d.x + x, d.y + part.y as i32, alpha, part.flip ^ d.flip, pal);
         }
         drawn
+    }
+
+    /// The build id shown in GAME INFO.
+    pub fn set_build(&mut self, build: &str) {
+        self.build = build.chars().take(12).collect();
     }
 
     /// Add a sprite in `sprite::Sprite` byte format. Returns false if the bytes are invalid.

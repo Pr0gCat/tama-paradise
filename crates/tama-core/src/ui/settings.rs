@@ -80,11 +80,21 @@ impl Game {
                 self.open(Action::Settings)
             }
             // INFORMATION (`FUN_10046b84`): USER INFO, MISSION; back from MISSION on MISSION.
-            Action::Info | Action::InfoFromMissions => Scene::Menu {
-                items: vec![(USER_INFO, Some(Action::UserInfo)), (MISSION, Some(Action::Missions))],
-                idx: (a == Action::InfoFromMissions) as usize,
+            // The remake adds GAME INFO (the build's version).
+            Action::Info | Action::InfoFromMissions | Action::InfoFromGameInfo => Scene::Menu {
+                items: vec![
+                    (USER_INFO, Some(Action::UserInfo)),
+                    (MISSION, Some(Action::Missions)),
+                    (REMAKE_TEXT + 11, Some(Action::GameInfo)),
+                ],
+                idx: match a {
+                    Action::InfoFromMissions => 1,
+                    Action::InfoFromGameInfo => 2,
+                    _ => 0,
+                },
                 back: Some(Action::Lab),
             },
+            Action::GameInfo => Scene::GameInfo,
             Action::UserInfo => Scene::UserInfo { page: 0 },
             // USER INFO's edit menu (RW data 0x18000708).
             Action::UserEdit => Scene::Menu {
@@ -261,6 +271,26 @@ impl Game {
         } else {
             Scene::Birthday { m, d, pos, intro }
         }
+    }
+
+    /// GAME INFO: the remake's version and the build (the commit the page was published from,
+    /// or DEV), centred in the message box.
+    pub(super) fn draw_game_info(&mut self) {
+        self.draw_elem(super::elem::LIST_BG, None, None);
+        self.draw_elem(super::elem::MSG_BOX, None, None);
+        let text = format!("VERSION\n{}\n\nBUILD\n{}", env!("CARGO_PKG_VERSION"), self.build);
+        let glyphs: Vec<u16> = text
+            .bytes()
+            .map(|b| match b.to_ascii_uppercase() {
+                b'A'..=b'Z' => 318 + (b.to_ascii_uppercase() - b'A') as u16,
+                b'0'..=b'9' => 306 + (b - b'0') as u16,
+                b'.' => 381,
+                b'-' => 317,
+                b'\n' => crate::screen::NEWLINE,
+                _ => crate::screen::SPACE,
+            })
+            .collect();
+        self.draw_text_elem(super::elem::MENU_TEXT, &glyphs);
     }
 
     pub(super) fn draw_planet_name(&mut self, chars: &[u16; 8], pos: usize) {

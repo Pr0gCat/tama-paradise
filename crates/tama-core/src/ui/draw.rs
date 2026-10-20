@@ -240,6 +240,10 @@ impl Game {
                 self.draw_user_info(*page);
                 true
             }
+            Scene::GameInfo => {
+                self.draw_game_info();
+                true
+            }
             Scene::EvolvePoints { .. } => {
                 self.draw_evolve_points();
                 true

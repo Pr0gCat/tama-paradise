@@ -39,6 +39,22 @@ impl Dump {
     }
 }
 
+thread_local! {
+    /// The published build (commit) for GAME INFO, kept for every game made after it is known.
+    static BUILD: std::cell::RefCell<String> = std::cell::RefCell::new("DEV".into());
+}
+
+/// Set the build shown in GAME INFO (this and later games).
+#[wasm_bindgen]
+pub fn set_build(build: &str) {
+    BUILD.with(|b| *b.borrow_mut() = build.into());
+}
+
+fn with_build(mut game: Game) -> Game {
+    BUILD.with(|b| game.set_build(&b.borrow()));
+    game
+}
+
 #[wasm_bindgen]
 pub struct Tama(Game);
 
@@ -48,7 +64,7 @@ impl Tama {
     #[wasm_bindgen(constructor)]
     pub fn new(data: &str, seed: u32) -> Result<Tama, JsError> {
         let data = Data::from_json(data).map_err(|e| JsError::new(&e.to_string()))?;
-        let mut game = Game::new(data, seed);
+        let mut game = with_build(Game::new(data, seed));
         game.begin_intro();
         Ok(Tama(game))
     }
@@ -56,7 +72,7 @@ impl Tama {
     /// Restore from a string made by `save()`. Advance afterwards to catch up offline time.
     pub fn load(data: &str, save: &str) -> Result<Tama, JsError> {
         let data = Data::from_json(data).map_err(|e| JsError::new(&e.to_string()))?;
-        Game::load(data, save).map(Tama).map_err(|e| JsError::new(&e.to_string()))
+        Game::load(data, save).map(|g| Tama(with_build(g))).map_err(|e| JsError::new(&e.to_string()))
     }
 
     pub fn save(&self) -> String {
@@ -110,6 +126,10 @@ impl Tama {
     /// A `KeyboardEvent.key` typed into the text on screen; false if not used.
     pub fn type_key(&mut self, key: &str) -> bool {
         self.0.type_key(key)
+    }
+
+    pub fn set_build(&mut self, build: &str) {
+        self.0.set_build(build);
     }
 
     /// One-line pet status for the page.
