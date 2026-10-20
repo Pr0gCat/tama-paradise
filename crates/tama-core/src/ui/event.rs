@@ -817,11 +817,7 @@ mod with_rom_data {
         g.frame(t, 0);
         g.scene = g.begin_evolution();
         let mut n = 0;
-        loop {
-            let pet = match &g.scene {
-                Scene::Memories { pet, .. } | Scene::Support { pet, .. } => pet,
-                _ => break,
-            };
+        while let Scene::Memories { pet, .. } | Scene::Support { pet, .. } = &g.scene {
             let mut d = Vec::new();
             pet.draws(64, 64, &mut d);
             assert!(!d.is_empty(), "blank pet at frame {n}");
