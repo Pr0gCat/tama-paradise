@@ -228,7 +228,7 @@ impl Game {
         if cat == KIND_MEAL && self.pet.onaka >= 6 {
             scripts.push(script::FULL);
         }
-        self.play(&scripts, (0, OnPress::None), sprite, Scene::Effects { cat, idx })
+        self.play(&scripts, (0, OnPress::Skip), sprite, Scene::Effects { cat, idx })
     }
 
     pub(super) fn start_poop_clean(&mut self) -> Scene {
@@ -244,6 +244,9 @@ impl Game {
     }
 
     pub(super) fn update_play(&mut self, mut p: Play, pressed: u8) -> Scene {
+        if p.on_press.1 == OnPress::Skip && pressed_any(pressed) {
+            return *p.then;
+        }
         if p.node.is_paused() && pressed_any(pressed) {
             p.presses += 1;
             if p.presses == p.on_press.0 && p.on_press.1 == OnPress::Groom {
@@ -412,5 +415,21 @@ mod with_rom_data {
             g.frame(t, 0);
             n += 1;
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn a_key_skips_the_meal() {
+        let data = crate::data::Data::from_json(&std::fs::read_to_string("../../data/game.json").unwrap()).unwrap();
+        let mut g = Game::new(data, 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        g.pet.onaka = 0;
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        g.scene = g.eat(KIND_MEAL, vec![5002], 0);
+        g.frame(t, 0);
+        g.frame(t, B);
+        assert!(matches!(g.scene, Scene::Effects { .. }));
+        assert_eq!(g.pet.onaka, 1, "still fed");
     }
 }

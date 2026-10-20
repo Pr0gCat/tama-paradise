@@ -290,6 +290,8 @@ pub(crate) enum OnPress {
     Dying(Option<usize>),
     NewEgg,
     EndSitter,
+    /// Any key skips to the end (meals and snacks; the remake's addition).
+    Skip,
 }
 
 pub(crate) struct Play {
