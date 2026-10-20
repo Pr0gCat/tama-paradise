@@ -1,7 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["crates/tama-core", "crates/tama-web", "crates/tama-extract"]
+members = ["crates/tama-core", "crates/tama-web", "crates/tama-extract", "crates/tama-ffi"]
 
 [profile.release]
 opt-level = "s"
 lto = true
+# No unwinding across the C ABI of tama-ffi (extern "C" also aborts on unwind since Rust 1.81).
+panic = "abort"
