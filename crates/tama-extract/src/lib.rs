@@ -328,7 +328,7 @@ pub fn sprite(dump: &[u8], i: usize) -> Option<Sprite> {
 /// The game data (`data/game.json`).
 pub fn extract(dump: &[u8]) -> Data {
 
-    let characters: Vec<CharDef> = table(&dump, 11, 15)
+    let characters: Vec<CharDef> = table(dump, 11, 15)
         .into_iter()
         .filter(|r| r[0] != 0xffff)
         .map(|r| CharDef {
@@ -350,7 +350,7 @@ pub fn extract(dump: &[u8]) -> Data {
         })
         .collect();
 
-    let items: Vec<Item> = table(&dump, 10, 23)
+    let items: Vec<Item> = table(dump, 10, 23)
         .into_iter()
         .map(|r| Item {
             id: r[0],
@@ -374,7 +374,7 @@ pub fn extract(dump: &[u8]) -> Data {
         })
         .collect();
 
-    let words = |addr: usize, n: usize| -> Vec<u16> { (0..n).map(|i| u16_at(&dump, xip(addr) + i * 2)).collect() };
+    let words = |addr: usize, n: usize| -> Vec<u16> { (0..n).map(|i| u16_at(dump, xip(addr) + i * 2)).collect() };
     let teen = words(0x1009_1314, 12);
     let adult = words(0x1009_132c, 48);
     let evolution = Evolution {
@@ -387,31 +387,31 @@ pub fn extract(dump: &[u8]) -> Data {
     };
 
     // Every model in table 18: pets, NPCs and the planet (ChrID 2, 11–14, 23–28).
-    let model_count = (table_start(&dump, 19) - table_start(&dump, 18)) / 0xd8;
-    let models = models(&dump, 0..model_count as u16);
+    let model_count = (table_start(dump, 19) - table_start(dump, 18)) / 0xd8;
+    let models = models(dump, 0..model_count as u16);
     let home = words(0x1009_dbd8, 96);
     let home_motions = home.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     let data = Data {
-        rom_type: u32_at(&dump, VERSION_INFO) as u8,
+        rom_type: u32_at(dump, VERSION_INFO) as u8,
         characters,
         items,
         evolution,
         models,
-        motions: motions(&dump),
+        motions: motions(dump),
         home_motions,
-        fonts: fonts(&dump),
-        strings: strings(&dump),
-        ui: ui_elems(&dump),
+        fonts: fonts(dump),
+        strings: strings(dump),
+        ui: ui_elems(dump),
         melodies: {
             // 87 pointers; one step = (divider + 1) ms, dividers at 0x10091b00 as {id, div} × 5.
             let tempo = words(0x1009_1b00, 10);
             (0..0x57u16)
                 .map(|i| {
                     let div = tempo.chunks(2).find(|c| c[0] == i).map_or(8, |c| c[1]);
-                    let mut at = xip(u32_at(&dump, xip(0x100a_0a28) + i as usize * 4) as usize);
+                    let mut at = xip(u32_at(dump, xip(0x100a_0a28) + i as usize * 4) as usize);
                     let mut notes = Vec::new();
-                    while u16_at(&dump, at) != 0 {
-                        notes.push([u16_at(&dump, at), u16_at(&dump, at + 2), u16_at(&dump, at + 4)]);
+                    while u16_at(dump, at) != 0 {
+                        notes.push([u16_at(dump, at), u16_at(dump, at + 2), u16_at(dump, at + 4)]);
                         at += 6;
                     }
                     Melody { ms_per_step: div + 1, notes }
@@ -422,15 +422,15 @@ pub fn extract(dump: &[u8]) -> Data {
         shop_codes: (0..109)
             .map(|i| {
                 let e = xip(0x100a_1a20) + i * 8;
-                let at = xip(u32_at(&dump, e + 4) as usize);
+                let at = xip(u32_at(dump, e + 4) as usize);
                 let code: String = dump[at..at + 8].iter().map(|&b| b as char).collect();
-                (u16_at(&dump, e), code)
+                (u16_at(dump, e), code)
             })
             .collect(),
         recipes: words(0x1009_1fbc, 24).chunks(2).map(|c| (c[0], c[1])).collect(),
         weather_months: words(0x1009_1b5c, 72).chunks(6).map(|c| std::array::from_fn(|i| c[i])).collect(),
         decor: {
-            let ui = ui_elems(&dump);
+            let ui = ui_elems(dump);
             let home = words(0x1009_33ae, 3 * 42);
             let pos = |e: u16, z: u16| -> (i16, i16, i16) {
                 let u = ui.get(e as usize).copied().unwrap_or_default();
@@ -522,7 +522,7 @@ pub fn extract(dump: &[u8]) -> Data {
             .map(|&m| {
                 let list = |table: usize, i: u16| {
                     let e = xip(table) + i as usize * 8;
-                    (u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize)
+                    (u32_at(dump, e) as usize, u32_at(dump, e + 4) as usize)
                 };
                 let mut p: Vec<[i16; 3]> = Vec::new();
                 for (i, e) in words(m, 20).chunks(2).enumerate() {
@@ -538,7 +538,7 @@ pub fn extract(dump: &[u8]) -> Data {
             .collect(),
             // Game 02 boards: 15 × 15 × u32 card type at 0x1009436c.
             lab02_boards: (0..15)
-                .map(|b| std::array::from_fn(|i| u32_at(&dump, xip(0x1009_436c) + b * 60 + i * 4) as u8))
+                .map(|b| std::array::from_fn(|i| u32_at(dump, xip(0x1009_436c) + b * 60 + i * 4) as u8))
                 .collect(),
             lab03_layouts: (0..6)
                 .map(|l| {
@@ -553,14 +553,14 @@ pub fn extract(dump: &[u8]) -> Data {
                 .collect(),
             lab04_prize_chr: words(0x1009_3320, 49),
             sin_q12: words(0x1009_a968, 1024).into_iter().map(|w| w as i16).collect(),
-            tan_q12: (0..1025).map(|i| u32_at(&dump, xip(0x1009_cbd4) + i * 4) as i32).collect(),
+            tan_q12: (0..1025).map(|i| u32_at(dump, xip(0x1009_cbd4) + i * 4) as i32).collect(),
             lab05_layouts: METEORS[..9].iter().map(|s| meteor_rows(s)).collect(),
             lab05_event: meteor_rows(METEORS[9]),
             // Game 06 course pointers at 0x10092d70: 9 × {u32 ptr, u16 count, u16 pad}; objects {x, y, type}.
             lab06_courses: (0..9)
                 .map(|i| {
                     let e = xip(0x1009_2d70) + i * 8;
-                    let w = words(u32_at(&dump, e) as usize, u16_at(&dump, e + 4) as usize * 3);
+                    let w = words(u32_at(dump, e) as usize, u16_at(dump, e + 4) as usize * 3);
                     w.chunks(3).map(|o| [o[0] as i16, o[1] as i16, o[2] as i16]).collect()
                 })
                 .collect(),
@@ -568,7 +568,7 @@ pub fn extract(dump: &[u8]) -> Data {
             arcade02_patterns: (0..3)
                 .map(|i| {
                     let e = xip(0x1009_c4ec) + i * 8;
-                    let w = words(u32_at(&dump, e) as usize, u32_at(&dump, e + 4) as usize * 2);
+                    let w = words(u32_at(dump, e) as usize, u32_at(dump, e + 4) as usize * 2);
                     w.chunks(2).map(|r| [r[0], r[1]]).collect()
                 })
                 .collect(),
