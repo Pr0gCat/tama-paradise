@@ -87,10 +87,10 @@ struct GameView: View {
     private func key(_ label: String, _ bit: UInt32, _ d: CGFloat) -> some View {
         Text(label)
             .font(.system(size: d * 0.42, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(.white)
             .frame(width: d, height: d)
-            .background(Circle().fill(.black.opacity(0.35)))
-            .overlay(Circle().stroke(.white.opacity(0.45), lineWidth: 1.5))
+            .background(Circle().fill(.black.opacity(0.55)))
+            .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 1.5))
             .contentShape(Circle())
             .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
                 // A tap too short to be seen pressing still counts, once.
