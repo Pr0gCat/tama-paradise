@@ -30,6 +30,7 @@
            font: 600 20px system-ui; touch-action: none; }
   button.on { background: var(--btn-on); }
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
+  pre[hidden] { display: none; }
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
   .row { display: flex; gap: 8px; }
   dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px);
@@ -114,7 +115,7 @@
     <button class="small">Close</button>
   </form>
 </dialog>
-<pre id="s"></pre>
+<pre id="s" hidden></pre>
 <div id="scanner" hidden>
   <video playsinline muted></video>
   <p id="scan-msg">Point the camera at your friend's QR code</p>
@@ -127,6 +128,9 @@
   // Revalidate the engine and data on every load (cheap 304s) so a rebuilt game is never stale.
   await init({ module_or_path: fetch("./pkg/tama_web_bg.wasm", { cache: "no-cache" }) });
   const params = new URLSearchParams(location.search);
+  // The pet's numbers under the controls are for testing (?debug).
+  const debugStatus = params.has("debug") ? document.getElementById("s") : null;
+  if (debugStatus) debugStatus.hidden = false;
   // ?speed=60 runs the pet clock 60x faster for testing (kept in its own save slot).
   const speed = Number(params.get("speed")) || 1;
   const KEY = speed === 1 ? "tama-save" : "tama-save-speed";
@@ -429,7 +433,7 @@
     if (n) {
       const t = t0 + (now - wall0) / 1000 * speed;
       for (let i = 0; i < Math.min(n, 5); i++) { game.frame(t, held | pulses); pulses = 0; }
-      document.getElementById("s").textContent = game.status();
+      if (debugStatus) debugStatus.textContent = game.status();
       for (const id of game.missing_sprites()) if (!loading.has(id)) loadSprite(id);
       const req = game.take_connect();
       if (req) connect(req);
