@@ -295,7 +295,7 @@ impl Game {
     }
 
     pub(super) fn update_food_list(&mut self, cat: u8, items: Vec<u16>, idx: usize, pressed: u8) -> Scene {
-        let idx = cycle(idx, items.len(), pressed);
+        let idx = super::cycle_list(idx, items.len(), pressed);
         if pressed & C != 0 {
             Scene::FoodCategory { idx: (cat == KIND_SNACK) as usize }
         } else if pressed & (B | PUSH) != 0 {

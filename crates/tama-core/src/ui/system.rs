@@ -412,12 +412,24 @@ mod tests {
     }
 
     #[test]
+    fn the_dial_runs_down_a_vertical_menu() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.scene = g.open(Action::Settings);
+        press(&mut g, DOWN);
+        assert!(matches!(g.scene, Scene::Menu { idx: 1, .. }), "DOWN (the left button) is the next item");
+        press(&mut g, UP);
+        assert!(matches!(g.scene, Scene::Menu { idx: 0, .. }));
+        press(&mut g, A);
+        assert!(matches!(g.scene, Scene::Menu { idx: 1, .. }), "A still steps forward");
+    }
+
+    #[test]
     fn touch_toggles_in_settings() {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         assert!(g.touch(), "on by default");
         g.scene = g.open(Action::Settings);
-        press(&mut g, DOWN); // SAVE DATA (last)
-        press(&mut g, DOWN); // TOUCH ON
+        press(&mut g, UP); // SAVE DATA (last)
+        press(&mut g, UP); // TOUCH ON
         press(&mut g, B);
         assert!(!g.touch());
         assert!(matches!(&g.scene, Scene::Menu { idx: 3, items, .. } if items[3].0 == REMAKE_TEXT + 1), "TOUCH OFF");

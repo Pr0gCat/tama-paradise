@@ -289,12 +289,12 @@ mod tests {
             g.frame(86_400 * 3 + 12 * 3600, b);
             g.frame(86_400 * 3 + 12 * 3600, 0);
         };
-        press(&mut g, DOWN); // SAVE DATA (last)
-        press(&mut g, DOWN); // TOUCH
-        press(&mut g, DOWN); // the language entry
+        press(&mut g, UP); // SAVE DATA (last)
+        press(&mut g, UP); // TOUCH
+        press(&mut g, UP); // the language entry
         press(&mut g, B);
         assert!(matches!(&g.scene, Scene::Menu { idx: 1, .. }), "current language selected");
-        press(&mut g, DOWN); // にほんご
+        press(&mut g, UP); // にほんご
         press(&mut g, B);
         assert_eq!(g.pet.lang, 0);
         assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[2].0 == 0x56), "shows the new name");

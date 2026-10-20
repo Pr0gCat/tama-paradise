@@ -667,7 +667,7 @@ impl Game {
         back: Option<Action>,
         pressed: u8,
     ) -> Scene {
-        let idx = cycle(idx, items.len(), pressed);
+        let idx = cycle_list(idx, items.len(), pressed);
         if pressed & C != 0 {
             back.map_or(Scene::Home, |a| self.open(a))
         } else if pressed & (B | PUSH) != 0 {
@@ -726,6 +726,15 @@ impl Scene {
 }
 
 /// Wrapping list cursor: A or dial up moves forward, dial down back.
+/// Vertical lists (menus, the food list): the remake turns the dial the other way there, so DOWN
+/// (the page's left button) moves to the next item and UP (right) to the previous one. A still
+/// steps forward.
+pub(crate) fn cycle_list(idx: usize, n: usize, pressed: u8) -> usize {
+    let swapped =
+        pressed & !(UP | DOWN) | if pressed & UP != 0 { DOWN } else { 0 } | if pressed & DOWN != 0 { UP } else { 0 };
+    cycle(idx, n, swapped)
+}
+
 pub(crate) fn cycle(idx: usize, n: usize, pressed: u8) -> usize {
     let n = n.max(1);
     if pressed & (A | UP) != 0 {
