@@ -109,14 +109,15 @@ impl Game {
     }
 
     /// Poops swept by the cleaning robot (`poopclean_show_field` 0x10070194): each waits until
-    /// the robot's edge reaches it, (128 − x)·11/32 frames, then rises 128 px over 40 frames.
+    /// the robot's edge reaches it, (128 − x)·11/32 frames, then is pushed 128 px left over 40
+    /// frames, ahead of the robot.
     fn draw_swept_poop(&mut self, n: usize, old: usize, t: u16) {
         let frame = t / 15 % 2;
         for (i, &id) in elem::POOP.iter().enumerate().take(n) {
             let x = self.ui_elem(id).x as i32;
             let wait = (128 - x) * 11 / 32;
-            let dy = (128 * (t as i32 - wait)).clamp(0, 128 * 40) / 40;
-            self.screen.off = (0, -dy);
+            let dx = (128 * (t as i32 - wait)).clamp(0, 128 * 40) / 40;
+            self.screen.off = (-dx, 0);
             self.draw_elem(id, Some(frame), Some((i < old) as usize));
         }
         self.screen.off = (0, 0);
