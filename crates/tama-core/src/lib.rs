@@ -143,6 +143,7 @@ impl Game {
     }
 
     fn with_pet(data: Data, pet: Pet) -> Self {
+        motion::set_motions(&data.motions);
         let rng = pet.rng_seed() | 1;
         let mut g = Game {
             data,

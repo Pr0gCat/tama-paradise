@@ -100,6 +100,18 @@ pub struct Node {
     pub children: Vec<Node>,
     /// Sounds started this frame: (melody id, volume 0–100).
     pub sounds: Vec<(u16, u8)>,
+    /// Has run a frame (`draws` shows the first frame of a node that has not).
+    ticked: bool,
+}
+
+thread_local! {
+    /// The motion scripts, for drawing a node that has not run yet (`set_motions`).
+    static MOTIONS: std::cell::RefCell<std::rc::Rc<Vec<Vec<u16>>>> = Default::default();
+}
+
+/// Give `draws` the scripts (the game sets them when it starts).
+pub fn set_motions(scripts: &[Vec<u16>]) {
+    MOTIONS.with(|m| *m.borrow_mut() = std::rc::Rc::new(scripts.to_vec()));
 }
 
 /// Something to draw, in back-to-front order.
@@ -149,6 +161,7 @@ impl Node {
             z: 0,
             children: Vec::new(),
             sounds: Vec::new(),
+            ticked: false,
         }
     }
 
@@ -158,6 +171,7 @@ impl Node {
 
     /// Advance one frame.
     pub fn tick(&mut self, scripts: &[Vec<u16>]) {
+        self.ticked = true;
         for c in &mut self.children {
             c.tick(scripts);
         }
@@ -295,6 +309,17 @@ impl Node {
 
     /// Flatten into draw calls (back to front) with the node placed at (x, y).
     pub fn draws(&self, x: i32, y: i32, out: &mut Vec<Draw>) {
+        // A node that has not run yet (just made, or spawned during its parent's frame) is
+        // drawn as its first frame, not as nothing: one blank frame otherwise shows the bare
+        // background between animations.
+        if !self.ticked {
+            let scripts = MOTIONS.with(|m| m.borrow().clone());
+            if !scripts.is_empty() {
+                let mut first = self.clone();
+                first.tick(&scripts);
+                return first.draws(x, y, out);
+            }
+        }
         let (px, py) = (x + self.at.0 + self.x.value(), y + self.at.1 + self.y.value());
         let mut kids: Vec<&Node> = self.children.iter().collect();
         kids.sort_by_key(|c| c.z);
@@ -372,6 +397,15 @@ mod tests {
         n.tick(&s);
         n.tick(&s);
         assert!(n.children.is_empty());
+    }
+
+    #[test]
+    fn a_node_not_run_yet_draws_its_first_frame() {
+        let s = vec![vec![], vec![1 << 1, 0x01 | A | W, 99, 2, END]];
+        set_motions(&s);
+        let mut d = Vec::new();
+        Node::new(1).draws(0, 0, &mut d);
+        assert_eq!(d.len(), 1, "not a blank frame");
     }
 
     #[test]
