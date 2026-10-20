@@ -23,7 +23,7 @@ pub(crate) use system::{CLOCK_IDLE, MASTER_VOLUME};
 pub(crate) use zoom::Change;
 
 pub(crate) use connect::PLAYDATE_ANIM;
-pub(crate) use decor::PET_FOCUS;
+pub(crate) use decor::{PET_FOCUS, PLANET_POS};
 
 /// String ids (English table; same ids in every language).
 mod text {

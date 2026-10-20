@@ -20,6 +20,10 @@ pub struct Screen {
     pub zoom: f32,
     /// Turn of the next sprites about their centre, in turns (0..1, clockwise).
     pub rot: f32,
+    /// A further scale about `pivot` (screen pixels), after `off` and `zoom`: the HOME zoom
+    /// between layers, centred on the planet, the pet or its mouth.
+    pub rel: f32,
+    pub pivot: (f32, f32),
 }
 
 impl Default for Screen {
@@ -31,11 +35,19 @@ impl Default for Screen {
             off: (0, 0),
             zoom: 1.0,
             rot: 0.0,
+            rel: 1.0,
+            pivot: (64.0, 64.0),
         }
     }
 }
 
 impl Screen {
+    /// Where (x, y) lands on screen with `off` and `zoom` (before `rel`).
+    pub fn project(&self, x: i32, y: i32) -> (f32, f32) {
+        let z = |p: i32, o: i32| 64.0 + (p + o - 64) as f32 * self.zoom;
+        (z(x, self.off.0), z(y, self.off.1))
+    }
+
     pub fn rect(&mut self, x: i32, y: i32, w: i32, h: i32, c: [u8; 3]) {
         for yy in y.max(0)..(y + h).min(HEIGHT as i32) {
             for xx in x.max(0)..(x + w).min(WIDTH as i32) {
@@ -77,10 +89,11 @@ impl Screen {
         let pal = palette.and_then(|(pid, set)| self.sprites.get(&pid).map(|p| (p, set)));
         let a = alpha.min(64) as u32;
         // Zoom scales positions and sizes about the screen centre (HOME zoom between layers).
-        let k = self.zoom;
+        let k = self.zoom * self.rel;
         let (dw, dh) = ((w as f32 * k).round() as i32, (h as f32 * k).round() as i32);
-        let (x0, y0) =
-            (64 + ((cx - 64) as f32 * k).round() as i32 - dw / 2, 64 + ((cy - 64) as f32 * k).round() as i32 - dh / 2);
+        let (px, py) = self.project(cx - self.off.0, cy - self.off.1);
+        let (px, py) = (self.pivot.0 + (px - self.pivot.0) * self.rel, self.pivot.1 + (py - self.pivot.1) * self.rel);
+        let (x0, y0) = (px.round() as i32 - dw / 2, py.round() as i32 - dh / 2);
         // Turned: walk a square covering the turned sprite and map each pixel back.
         let (sin, cos) = (std::f32::consts::TAU * self.rot).sin_cos();
         let turned = self.rot != 0.0;

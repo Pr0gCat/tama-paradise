@@ -35,7 +35,7 @@ const STARFIELD: u16 = 0x450;
 const STAR_DOTS: u16 = 0x451;
 const DEAD_STAR: u16 = 0x453;
 const STAR_POS: [(i32, i32); 5] = [(30, 28), (58, 56), (92, 26), (22, 68), (44, 104)];
-const PLANET_POS: (i32, i32) = (90, 92);
+pub(crate) const PLANET_POS: (i32, i32) = (90, 92);
 /// TAMA STARS: star cursor (UI element 0x2cc), ghost page background (0x13f) and ghost
 /// animations for a young / old (> 29 years) tama.
 const STAR_CURSOR: u16 = 193;

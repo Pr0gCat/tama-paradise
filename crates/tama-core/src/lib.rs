@@ -101,6 +101,8 @@ pub struct Game {
     /// A layer change in progress (kind, frame, zoom at the start) and the layer it draws.
     pub(crate) change: Option<(ui::Change, u16, f32)>,
     pub(crate) shown: Option<Level>,
+    /// Where the pet's mouth was last drawn on the pet layer (centre of the zoom into the cell).
+    pet_mouth: (f32, f32),
     /// Warp overlay of a layer change, the indicator's frame count, the cell layer's scene.
     pub(crate) warp: Option<Node>,
     pub(crate) indicator: Option<u16>,
@@ -167,6 +169,7 @@ impl Game {
             fade_colour: [0, 0, 0],
             change: None,
             shown: None,
+            pet_mouth: (64.0, 88.0),
             warp: None,
             indicator: None,
             cell_scene: Game::new_cell_scene(),
@@ -546,6 +549,9 @@ impl Game {
                 _ => continue,
             };
             let x = if d.flip { -part.x } else { part.x } as i32;
+            if is_pet && part.kind == PART_MOUTH && self.level == Level::Pet && matches!(self.scene, Scene::Home) {
+                self.pet_mouth = self.screen.project(d.x + x, d.y + part.y as i32);
+            }
             let alpha = (part.alpha as u32 * d.alpha as u32 / 64) as u8;
             let pal = if part.kind == PART_BODY { pal } else { None };
             drawn |= self.screen.blit(part.sprite, frame, d.x + x, d.y + part.y as i32, alpha, part.flip ^ d.flip, pal);
@@ -592,26 +598,40 @@ impl Game {
     }
 
     fn render_layers(&mut self) {
-        // Mid-zoom, draw the layer nearest the zoom value, scaled by the remaining distance.
+        // Field ↔ pet is one continuous zoom drawn as the level the dial is on (its motions play);
+        // layer changes draw the layer of the half in progress. Either way the layer is drawn at
+        // its own stop and scaled by the remaining distance about the zoom's centre.
         let real = self.level;
-        let shown = self.shown.unwrap_or_else(|| {
-            [Level::Space, Level::Field, Level::Pet, Level::Cell]
-                .into_iter()
-                .min_by(|a, b| (ui::zoom_stop(*a) - self.zoom).abs().total_cmp(&(ui::zoom_stop(*b) - self.zoom).abs()))
-                .unwrap_or(real)
-        });
+        let shown = self.shown.unwrap_or(real);
         self.level = shown;
-        self.screen.zoom = 4f32.powf((self.zoom - ui::zoom_stop(shown)) / 16.0);
-        // The pet plays the real level's motions (field or close-up), so it scales from that
-        // level's stop: it shrinks or grows with the world all the way to the new size.
-        let pet_level = if matches!(real, Level::Field | Level::Pet) { real } else { shown };
-        let pet_zoom = 4f32.powf((self.zoom - ui::zoom_stop(pet_level)) / 16.0);
-        self.render_home(pet_zoom);
+        let rel = 4f32.powf((self.zoom - ui::zoom_stop(shown)) / 16.0);
+        if shown == Level::Cell {
+            self.screen.zoom = rel;
+        } else {
+            self.screen.rel = rel;
+            self.screen.pivot = self.zoom_pivot(shown);
+        }
+        self.render_home();
         self.level = real;
         self.screen.zoom = 1.0;
+        self.screen.rel = 1.0;
+        self.screen.pivot = (64.0, 64.0);
     }
 
-    fn render_home(&mut self, pet_zoom: f32) {
+    /// Centre of the HOME zoom on screen: the planet to and from space, the pet's mouth to and
+    /// from the cell, else the pet.
+    fn zoom_pivot(&self, shown: Level) -> (f32, f32) {
+        let planet = (ui::PLANET_POS.0 as f32, ui::PLANET_POS.1 as f32);
+        match (shown, self.change.map(|c| c.0)) {
+            (Level::Space, _) | (_, Some(ui::Change::ToSpace | ui::Change::FromSpace)) => planet,
+            (_, Some(ui::Change::ToCell | ui::Change::FromCell)) => self.pet_mouth,
+            // The field doubled about this point lines up with the pet layer (and the pet layer
+            // halved with the field): it sits on the pet while the camera is on it.
+            _ => ((64 + 2 * (64 - self.cam.0)) as f32, (92 + 2 * (64 - self.cam.1)) as f32),
+        }
+    }
+
+    fn render_home(&mut self) {
         match self.level {
             Level::Space => {
                 self.draw_space();
@@ -622,13 +642,11 @@ impl Game {
             }
             Level::Cell => self.draw_cell(),
             _ => {
-                // The world layer scales with the real zoom (1× field, 2× pet); the camera moves
-                // from the field focus to the pet as it zooms in (`home_camera_update` 0x100793fc).
-                let t = (self.zoom / 8.0).clamp(0.0, 1.0);
-                let lerp = |a: i32, b: i32| a + ((b - a) as f32 * t).round() as i32;
-                let c = (lerp(self.cam.0, PET_CAM.0), lerp(self.cam.1, PET_CAM.1));
+                // The world: 1× about the field camera, or 2× about the pet (`home_camera_update`
+                // 0x100793fc).
+                let c = if self.level == Level::Pet { PET_CAM } else { self.cam };
                 self.screen.off = (64 - c.0, 64 - c.1);
-                self.screen.zoom = 4f32.powf(self.zoom / 16.0);
+                self.screen.zoom = 4f32.powf(ui::zoom_stop(self.level) / 16.0);
                 self.draw_field_bg();
                 if self.level == Level::Field {
                     self.draw_toys();
@@ -636,8 +654,7 @@ impl Game {
                     self.draw_visitor();
                     self.draw_poop();
                 }
-                // The pet zooms with the world, from its own size at this layer's stop.
-                self.screen.zoom = pet_zoom;
+                self.screen.zoom = 1.0;
                 if self.level == Level::Pet {
                     self.screen.off = (0, 0);
                 }
