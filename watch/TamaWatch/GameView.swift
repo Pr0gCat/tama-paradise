@@ -12,9 +12,10 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // The square screen fills the whole display: scaled to its height, the sides
-            // cropped evenly. The buttons float over its bottom edge, half see-through.
-            let side = max(geo.size.width, geo.size.height)
+            // The square screen halfway between the display's width and height: a little of
+            // each side cropped, a thin band above and below. The buttons float over its
+            // bottom edge, half see-through.
+            let side = (geo.size.width + geo.size.height) / 2
             let d = min(geo.size.width, geo.size.height) / 4.6
             ZStack(alignment: .bottom) {
                 Color.black
