@@ -16,7 +16,7 @@ struct GameView: View {
     var body: some View {
         GeometryReader { geo in
             // The game renders on a canvas shaped like the display, its own screen centred at
-            // UI_SCALE points per pixel (smaller than filling the width), the world and
+            // `uiScale` points per pixel (smaller than filling the width), the world and
             // backgrounds around it; spots nothing covers show the blurred screen behind.
             let d = min(geo.size.width, geo.size.height) / 4.6
             ZStack(alignment: .bottom) {
@@ -26,6 +26,7 @@ struct GameView: View {
                     .clipped()
                 screen
                     .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
                     .contentShape(Rectangle())
                     .gesture(touch)
                 HStack(spacing: d * 0.5) {
@@ -35,12 +36,13 @@ struct GameView: View {
                 }
                 .padding(.bottom, d * 0.25)
             }
+            // The canvas follows the whole display (this reader ignores the safe area).
+            .onChange(of: geo.size, initial: true) { _, size in
+                engine.fit(size, scale: Self.uiScale)
+            }
         }
         .ignoresSafeArea()
         .persistentSystemOverlays(.hidden)
-        .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in
-            engine.fit(size, scale: Self.uiScale)
-        }
         .focusable()
         .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .medium,
                               isContinuous: true, isHapticFeedbackEnabled: true)
@@ -67,9 +69,11 @@ struct GameView: View {
 
     @ViewBuilder private var screen: some View {
         if let image = engine.image {
+            // Never stretched: a canvas a pixel off the display's shape is cropped, not distorted.
             Image(decorative: image, scale: 1)
                 .interpolation(.none)
                 .resizable()
+                .aspectRatio(contentMode: .fill)
         } else if let error = engine.error {
             Text(error).font(.footnote).multilineTextAlignment(.center)
         } else {
