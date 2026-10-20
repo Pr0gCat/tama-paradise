@@ -156,6 +156,9 @@ pub struct Pet {
     pub missions: [u32; 22],
     #[serde(default)]
     pub claimed: u32,
+    /// Completed missions whose page has been opened (0x18000ce0; unseen ones show "NEW").
+    #[serde(default)]
+    pub missions_viewed: u32,
     /// Items unlocked with shop codes, and the codes already used.
     #[serde(default)]
     pub unlocked: Vec<u16>,
@@ -333,6 +336,7 @@ impl Pet {
             rank_seen: 0,
             missions: [0; 22],
             claimed: 0,
+            missions_viewed: 0,
             unlocked: Vec::new(),
             used_codes: Vec::new(),
             areas: 0,

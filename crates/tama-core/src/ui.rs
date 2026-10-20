@@ -349,9 +349,12 @@ pub(crate) enum Scene {
         digits: [u8; 8],
         pos: usize,
     },
-    /// Mission list (lab menu INFORMATION).
+    /// MISSION (PSID_INFO_MISSION 0x39): `view` 0 = overview (cleared / 22), 1 = 2×2 icon list,
+    /// 2 = one mission; `idx` = mission, `t` = frames on the page (ticker, idle exit).
     Missions {
+        view: u8,
         idx: usize,
+        t: u16,
     },
     /// Breeding candidates.
     Breed {
@@ -667,7 +670,7 @@ impl Game {
             Scene::Code { digits, pos } => self.update_code(digits, pos, pressed),
             Scene::Breed { cands, idx } => self.update_breed(cands, idx, pressed),
             Scene::Graves { idx, back } => self.update_graves(idx, back, pressed),
-            Scene::Missions { idx } => self.update_missions(idx, pressed),
+            Scene::Missions { view, idx, t } => self.update_missions(view, idx, t, pressed),
             Scene::Mini { session, lab } => self.update_mini(session, lab, pressed),
             // Settings (ui/settings.rs).
             Scene::PlanetName { chars, pos, intro } => self.update_planet_name(chars, pos, intro, pressed),

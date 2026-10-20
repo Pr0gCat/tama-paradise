@@ -163,7 +163,7 @@ impl Game {
                 Ok(()) => self.message(t::PURCHASE_MADE, Action::Shop),
                 Err(_) => self.message(t::NOT_ENOUGH_POINTS, Action::Expand),
             },
-            Action::Missions => Scene::Missions { idx: 0 },
+            Action::Missions => Scene::Missions { view: 0, idx: 0, t: 0 },
             Action::Fields => {
                 let fields = self.pet.visible_fields(&self.data);
                 Scene::Menu {
@@ -588,16 +588,86 @@ impl Game {
     }
 
     /// One mission: description, progress / target, "CLEARED" when paid out.
-    pub(super) fn draw_mission(&mut self, i: usize) {
-        use crate::progress::{TARGETS, TEXT_FIRST};
-        self.draw_list(&[], 0, Some(TEXT_FIRST + i as u16));
-        let (have, need) = (self.pet.mission_progress(i), TARGETS[i]);
-        self.draw_number(i as u32 + 1, 12, 120, 0);
-        self.draw_number(have.min(need), 46, 102, 0);
-        self.draw_number(need, 94, 102, 0);
-        self.screen.rect(68, 101, 4, 2, [255, 255, 255]);
-        if self.pet.claimed & 1 << i != 0 {
-            self.draw_text(0xa5, 80, 120, true, 0);
+    /// MISSION pages (UI elements 0x1f1–0x218, `FUN_10048bd0`).
+    pub(super) fn draw_mission(&mut self, view: u8, i: usize, t: u16) {
+        use crate::progress::{REWARD, TARGETS, TEXT_FIRST};
+        let n = TARGETS.len();
+        let new = self.pet.claimed & !self.pet.missions_viewed;
+        match view {
+            // Overview: CLEARED, done / 22, MISSIONS; "NEW" while a cleared one is unseen.
+            0 => {
+                for id in [0x1f1, 0x1f6] {
+                    self.draw_elem(id, None, None);
+                }
+                if new != 0 {
+                    self.draw_elem(0x1f7, None, None);
+                }
+                self.draw_elem(0x1f9, None, None);
+                let s = self.string(165);
+                self.draw_text_elem(0x1f2, &s);
+                self.draw_number_elem(0x1f3, self.pet.claimed.count_ones());
+                self.draw_elem(0x1f4, None, None);
+                self.draw_number_elem(0x1f5, n as u32);
+                let s = self.string(166);
+                self.draw_text_elem(0x1f8, &s);
+            }
+            // The 2×2 list, four missions a page: icon 157 + mission, grey until cleared.
+            1 => {
+                self.draw_elem(0x1fa, None, None);
+                let page = i / 4;
+                for k in 0..4 {
+                    let m = page * 4 + k;
+                    if m >= n {
+                        break;
+                    }
+                    self.draw_elem(0x1fc + k as u16, None, None);
+                    let e = self.ui_elem(0x200 + k as u16);
+                    let grey = self.pet.claimed & 1 << m == 0;
+                    let icon = 157 + m as u16;
+                    self.screen.blit(icon, 0, e.x as i32, e.y as i32, 64, false, grey.then_some((icon, 1)));
+                    if new & 1 << m != 0 {
+                        self.draw_elem(0x207 + k as u16, None, None);
+                    }
+                }
+                let c = self.ui_elem(0x1fc + (i % 4) as u16);
+                let cursor = self.ui_elem(0x1fb).p[3] as u16;
+                self.screen.blit(cursor, 0, c.x as i32, c.y as i32, 64, false, None);
+                // Scroll bar: the track turned upright (p[4] = 1024 of 4096), its two ends.
+                self.screen.rot = 0.25;
+                self.draw_elem(0x204, None, None);
+                self.screen.rot = 0.0;
+                self.draw_elem(0x205, None, None);
+                self.draw_elem(0x206, None, None);
+            }
+            // One mission: icon, the text scrolling through the band, progress / target, REWARD.
+            _ => {
+                self.draw_elem(0x20b, None, None);
+                let e = self.ui_elem(0x20c);
+                self.screen.blit(157 + i as u16, 0, e.x as i32, e.y as i32, 64, false, None);
+                for id in [0x20e, 0x212, 0x210, 0x215, 0x216] {
+                    self.draw_elem(id, None, None);
+                }
+                for (k, id) in [0x217u16, 0x218].into_iter().enumerate() {
+                    let e = self.ui_elem(id);
+                    self.screen.blit(super::ARROWS, k as u16, e.x as i32, e.y as i32, 64, false, None);
+                }
+                // Ticker (`FUN_100661a8`): from x 128 leftwards 2 px a frame, a second copy w + 48
+                // behind, looping.
+                let text: Vec<u16> =
+                    self.string(TEXT_FIRST + i as u16).into_iter().filter(|&c| c != crate::screen::NEWLINE).collect();
+                let w = crate::screen::Screen::text_width(&self.data.fonts, &text);
+                let lap = w + 48;
+                let left = 128 - (2 * t as i32) % lap;
+                for x in [left, left + lap] {
+                    self.draw_text_elem_at(0x20d, &text, x + w / 2, 64, None);
+                }
+                let (have, need) = (self.pet.mission_progress(i), TARGETS[i]);
+                self.draw_number_elem(0x20f, have.min(need));
+                self.draw_number_elem(0x211, need);
+                let s = self.string(167);
+                self.draw_text_elem(0x213, &s);
+                self.draw_number_elem(0x214, REWARD);
+            }
         }
     }
 
@@ -777,12 +847,45 @@ impl Game {
         }
     }
 
-    pub(super) fn update_missions(&mut self, idx: usize, pressed: u8) -> Scene {
-        let idx = super::cycle(idx, crate::progress::TARGETS.len(), pressed);
-        if pressed & C != 0 {
-            self.open(Action::InfoFromMissions)
+    /// MISSION (`FUN_10048bd0`): B opens the list, then a mission; C steps back; A / dial up
+    /// is the next mission, dial down the previous. A mission page left alone 600 frames goes HOME.
+    pub(super) fn update_missions(&mut self, view: u8, idx: usize, t: u16, pressed: u8) -> Scene {
+        let n = crate::progress::TARGETS.len();
+        let step = if pressed & (A | UP) != 0 {
+            Some((idx + 1) % n)
+        } else if pressed & DOWN != 0 {
+            Some((idx + n - 1) % n)
         } else {
-            Scene::Missions { idx }
+            None
+        };
+        match view {
+            0 if pressed & C != 0 => {
+                self.sfx(2, 100);
+                self.open(Action::InfoFromMissions)
+            }
+            0 if pressed & (B | PUSH) != 0 => {
+                self.sfx(1, 100);
+                Scene::Missions { view: 1, idx, t: 0 }
+            }
+            1 | 2 if pressed & C != 0 => {
+                self.sfx(2, 100);
+                Scene::Missions { view: view - 1, idx, t: 0 }
+            }
+            1 if pressed & (B | PUSH) != 0 => {
+                self.sfx(1, 100);
+                self.pet.missions_viewed |= self.pet.claimed & 1 << idx;
+                Scene::Missions { view: 2, idx, t: 0 }
+            }
+            1 | 2 if step.is_some() => {
+                self.sfx(0, 100);
+                let idx = step.unwrap_or(idx);
+                if view == 2 {
+                    self.pet.missions_viewed |= self.pet.claimed & 1 << idx;
+                }
+                Scene::Missions { view, idx, t: 0 }
+            }
+            2 if t >= 600 => Scene::Home,
+            _ => Scene::Missions { view, idx, t: t.saturating_add(1) },
         }
     }
 
@@ -996,5 +1099,26 @@ mod tests {
         assert!(matches!(g.scene, super::Scene::Found { zoom: true, .. }));
         press(&mut g, crate::input::A);
         assert!(matches!(g.scene, super::Scene::Collection { idx: 1 }));
+    }
+
+    #[test]
+    fn missions_go_overview_list_page_and_back() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.claimed = 0b10;
+        g.scene = g.open(super::Action::Missions);
+        let t = 86_400 * 3 + 12 * 3600;
+        let press = |g: &mut Game, b: u8| {
+            g.frame(t, b);
+            g.frame(t, 0);
+        };
+        press(&mut g, B);
+        press(&mut g, crate::input::A);
+        assert!(matches!(g.scene, super::Scene::Missions { view: 1, idx: 1, .. }));
+        press(&mut g, B);
+        assert!(matches!(g.scene, super::Scene::Missions { view: 2, idx: 1, .. }));
+        assert_eq!(g.pet.missions_viewed, 0b10, "seen");
+        press(&mut g, crate::input::C);
+        press(&mut g, crate::input::C);
+        assert!(matches!(g.scene, super::Scene::Missions { view: 0, .. }));
     }
 }

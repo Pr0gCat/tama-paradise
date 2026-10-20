@@ -294,8 +294,8 @@ impl Game {
                 self.draw_code(digits, *pos);
                 true
             }
-            Scene::Missions { idx } => {
-                self.draw_mission(*idx);
+            Scene::Missions { view, idx, t } => {
+                self.draw_mission(*view, *idx, *t);
                 true
             }
             Scene::Breed { cands, idx } => {
