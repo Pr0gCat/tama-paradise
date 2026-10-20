@@ -219,8 +219,8 @@ impl Game {
                 idx: 0,
                 back: Some(Action::Lab),
             },
-            // MICROSCOPE (`FUN_1005ce28`): ponytail: its COLLECTION viewer is not built yet, so it
-            // stays greyed out (the original greys it out until a character is found).
+            // MICROSCOPE (`FUN_1005ce28`): COLLECTION stays greyed out until a lab-code character
+            // is found, as in the original.
             Action::Microscope => Scene::Menu {
                 items: vec![
                     (t::LAB_CODE, Some(Action::LabCode)),

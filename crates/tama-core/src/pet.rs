@@ -581,8 +581,6 @@ impl Pet {
         self.inventory.retain(|e| e.1 > 0);
     }
 
-    /// Feed a meal or snack (`care_eat_item` 0x1001021c). Returns false if refused.
-    // ponytail: special snacks (colour juices, HAPPY/LOVE/IMMUNITY, nap tea) not handled yet.
     /// Tama days ≥ 30 at death counts as old age (daiojo).
     pub fn daiojo(&self) -> bool {
         self.cond == Cond::Dead && self.days >= 30
