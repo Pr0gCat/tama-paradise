@@ -61,6 +61,11 @@ fn days_in_month(y: u16, m: u16) -> u16 {
     }
 }
 
+/// DEVELOPER menu actions, in menu order; ARE YOU SURE?; ITEM UNLOCKED!.
+const DEV_ACTIONS: [Action; 4] = [Action::DevGrow, Action::DevPoints, Action::DevCare, Action::DevUnlock];
+const ARE_YOU_SURE: u16 = 0xea;
+const UNLOCKED: u16 = 0xcd;
+
 impl Game {
     pub(super) fn open_system(&mut self, a: Action) -> Scene {
         match a {
@@ -90,8 +95,29 @@ impl Game {
             }
             Action::SettingsAtSaveData => self.settings_menu(4),
             Action::SettingsAtDeveloper => self.settings_menu(5),
-            // DEVELOPER (remake): GROW UP evolves now, +10000 points, FULL CARE fills and cures.
+            // DEVELOPER (remake): GROW UP evolves now, +10000 points, FULL CARE fills and cures,
+            // UNLOCK ALL opens everything; each asks ARE YOU SURE? first (they change the save).
             Action::Developer => self.developer_menu(0),
+            Action::DeveloperAt(i) => self.developer_menu(i as usize),
+            Action::DevAsk(i) => Scene::Ask {
+                text: ARE_YOU_SURE,
+                yes: false,
+                on_yes: DEV_ACTIONS[i as usize],
+                back: Action::DeveloperAt(i),
+            },
+            Action::DevUnlock => {
+                let p = &mut self.pet;
+                p.rank = crate::progress::RANK_MAX;
+                p.rank_seen = p.rank;
+                p.areas = 0b111;
+                for i in self.data.items.iter().filter(|i| i.flags & 1 != 0) {
+                    if !p.unlocked.contains(&i.id) {
+                        p.unlocked.push(i.id);
+                    }
+                }
+                self.sfx(super::SND_CODE_UNLOCKED, 100);
+                Scene::Message { text: UNLOCKED, then: Box::new(self.developer_menu(3)) }
+            }
             Action::DevGrow => {
                 if self.pet.def.stage < 5 {
                     self.pet.raise(crate::pet::req::EVOLUTION);
@@ -184,11 +210,7 @@ impl Game {
     }
 
     fn developer_menu(&self, idx: usize) -> Scene {
-        let items = vec![
-            (REMAKE_TEXT + 8, Some(Action::DevGrow)),
-            (REMAKE_TEXT + 9, Some(Action::DevPoints)),
-            (REMAKE_TEXT + 10, Some(Action::DevCare)),
-        ];
+        let items = [8, 9, 10, 12].iter().zip(0u8..).map(|(&t, i)| (REMAKE_TEXT + t, Some(Action::DevAsk(i)))).collect();
         Scene::Menu { items, idx, back: Some(Action::SettingsAtDeveloper) }
     }
 
@@ -527,6 +549,8 @@ mod tests {
         g.pet.onaka = 0;
         g.scene = g.open(Action::Developer);
         let before = g.pet.points;
+        assert!(matches!(g.open(Action::DevAsk(1)), Scene::Ask { on_yes: Action::DevPoints, yes: false, .. }));
+        assert_eq!(g.pet.points, before, "nothing before YES");
         assert!(matches!(g.open(Action::DevPoints), Scene::Reward { amount: 10_000, .. }));
         assert!(matches!(g.open(Action::DevCare), Scene::Play(_)));
         assert_eq!(g.pet.points, before + 10_000);
@@ -534,5 +558,7 @@ mod tests {
         g.pet.def.stage = 3;
         assert!(matches!(g.open(Action::DevGrow), Scene::Home));
         assert!(g.pet.is_pending(crate::pet::req::EVOLUTION));
+        g.open(Action::DevUnlock);
+        assert_eq!((g.pet.rank, g.pet.areas), (crate::progress::RANK_MAX, 0b111));
     }
 }

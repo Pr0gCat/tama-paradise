@@ -103,6 +103,9 @@ impl Game {
             | Action::DevGrow
             | Action::DevPoints
             | Action::DevCare
+            | Action::DevUnlock
+            | Action::DevAsk(_)
+            | Action::DeveloperAt(_)
             | Action::SettingsAtDeveloper
             | Action::ExportSave
             | Action::ImportSave

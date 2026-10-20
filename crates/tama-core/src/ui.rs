@@ -115,7 +115,7 @@ const SND_HUNT_TRIP: u16 = 80;
 const PLANET_NAME: u16 = 0xF003;
 /// Texts the remake adds (no firmware string), ids from 0xE000 (`hant::REMAKE`, every language):
 /// TOUCH ON, TOUCH OFF, SAVE DATA, EXPORT, IMPORT, NEW GAME, the name of zh-Hant, DEVELOPER,
-/// GROW UP, +10000, FULL CARE, GAME INFO.
+/// GROW UP, +10000, FULL CARE, GAME INFO, UNLOCK ALL.
 pub(crate) const REMAKE_TEXT: u16 = 0xE000;
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
@@ -228,6 +228,10 @@ pub(crate) enum Action {
     DevGrow,
     DevPoints,
     DevCare,
+    DevUnlock,
+    /// ARE YOU SURE? before developer action n (menu order); back to the menu at n.
+    DevAsk(u8),
+    DeveloperAt(u8),
     SettingsAtDeveloper,
     ExportSave,
     ImportSave,
