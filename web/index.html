@@ -454,14 +454,18 @@
     const osc = audio.createOscillator(), gain = audio.createGain();
     osc.setPeriodicWave(pulseWave(0.1));
     osc.connect(gain).connect(audio.destination);
-    let t = audio.currentTime + 0.01;
+    // Silent until the first note: the gain otherwise starts at 1 and the oscillator at 440 Hz,
+    // which clicks before every sound.
+    const start = audio.currentTime + 0.01;
+    gain.gain.setValueAtTime(0, audio.currentTime);
+    let t = start;
     for (const [steps, period, duty] of m.notes) {
       const on = period > 0 && duty > 0;
       if (on) osc.frequency.setValueAtTime(1e6 / period, t);
       gain.gain.setValueAtTime(on ? 0.25 * vol / 100 : 0, t);
       t += steps * m.ms_per_step / 1000;
     }
-    osc.start(); osc.stop(t);
+    osc.start(start); osc.stop(t);
     voice = { osc };
   }
 

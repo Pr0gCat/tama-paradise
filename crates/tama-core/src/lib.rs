@@ -602,12 +602,16 @@ impl Game {
         });
         self.level = shown;
         self.screen.zoom = 4f32.powf((self.zoom - ui::zoom_stop(shown)) / 16.0);
-        self.render_home();
+        // The pet plays the real level's motions (field or close-up), so it scales from that
+        // level's stop: it shrinks or grows with the world all the way to the new size.
+        let pet_level = if matches!(real, Level::Field | Level::Pet) { real } else { shown };
+        let pet_zoom = 4f32.powf((self.zoom - ui::zoom_stop(pet_level)) / 16.0);
+        self.render_home(pet_zoom);
         self.level = real;
         self.screen.zoom = 1.0;
     }
 
-    fn render_home(&mut self) {
+    fn render_home(&mut self, pet_zoom: f32) {
         match self.level {
             Level::Space => {
                 self.draw_space();
@@ -632,8 +636,8 @@ impl Game {
                     self.draw_visitor();
                     self.draw_poop();
                 }
-                // The pet keeps its size; only the world around it zooms.
-                self.screen.zoom = 1.0;
+                // The pet zooms with the world, from its own size at this layer's stop.
+                self.screen.zoom = pet_zoom;
                 if self.level == Level::Pet {
                     self.screen.off = (0, 0);
                 }
