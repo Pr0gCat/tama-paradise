@@ -14,6 +14,10 @@ final class Engine: ObservableObject {
     private var timer: Timer?
     private var gesture: UInt8 = UInt8(TAMA_GESTURE_NONE)
     var holding = false
+    /// A / B / C held on the buttons under the screen, and presses not yet seen by a frame
+    /// (a tap shorter than a frame still counts).
+    private var buttons: UInt8 = 0
+    private var latched: UInt8 = 0
     private let sound = Sound()
     nonisolated private static let saveKey = "tama-save"
 
@@ -73,6 +77,16 @@ final class Engine: ObservableObject {
     /// One gesture, used by the next frame.
     func send(_ g: Int32) { gesture = UInt8(g) }
 
+    func button(_ bit: UInt32, down: Bool) {
+        let b = UInt8(bit)
+        if down {
+            buttons |= b
+            latched |= b
+        } else {
+            buttons &= ~b
+        }
+    }
+
     func resume() {
         guard let game, timer == nil else { return }
         tama_advance_to(game, Self.now())
@@ -95,7 +109,13 @@ final class Engine: ObservableObject {
 
     private func tick() {
         guard let game else { return }
-        tama_frame_touch(game, Self.now(), gesture, holding)
+        if buttons | latched != 0 {
+            // The real buttons: A, B and C as on the device.
+            tama_frame(game, Self.now(), buttons | latched)
+            latched = 0
+        } else {
+            tama_frame_touch(game, Self.now(), gesture, holding)
+        }
         gesture = UInt8(TAMA_GESTURE_NONE)
         supplySprites(game)
         playSounds(game)

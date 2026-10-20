@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The 128×128 screen with the watch's controls: swipe up / down turn the dial (the Digital
-/// Crown does too), a tap selects, swipe left goes back, a long press is the dial's long press.
+/// The 128×128 screen with the A / B / C buttons under it. On the screen: swipe up / down turn
+/// the dial (the Digital Crown does too), a tap selects, swipe left goes back, a long press is
+/// the dial's long press.
 struct GameView: View {
     @ObservedObject var engine: Engine
     @State private var crown = 0.0
@@ -10,23 +11,22 @@ struct GameView: View {
     @State private var holdTask: Task<Void, Never>?
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Color.black
-                if let image = engine.image {
-                    Image(decorative: image, scale: 1)
-                        .interpolation(.none)
-                        .resizable()
-                        .aspectRatio(1, contentMode: .fit)
-                        .frame(width: geo.size.width, height: geo.size.height)
-                } else if let error = engine.error {
-                    Text(error).font(.footnote).multilineTextAlignment(.center).padding()
-                }
+        VStack(spacing: 4) {
+            screen
+                .aspectRatio(1, contentMode: .fit)
+                .contentShape(Rectangle())
+                .gesture(touch)
+            Spacer(minLength: 0)
+            HStack(spacing: 6) {
+                key("A", TAMA_A)
+                key("B", TAMA_B)
+                key("C", TAMA_C)
             }
-            .contentShape(Rectangle())
-            .gesture(touch)
+            .frame(height: 34)
         }
-        .ignoresSafeArea()
+        .padding(.horizontal, 4)
+        .padding(.bottom, 6)
+        .ignoresSafeArea(edges: .bottom)
         .focusable()
         .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .medium,
                               isContinuous: true, isHapticFeedbackEnabled: true)
@@ -38,6 +38,34 @@ struct GameView: View {
             crownStep = new
             engine.send(d > 0 ? TAMA_GESTURE_SWIPE_UP : TAMA_GESTURE_SWIPE_DOWN)
         }
+    }
+
+    @ViewBuilder private var screen: some View {
+        if let image = engine.image {
+            Image(decorative: image, scale: 1)
+                .interpolation(.none)
+                .resizable()
+        } else if let error = engine.error {
+            Text(error).font(.footnote).multilineTextAlignment(.center)
+        } else {
+            Color.black
+        }
+    }
+
+    /// One of the device's buttons: held while the finger is on it.
+    private func key(_ label: String, _ bit: UInt32) -> some View {
+        Text(label)
+            .font(.system(size: 15, weight: .semibold))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Capsule().fill(Color(white: 0.25)))
+            .contentShape(Capsule())
+            .onLongPressGesture(minimumDuration: 0, maximumDistance: 40) {
+                // A tap too short to be seen pressing still counts once.
+                engine.button(bit, down: true)
+                engine.button(bit, down: false)
+            } onPressingChanged: { pressing in
+                engine.button(bit, down: pressing)
+            }
     }
 
     private var touch: some Gesture {
