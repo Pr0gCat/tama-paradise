@@ -128,27 +128,38 @@ impl Game {
         let scene = std::mem::replace(&mut self.scene, Scene::Home);
         let drawn = match &scene {
             Scene::Home => false,
-            Scene::Menu { items, idx, .. } => {
+            Scene::Menu { items, idx, back } => {
                 self.draw_elem(elem::MENU_BG, None, None);
-                // Vertical wheel: item k from the selection at y = 64 − 88·sin(25°·k).
-                let n = items.len() as i32;
-                let mut order: Vec<i32> = (-(n / 2)..=(n - 1) / 2).collect();
-                order.sort_by_key(|k| -k.abs());
-                for k in order {
-                    let i = (*idx as i32 + k).rem_euclid(n) as usize;
-                    let a = (25.0f32 * k as f32).to_radians();
+                // Vertical wheel (`ringmenu_item_layout` 0x1002ad90): item at phase k from the
+                // wheel position, y = 64 − 88·sin(25°·k), x = 64 + 10·(1 − cos 45°·k), scale
+                // 0.6 + 0.4·cos 45°·k; the nearest item drawn last.
+                let n = items.len();
+                let key = (n, items.first().map_or(0, |i| i.0), *back);
+                let pos = self.menu_pos.filter(|m| (m.0, m.1, m.2) == key).map_or(*idx as f32, |m| m.3);
+                let half = (n / 2) as f32;
+                let mut order: Vec<(usize, f32)> = (0..n)
+                    .map(|i| (i, (i as f32 - pos + half).rem_euclid(n as f32) - half))
+                    .filter(|(_, k)| k.abs() <= 2.5)
+                    .collect();
+                order.sort_by(|a, b| b.1.abs().total_cmp(&a.1.abs()));
+                let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
+                for (i, k) in order {
                     let (x, y) = (
-                        64 + (10.0 * (1.0 - (45.0f32 * k as f32).to_radians().cos())) as i32,
-                        64 - (88.0 * a.sin()) as i32,
+                        64.0 + 10.0 * (1.0 - (45.0f32 * k).to_radians().cos()),
+                        64.0 - 88.0 * (25.0f32 * k).to_radians().sin(),
                     );
-                    let label = self.ui_elem(elem::MENU_LABEL).p[3] as u16;
+                    let s = 0.6 + 0.4 * (45.0f32 * k).to_radians().cos();
+                    // Scale about the item: the screen zoom scales about (64, 64).
+                    self.screen.zoom = s;
+                    let (bx, by) = ((64.0 + (x - 64.0) / s).round() as i32, (64.0 + (y - 64.0) / s).round() as i32);
                     let gray = items[i].1.is_none() as usize;
-                    self.screen.blit(label, 0, x, y, 64, false, (gray > 0).then_some((label, gray)));
+                    self.screen.blit(label, 0, bx, by, 64, false, (gray > 0).then_some((label, gray)));
                     // Text element 0x9e (`ringmenu_create` 0x1002af28): font 2, centred as a
                     // block (two-line names too), palette 4 when greyed.
                     let glyphs = self.string(items[i].0);
-                    self.draw_text_elem_at(elem::MENU_TEXT, &glyphs, x, y, (gray > 0).then_some(4));
+                    self.draw_text_elem_at(elem::MENU_TEXT, &glyphs, bx, by, (gray > 0).then_some(4));
                 }
+                self.screen.zoom = 1.0;
                 true
             }
             Scene::FoodCategory { idx } => {

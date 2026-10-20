@@ -80,6 +80,8 @@ pub struct Game {
     push_frames: u16,
     /// Field camera: focused object (0 = pet, then placed toys) and current centre in world space.
     focus: usize,
+    /// Ring menu wheel position in items, for the menu (item count, first item, back) it belongs to.
+    menu_pos: Option<(usize, u16, Option<ui::Action>, f32)>,
     /// The field camera is still more than 4 px from its focus (C waits).
     cam_moving: bool,
     cam: (i32, i32),
@@ -161,6 +163,7 @@ impl Game {
             push_frames: 0,
             focus: 0,
             cam_moving: false,
+            menu_pos: None,
             cam: ui::PET_FOCUS,
             toy_nodes: Vec::new(),
             toy_key: None,

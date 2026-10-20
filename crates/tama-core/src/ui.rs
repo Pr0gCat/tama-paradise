@@ -714,6 +714,17 @@ impl Game {
         pressed: u8,
     ) -> Scene {
         let idx = cycle_list(idx, items.len(), pressed);
+        // The wheel turns half the remaining way each frame (`listscroll` 0x10005f30). The
+        // firmware ignores B and C until it stops; the remake takes them at once.
+        let n = items.len() as f32;
+        let key = (items.len(), items.first().map_or(0, |i| i.0), back);
+        let pos = self.menu_pos.filter(|m| (m.0, m.1, m.2) == key).map_or(idx as f32, |m| m.3);
+        let mut d = (idx as f32 - pos).rem_euclid(n);
+        if d > n / 2.0 {
+            d -= n;
+        }
+        let pos = if d.abs() < 0.25 { idx as f32 } else { (pos + d / 2.0).rem_euclid(n) };
+        self.menu_pos = Some((key.0, key.1, key.2, pos));
         if pressed & C != 0 {
             back.map_or(Scene::Home, |a| self.open(a))
         } else if pressed & (B | PUSH) != 0 {
