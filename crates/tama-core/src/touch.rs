@@ -37,6 +37,8 @@ impl Game {
             Scene::Home => Map { tap: A, ..base },
             // Star pages turn with A.
             Scene::Stars { page, .. } if *page > 0 => Map { tap: A, ..base },
+            // The lab's icon grid: a swipe moves the other way round (the dial's down is forward).
+            Scene::LabMenu { .. } => Map { up: DOWN, down: UP, ..base },
             // SOUND: up louder (B), down quieter (A), tap done.
             Scene::Level { .. } => Map { up: B, down: A, tap: C, ..base },
             Scene::Mini { session, .. } => session.game.touch_map(),
