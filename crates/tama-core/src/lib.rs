@@ -439,11 +439,6 @@ impl Game {
         self.pet.touch
     }
 
-    /// BRIGHTNESS level 0–3 (the original's backlight), for the platform to apply.
-    pub fn brightness(&self) -> u8 {
-        self.pet.brightness
-    }
-
     /// Sprite indexes the screen tried to draw that have not been added yet.
     pub fn missing_sprites(&self) -> Vec<u16> {
         self.screen.wanted.iter().copied().filter(|id| !self.screen.sprites.contains_key(id)).collect()

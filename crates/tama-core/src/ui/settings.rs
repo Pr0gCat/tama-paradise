@@ -47,6 +47,7 @@ impl Game {
     /// New-game setup in the firmware's order (`FUN_10038250`..`FUN_10039034`): LANGUAGE, then
     /// BIRTHDAY, then PLANET NAME (the clock comes from the platform).
     pub fn begin_intro(&mut self) {
+        self.pet.set_up = false;
         // The first-start jingle (PSID_INITIAL_LOGO `FUN_10038250`).
         self.sfx(SND_FIRST_START, 100);
         self.scene = self.open(Action::IntroLanguage);
@@ -176,6 +177,7 @@ impl Game {
                         let (_, m, d) = crate::pet::date(t);
                         (m as u8, d as u8)
                     });
+                    self.pet.set_up = true;
                     // "MAKE <planet> PROSPEROUS!", then the game starts.
                     return Scene::Message { text: INTRO_GOAL, then: Box::new(Scene::Home) };
                 }
@@ -271,6 +273,15 @@ mod tests {
     }
 
     #[test]
+    fn a_reload_during_the_setup_starts_it_again() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.begin_intro();
+        let save = g.save();
+        let g = Game::load(crate::evolve::tests::data(), &save).unwrap();
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == LANGUAGE_NAMES), "LANGUAGE again");
+    }
+
+    #[test]
     fn language_can_change_in_settings() {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         g.scene = g.open(Action::Settings);
@@ -278,14 +289,15 @@ mod tests {
             g.frame(86_400 * 3 + 12 * 3600, b);
             g.frame(86_400 * 3 + 12 * 3600, 0);
         };
-        press(&mut g, DOWN); // TOUCH (last)
+        press(&mut g, DOWN); // SAVE DATA (last)
+        press(&mut g, DOWN); // TOUCH
         press(&mut g, DOWN); // the language entry
         press(&mut g, B);
         assert!(matches!(&g.scene, Scene::Menu { idx: 1, .. }), "current language selected");
         press(&mut g, DOWN); // にほんご
         press(&mut g, B);
         assert_eq!(g.pet.lang, 0);
-        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[3].0 == 0x56), "shows the new name");
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[2].0 == 0x56), "shows the new name");
     }
 
     #[test]

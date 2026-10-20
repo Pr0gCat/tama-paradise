@@ -95,7 +95,11 @@ impl Game {
             | Action::SettingsTime
             | Action::SettingsTimeDisplay
             | Action::Volume
-            | Action::Brightness
+            | Action::SaveData
+            | Action::SettingsAtSaveData
+            | Action::ExportSave
+            | Action::ImportSave
+            | Action::NewGameAsk
             | Action::DateTime
             | Action::DateOrder
             | Action::SetDateOrder(_)

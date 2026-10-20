@@ -1,11 +1,11 @@
-//! Lab menu SETTINGS (`FUN_10047174`): SOUND, BRIGHTNESS, TIME → DATE/TIME and DISPLAY, plus the
+//! Lab menu SETTINGS (`FUN_10047174`): SOUND, TIME → DATE/TIME and DISPLAY (the remake drops
+//! BRIGHTNESS: a screen is always at full brightness), the remake's save data menu, plus the
 //! planet level's idle clock (docs/spec/08-care-ui.md §2.20, 10-decor-planet S5).
 
 use super::*;
 use crate::pet::{date, days_from_civil};
 
 const SOUND: u16 = 28;
-const BRIGHTNESS: u16 = 27;
 const TIME: u16 = 26;
 const DATE_TIME: u16 = 29;
 const DISPLAY: u16 = 30;
@@ -17,7 +17,7 @@ const SET_DATE_TIME: u16 = 95;
 const FIELD_TITLES: u16 = 235;
 /// Language names (the remake's extra SETTINGS item shows the current one).
 const LANGUAGE_NAMES: u16 = 0x56;
-/// SOUND / BRIGHTNESS close themselves after 200 frames without A or B.
+/// SOUND closes itself after 200 frames without A or B.
 const LEVEL_IDLE: u16 = 200;
 /// The planet level shows the clock after 200 idle frames.
 pub(crate) const CLOCK_IDLE: u16 = 200;
@@ -33,8 +33,6 @@ mod elem {
     /// SOUND: background, speaker chick, level bar (frame = level), mute cross.
     pub const SOUND: [u16; 3] = [0x28b, 0x28c, 0x28d];
     pub const MUTE: u16 = 0x28e;
-    /// BRIGHTNESS: background, bulb chick, level bar.
-    pub const BRIGHTNESS: [u16; 3] = [0x288, 0x289, 0x28a];
     /// Clock editor: background, title bar, title, year/month/day boxes and values, time bar,
     /// hour, colon, minute, AM/PM, key hints.
     pub const CLOCK_BG: [u16; 2] = [0x79, 0x7b];
@@ -69,11 +67,28 @@ impl Game {
             Action::Settings => self.settings_menu(0),
             Action::ToggleTouch => {
                 self.pet.touch = !self.pet.touch;
-                self.settings_menu(4)
+                self.settings_menu(3)
             }
             Action::SettingsTime => self.time_menu(0),
-            Action::Volume => Scene::Level { bright: false, level: self.pet.volume, idle: 0 },
-            Action::Brightness => Scene::Level { bright: true, level: self.pet.brightness, idle: 0 },
+            Action::Volume => Scene::Level { level: self.pet.volume, idle: 0 },
+            // SAVE DATA (remake): export or import a save file through the page, or start over.
+            Action::SaveData => Scene::Menu {
+                items: vec![
+                    (REMAKE_TEXT + 3, Some(Action::ExportSave)),
+                    (REMAKE_TEXT + 4, Some(Action::ImportSave)),
+                    (REMAKE_TEXT + 5, Some(Action::NewGameAsk)),
+                ],
+                idx: 0,
+                back: Some(Action::SettingsAtSaveData),
+            },
+            Action::ExportSave | Action::ImportSave => {
+                self.connect = Some(if a == Action::ExportSave { "save-export" } else { "save-import" }.into());
+                self.open(Action::SaveData)
+            }
+            Action::NewGameAsk => {
+                Scene::Ask { text: REALLY_DELETE, yes: false, on_yes: Action::ResetAll, back: Action::SaveData }
+            }
+            Action::SettingsAtSaveData => self.settings_menu(4),
             Action::DateOrder => {
                 let items = (0..3u8).map(|i| (DATE_ORDERS + i as u16, Some(Action::SetDateOrder(i)))).collect();
                 let menu = Scene::Menu { items, idx: 0, back: Some(Action::SettingsTimeDisplay) };
@@ -121,14 +136,14 @@ impl Game {
         }
     }
 
-    /// SETTINGS: SOUND, BRIGHTNESS, TIME; the remake adds the language and touch controls.
+    /// SETTINGS: SOUND, TIME; the remake adds the language, touch controls and save data.
     fn settings_menu(&self, idx: usize) -> Scene {
         let items = vec![
             (SOUND, Some(Action::Volume)),
-            (BRIGHTNESS, Some(Action::Brightness)),
             (TIME, Some(Action::SettingsTime)),
             (LANGUAGE_NAMES + self.pet.lang as u16, Some(Action::Language)),
             (REMAKE_TEXT + !self.pet.touch as u16, Some(Action::ToggleTouch)),
+            (REMAKE_TEXT + 2, Some(Action::SaveData)),
         ];
         Scene::Menu { items, idx, back: Some(Action::Lab) }
     }
@@ -139,12 +154,12 @@ impl Game {
     }
 
     pub(super) fn settings_at_time(&self) -> Scene {
-        self.settings_menu(2)
+        self.settings_menu(1)
     }
 
-    /// SOUND / BRIGHTNESS (`FUN_1004fcf4` / `FUN_1004fee4`): A lowers, B raises (0–3), applied at
-    /// once; C or 200 frames without A/B keeps it.
-    pub(super) fn update_level(&mut self, bright: bool, mut level: u8, idle: u16, pressed: u8) -> Scene {
+    /// SOUND (`FUN_1004fcf4`): A lowers, B raises (0–3), applied at once; C or 200 frames without
+    /// A/B keeps it.
+    pub(super) fn update_level(&mut self, mut level: u8, idle: u16, pressed: u8) -> Scene {
         let change = if pressed & A != 0 {
             level.checked_sub(1)
         } else if pressed & B != 0 {
@@ -154,27 +169,23 @@ impl Game {
         };
         if let Some(l) = change {
             level = l;
-            if bright {
-                self.pet.brightness = l;
-            } else {
-                self.pet.volume = l;
-            }
+            self.pet.volume = l;
             self.sfx(0, 100);
-            return Scene::Level { bright, level, idle: 0 };
+            return Scene::Level { level, idle: 0 };
         }
         if pressed & C != 0 || idle >= LEVEL_IDLE {
             self.sfx(1, 100);
-            return self.settings_menu(bright as usize);
+            return self.settings_menu(0);
         }
-        Scene::Level { bright, level, idle: idle + 1 }
+        Scene::Level { level, idle: idle + 1 }
     }
 
-    pub(super) fn draw_level(&mut self, bright: bool, level: u8) {
-        let ids = if bright { elem::BRIGHTNESS } else { elem::SOUND };
+    pub(super) fn draw_level(&mut self, level: u8) {
+        let ids = elem::SOUND;
         self.draw_elem(ids[0], None, None);
         self.draw_elem(ids[1], None, None);
         self.draw_elem(ids[2], Some(level as u16), None);
-        if !bright && level == 0 {
+        if level == 0 {
             self.draw_elem(elem::MUTE, None, None);
         }
     }
@@ -309,7 +320,7 @@ mod tests {
         g.frame(NOON, 0);
         g.scene = g.open(Action::Settings);
         press(&mut g, B); // SOUND
-        assert!(matches!(g.scene, Scene::Level { bright: false, level: 2, .. }));
+        assert!(matches!(g.scene, Scene::Level { level: 2, .. }));
         g.take_sounds();
         press(&mut g, A);
         assert_eq!(g.pet.volume, 1);
@@ -324,15 +335,22 @@ mod tests {
     }
 
     #[test]
-    fn brightness_closes_itself_after_200_frames() {
+    fn save_data_menu_asks_the_page_and_starts_over() {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
-        g.scene = g.open(Action::Brightness);
-        press(&mut g, B);
-        assert_eq!(g.pet.brightness, 2);
-        for _ in 0..=LEVEL_IDLE {
-            g.frame(NOON, 0);
-        }
-        assert!(matches!(g.scene, Scene::Menu { idx: 1, .. }));
+        g.pet.points = 500;
+        g.scene = g.open(Action::SaveData);
+        press(&mut g, B); // EXPORT
+        assert_eq!(g.take_connect().as_deref(), Some("save-export"));
+        press(&mut g, A);
+        press(&mut g, B); // IMPORT
+        assert_eq!(g.take_connect().as_deref(), Some("save-import"));
+        press(&mut g, A);
+        press(&mut g, B); // NEW GAME
+        press(&mut g, B); // NO
+        assert_eq!(g.pet.points, 500);
+        assert!(matches!(&g.scene, Scene::Menu { items, .. } if items[0].0 == REMAKE_TEXT + 3));
+        press(&mut g, C);
+        assert!(matches!(g.scene, Scene::Menu { idx: 4, .. }), "back on SAVE DATA");
     }
 
     #[test]
@@ -398,10 +416,11 @@ mod tests {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         assert!(g.touch(), "on by default");
         g.scene = g.open(Action::Settings);
-        press(&mut g, DOWN); // TOUCH ON (last)
+        press(&mut g, DOWN); // SAVE DATA (last)
+        press(&mut g, DOWN); // TOUCH ON
         press(&mut g, B);
         assert!(!g.touch());
-        assert!(matches!(&g.scene, Scene::Menu { idx: 4, items, .. } if items[4].0 == REMAKE_TEXT + 1), "TOUCH OFF");
+        assert!(matches!(&g.scene, Scene::Menu { idx: 3, items, .. } if items[3].0 == REMAKE_TEXT + 1), "TOUCH OFF");
         assert_eq!(g.string(REMAKE_TEXT + 1)[..2], [337, 332], "T, O");
         press(&mut g, B);
         assert!(g.touch());

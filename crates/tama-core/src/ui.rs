@@ -109,7 +109,7 @@ const SND_HUNT_TRIP: u16 = 80;
 const PLANET_NAME: u16 = 0xF003;
 /// Texts the remake adds (no firmware string): ids from 0xE000, spelled in the font's A–Z / 0–9.
 pub(crate) const REMAKE_TEXT: u16 = 0xE000;
-const REMAKE_TEXTS: [&str; 2] = ["TOUCH ON", "TOUCH OFF"];
+const REMAKE_TEXTS: [&str; 6] = ["TOUCH ON", "TOUCH OFF", "SAVE DATA", "EXPORT", "IMPORT", "NEW GAME"];
 /// Rain / snow overlay, 128×128 × 4 frames (UI element 0x2d5).
 const PARTICLE: u16 = 0x457;
 const TABLE: u16 = 0x786;
@@ -214,7 +214,11 @@ pub(crate) enum Action {
     SettingsTimeDisplay,
     SettingsAtTime,
     Volume,
-    Brightness,
+    SaveData,
+    SettingsAtSaveData,
+    ExportSave,
+    ImportSave,
+    NewGameAsk,
     DateTime,
     DateOrder,
     SetDateOrder(u8),
@@ -466,9 +470,8 @@ pub(crate) enum Scene {
         nodes: Vec<Node>,
         t: u16,
     },
-    /// SETTINGS → SOUND / BRIGHTNESS: level 0–3, `idle` frames without A/B.
+    /// SETTINGS → SOUND: level 0–3, `idle` frames without A/B.
     Level {
-        bright: bool,
         level: u8,
         idle: u16,
     },
@@ -628,7 +631,7 @@ impl Game {
             Scene::UserInfo { page } => self.update_user_info(page, pressed),
             Scene::LabSplash { t } => self.update_lab_splash(t),
             Scene::LabMenu { idx } => self.update_lab_menu(idx, pressed),
-            Scene::Level { bright, level, idle } => self.update_level(bright, level, idle, pressed),
+            Scene::Level { level, idle } => self.update_level(level, idle, pressed),
             Scene::Clock { vals, pos, boot } => self.update_clock(vals, pos, boot, pressed),
             Scene::LabResult { stars, points, nodes, t } => self.update_lab_result(stars, points, nodes, t, pressed),
             Scene::Dying { node } => self.update_dying(node),

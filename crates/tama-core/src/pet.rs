@@ -224,12 +224,10 @@ pub struct Pet {
     /// Language (`data::LANGS` index; the firmware keeps it in 0x18000c6a bits 9–12).
     #[serde(default = "english")]
     pub lang: u8,
-    /// SETTINGS (`0x18000bec`): sound level 0–3, brightness 0–3, date order 0–2, and the
-    /// remake's offset from the platform clock set under DATE/TIME (seconds).
+    /// SETTINGS (`0x18000bec`): sound level 0–3, date order 0–2, and the remake's offset from
+    /// the platform clock set under DATE/TIME (seconds). Brightness is not kept: always full.
     #[serde(default = "two")]
     pub volume: u8,
-    #[serde(default = "one")]
-    pub brightness: u8,
     #[serde(default)]
     pub date_order: u8,
     #[serde(default)]
@@ -237,6 +235,10 @@ pub struct Pet {
     /// The remake's touch controls on the screen.
     #[serde(default = "yes")]
     pub touch: bool,
+    /// The new-game setup (language, birthday, planet name) is finished; a page reloaded in the
+    /// middle of it starts it again.
+    #[serde(default = "yes")]
+    pub set_up: bool,
     /// Egg-hunt slots used today per field (13 bits each).
     #[serde(default)]
     pub hunt_used: [u32; 3],
@@ -272,10 +274,6 @@ fn english() -> u8 {
 
 fn yes() -> bool {
     true
-}
-
-fn one() -> u8 {
-    1
 }
 
 fn two() -> u8 {
@@ -350,10 +348,10 @@ impl Pet {
             planet_name: Vec::new(),
             lang: 1,
             volume: 2,
-            brightness: 1,
             date_order: 0,
             clock_offset: 0,
             touch: true,
+            set_up: true,
             toys: [[[0; 6]; 2]; 3],
             equip: [0; 3],
             travel_toggle: 0,

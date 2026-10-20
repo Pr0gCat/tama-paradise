@@ -200,8 +200,8 @@ impl Game {
                 self.draw_lab_result(*stars, *points, nodes, *t);
                 true
             }
-            Scene::Level { bright, level, .. } => {
-                self.draw_level(*bright, *level);
+            Scene::Level { level, .. } => {
+                self.draw_level(*level);
                 true
             }
             Scene::Clock { vals, pos, .. } => {

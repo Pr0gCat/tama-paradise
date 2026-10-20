@@ -54,7 +54,12 @@ impl Game {
         if let Some(def) = data.character(pet.def.id) {
             pet.def = def;
         }
-        Ok(Game::with_pet(data, pet))
+        let set_up = pet.set_up;
+        let mut g = Game::with_pet(data, pet);
+        if !set_up {
+            g.begin_intro();
+        }
+        Ok(g)
     }
 }
 

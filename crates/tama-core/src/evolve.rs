@@ -253,10 +253,10 @@ impl Pet {
         fresh.planet_name = self.planet_name.clone();
         fresh.lang = self.lang;
         fresh.volume = self.volume;
-        fresh.brightness = self.brightness;
         fresh.date_order = self.date_order;
         fresh.clock_offset = self.clock_offset;
         fresh.touch = self.touch;
+        fresh.set_up = self.set_up;
         fresh.toys = self.toys;
         fresh.equip = self.equip;
         fresh.travel_toggle = self.travel_toggle;
