@@ -6,8 +6,8 @@ import SwiftUI
 struct GameView: View {
     /// Display points per game pixel (filling the width would be about 1.6 on a 46 mm watch).
     static let uiScale: CGFloat = 1.5
-    /// Crown turn (in its value units, high sensitivity) for one dial step. Smaller = faster.
-    static let crownPerStep = 1.2
+    /// Crown turn (in its value units, medium sensitivity) for one dial step. Smaller = faster.
+    static let crownPerStep = 0.5
 
     @ObservedObject var engine: Engine
     @State private var crown = 0.0
@@ -46,7 +46,7 @@ struct GameView: View {
         .ignoresSafeArea()
         .persistentSystemOverlays(.hidden)
         .focusable()
-        .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .high,
+        .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .medium,
                               isContinuous: true, isHapticFeedbackEnabled: true)
         .onChange(of: crown) { _, new in
             // One dial step per `crownStep` of turn (the range wraps: follow the shortest way).
