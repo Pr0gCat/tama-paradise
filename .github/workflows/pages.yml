@@ -29,6 +29,7 @@ jobs:
           tool: wasm-pack
       - run: wasm-pack build crates/tama-web --target web --out-dir ../../web/pkg --release
       - run: rm -f web/pkg/.gitignore web/pkg/package.json web/pkg/README.md
+      - run: echo "$GITHUB_SHA" > web/version.txt
       - uses: actions/upload-pages-artifact@v4
         with:
           path: web

@@ -10,7 +10,8 @@ self.addEventListener("fetch", e => {
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const res = await fetch(req);
+      // Revalidate past the HTTP cache (GitHub Pages sends max-age=600).
+      const res = await fetch(req.url, { cache: "no-cache" });
       if (res.ok) cache.put(req, res.clone());
       return res;
     } catch (err) {

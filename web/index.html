@@ -524,7 +524,21 @@
   }
   requestAnimationFrame(frame);
   // Home-screen app: cache everything for offline play.
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e));
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(e => console.warn("sw:", e));
+  }
+  // A published build carries version.txt (the commit). When it changes, save and reload, so an
+  // open page or home-screen app picks up a new build on its own.
+  const version = () => fetch("version.txt", { cache: "no-store" }).then(r => r.ok ? r.text() : null).catch(() => null);
+  version().then(running => {
+    if (!running) return;
+    const check = async () => {
+      const now = await version();
+      if (now && now !== running) { save(); location.reload(); }
+    };
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    setInterval(check, 10 * 60_000);
+  });
 
   // The dump in IndexedDB ("tama" / "files" / "dump"), or the one the player picks now.
   async function openDump() {
