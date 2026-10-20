@@ -85,6 +85,10 @@ pub struct Game {
     pub(crate) old_chr: Option<u16>,
     /// Frames without input (the planet level's idle clock).
     idle: u16,
+    /// Screen fade to black, 0 (none) – 32 (black), easing back to 0 (`fade_set` 0x1007b40c).
+    pub(crate) fade: u8,
+    /// LABOMENU cursor, kept for coming back from a lab screen.
+    pub(crate) lab_idx: u8,
     /// Planet ranks shown for planet roles 0 and 1 (rank-up: old, new).
     pub(crate) planet_ranks: Option<[u8; 2]>,
     /// Outfit-set visitor on the field (chr, looping motion 0x2f1) and the day it was rolled.
@@ -137,6 +141,8 @@ impl Game {
             roles: [None; 4],
             old_chr: None,
             idle: 0,
+            fade: 0,
+            lab_idx: 0,
             calls_heard: 0,
             planet_ranks: None,
             connect: None,
@@ -183,7 +189,7 @@ impl Game {
         // Holding the dial button for more than 13 frames opens the lab menu (08-care-ui §2.2.3).
         if self.push_frames == 14 && matches!(self.scene, Scene::Home) && self.pet.def.stage > 1 {
             self.sfx(1, 100);
-            self.scene = self.open(ui::Action::Lab);
+            self.scene = self.enter_lab();
         }
         self.update_scene(pressed);
         // HOME zoom (`zoom_update` 0x1000ed48): close a quarter of the gap per frame.
@@ -214,6 +220,7 @@ impl Game {
             self.home.tick(&self.data.motions);
             self.home.take_sounds(&mut self.sounds);
         }
+        self.fade = self.fade.saturating_sub(ui::FADE_STEP);
         self.render();
     }
 
@@ -468,9 +475,21 @@ impl Game {
     fn render(&mut self) {
         self.screen.wanted.clear();
         self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [0, 0, 0]);
-        if self.render_scene() {
-            return;
+        if !self.render_scene() {
+            self.render_layers();
         }
+        // The fade covers the screen with black by `fade` / 32.
+        if self.fade > 0 {
+            let keep = ui::FADE_FULL.saturating_sub(self.fade) as u32;
+            for px in self.screen.fb.as_chunks_mut::<4>().0 {
+                for c in &mut px[..3] {
+                    *c = (*c as u32 * keep / ui::FADE_FULL as u32) as u8;
+                }
+            }
+        }
+    }
+
+    fn render_layers(&mut self) {
         // Mid-zoom, draw the layer nearest the zoom value, scaled by the remaining distance.
         let real = self.level;
         let shown = [Level::Space, Level::Field, Level::Pet, Level::Cell]

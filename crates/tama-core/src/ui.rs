@@ -13,6 +13,8 @@ mod decor;
 mod draw;
 mod event;
 mod hunt;
+mod lab;
+pub(crate) use lab::{FADE_FULL, FADE_STEP};
 mod settings;
 mod shop;
 mod system;
@@ -475,6 +477,14 @@ pub(crate) enum Scene {
         pos: u8,
         boot: bool,
     },
+    /// LABOMENU's "TAMAGOTCHI Lab" logo, `t` frames in.
+    LabSplash {
+        t: u16,
+    },
+    /// LABOMENU: the icon grid, cursor `idx`.
+    LabMenu {
+        idx: u8,
+    },
     /// INFORMATION → USER INFO: planet, days and points; egg-bang day; birthday.
     UserInfo {
         page: u8,
@@ -614,6 +624,8 @@ impl Game {
             Scene::Memories { pet, icons, t } => self.update_memories(pet, icons, t),
             Scene::EvolvePoints { t } => self.update_evolve_points(t, pressed),
             Scene::UserInfo { page } => self.update_user_info(page, pressed),
+            Scene::LabSplash { t } => self.update_lab_splash(t),
+            Scene::LabMenu { idx } => self.update_lab_menu(idx, pressed),
             Scene::Level { bright, level, idle } => self.update_level(bright, level, idle, pressed),
             Scene::Clock { vals, pos, boot } => self.update_clock(vals, pos, boot, pressed),
             Scene::LabResult { stars, points, nodes, t } => self.update_lab_result(stars, points, nodes, t, pressed),

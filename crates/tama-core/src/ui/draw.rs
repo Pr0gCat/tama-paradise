@@ -208,6 +208,14 @@ impl Game {
                 self.draw_clock(vals, *pos);
                 true
             }
+            Scene::LabSplash { .. } => {
+                self.draw_lab_splash();
+                true
+            }
+            Scene::LabMenu { idx } => {
+                self.draw_lab_menu(*idx);
+                true
+            }
             Scene::UserInfo { page } => {
                 self.draw_user_info(*page);
                 true

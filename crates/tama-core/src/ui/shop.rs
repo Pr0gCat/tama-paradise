@@ -6,7 +6,6 @@ use crate::shop::ShopError;
 use crate::Game;
 
 mod t {
-    pub const INFORMATION: u16 = 0x00;
     pub const LEVELS: [u16; 3] = [0xbf, 0xc0, 0xc1];
     pub const TAMA_SITTER: u16 = 0x16;
     pub const NEW_EGG: u16 = 0x18;
@@ -18,11 +17,6 @@ mod t {
     pub const RELEASED: u16 = 0xdd;
     pub const NO_MORE_TODAY: u16 = 0xde;
     pub const SEE_YOU_AGAIN: u16 = 0xe2;
-    pub const COLLECTION: u16 = 0x01;
-    pub const MINI_GAMES: u16 = 0x02;
-    pub const SHOP: u16 = 0x03;
-    pub const HELP: u16 = 0x05;
-    pub const SETTINGS: u16 = 0x06;
     pub const FIELD_NAMES: [u16; 3] = [0x0d, 0x0e, 0x0f];
     pub const TABS: [u16; 4] = [0x45, 0x46, 0x35, 0x36];
     pub const EXPANSION: u16 = 0x4d;
@@ -111,18 +105,7 @@ impl Game {
             | Action::ResetAllAsk
             | Action::ResetAll => self.open_system(a),
             Action::SettingsAtTime => self.settings_at_time(),
-            Action::Lab => Scene::Menu {
-                items: vec![
-                    (t::INFORMATION, Some(Action::Info)),
-                    (t::MINI_GAMES, Some(Action::MiniGames)),
-                    (t::SHOP, Some(Action::Shop)),
-                    (t::HELP, Some(Action::Help)),
-                    (t::COLLECTION, Some(Action::Book)),
-                    (t::SETTINGS, Some(Action::Settings)),
-                ],
-                idx: 2,
-                back: None,
-            },
+            Action::Lab => self.open_lab(),
             Action::Shop => Scene::Menu {
                 items: vec![
                     (t::BUY, Some(Action::BuyMenu)),
@@ -881,8 +864,12 @@ mod tests {
         for _ in 0..14 {
             g.frame(NOON, PUSH);
         }
-        g.frame(NOON, 0);
-        assert!(matches!(g.scene, super::Scene::Menu { idx: 2, .. }), "lab menu with SHOP selected");
+        for _ in 0..20 {
+            g.frame(NOON, 0); // the logo
+        }
+        assert!(matches!(g.scene, super::Scene::LabMenu { idx: 0 }), "lab menu on INFORMATION");
+        press(&mut g, crate::input::A);
+        press(&mut g, crate::input::A);
         press(&mut g, B); // SHOP
         press(&mut g, B); // BUY
         press(&mut g, B); // FOOD tab

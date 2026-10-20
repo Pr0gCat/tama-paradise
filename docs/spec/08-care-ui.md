@@ -418,6 +418,15 @@ HOME 行為 0x11 任意鍵 → 先 `req_done(0xe,0)`（不產生大便、gokigen
 - 星球層閒置時鐘：200 frames 沒輸入時畫 0xfc–0x10d。
 - DELETE（0x6f）只在冷開機（換電池）出現；網頁用網址參數 `?reset`（有存檔時）當冷開機：CONTINUE → CORRECTTIME → HOME（年欄取消回 DELETE）；RESET ALL → 「REALLY DELETE?」預設 NO → YES 全部清掉 → 新遊戲 LANGUAGE。C 無作用。
 
+### 2.21 LABOMENU（0x2a；init 0x1001fd70、tick 0x10045db0）[確認]
+
+- **淡入淡出 `fade_set(color, start, dir, speed, target)` 0x1007b40c**：等級 0..0x20 = 黑色覆蓋比例；每 frame 移動 speed；`fade_set(0,0x20,0,4,0)` = 8 frames 從黑淡入，`fade_set(0,0,1,4,0)` = 淡出。場景管理器不等淡出完成，所以離開時只看得到約 2 frames 變暗，新場景 init 直接全黑再淡入。HOME 各層 init 也是全黑 + 8 frames 淡入。
+- init：等級 0x20、預設返回 0x1c HOME。上一個場景是 HOME 各層（0x1d–0x20）或 NEWYEAR/BIRTHDAY（0x58/0x59）→ state 100 logo；其他（從子畫面回來）→ state 200，游標依來源：0x2b→0、0x2c→1、0x34→2、0x35→3、0x36→4、0x37→5。
+- state 100：元件 0x19c（sprite 143「TAMAGOTCHI Lab」logo，128×128）+ 淡入；計數 20 frames（含淡入）不收鍵；到時（若 c6b bit3 清且 stage > 2：BIRTHDAY/NEWYEAR 待處理且醒著 → 轉去該事件）→ 淡出 → state 200。
+- state 200：背景 0x19d（sprite 141）、標題帶 0x19f（sprite 59，(64,65)）、6 個圖示 0x1a0–0x1a5（sprite 150–155，48×48；frame 0 一般、1 選取、2 灰）於 (22/64/106, 26/102)、名稱文字 0x19e (64,64)。項目表 `0x10094188`：0 INFORMATION→0x2b、2 MINI GAMES→0x2c、3 SHOP→0x34、5 HELP→0x35、1 LAB LOG→0x36、6 SETTINGS→0x37。從 HOME 進來游標 0。
+- 輸入：A / UP → +1、DN → −1（循環 6），音效 0；B/P → 音效 1、進子畫面；C → 音效 2、回 HOME。「只限設定」模式（c6b bit3）：游標固定 5、其他圖示灰、選灰項音效 0xb。
+- 重製：`ui/lab.rs`（`Scene::LabSplash`、`Scene::LabMenu`、`Game::lab_idx`）；全畫面黑色淡入 `Game::fade`（每 frame −4），用於 logo、選單與回 HOME。BIRTHDAY/NEWYEAR 轉跳與「只限設定」模式未做（事件在重製是由 HOME 觸發）。
+
 ---
 
 ## 3. 資料表與格式
