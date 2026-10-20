@@ -51,6 +51,13 @@ impl Tama {
         self.0.frame(now as u64, held);
     }
 
+    /// While the page is hidden: advance the pet and return the request id of a care call that
+    /// just started (0x0f HOME, 0x11 hunger, 0x12 mood, 0x0a cold, 0x13 evolution support,
+    /// 0x1c DODODO), to show as a notification.
+    pub fn poll_call(&mut self, now: f64) -> Option<u8> {
+        self.0.poll_call(now as u64)
+    }
+
     /// Local wall-clock time in seconds (catch-up without input, e.g. after loading).
     pub fn advance_to(&mut self, now: f64) {
         self.0.advance_to(now as u64);

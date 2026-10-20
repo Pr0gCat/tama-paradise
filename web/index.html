@@ -48,6 +48,7 @@
   <button data-k="0x04">C</button>
 </div>
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
+  <button id="alerts" class="small" aria-pressed="false">🔔 alerts off</button>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <dialog id="friends">
   <form method="dialog">
@@ -217,6 +218,33 @@
     try { localStorage.setItem("tama-muted", muted ? "1" : "0"); } catch {}
     if (muted) voice?.osc.stop();
   };
+  // Care calls light the original's screen; here a notification does it while the page is hidden.
+  const CALLS = { 0x0f: "wants to see you", 0x11: "is hungry", 0x12: "is unhappy", 0x0a: "has a cold",
+    0x13: "is ready to evolve", 0x1c: "is up to something" };
+  const alertsBtn = document.getElementById("alerts");
+  let alerts = (() => { try { return localStorage.getItem("tama-alerts") === "1"; } catch { return false; } })();
+  const canNotify = () => "Notification" in window && Notification.permission === "granted";
+  const showAlerts = () => {
+    const on = alerts && canNotify();
+    alertsBtn.textContent = on ? "🔔 alerts on" : "🔔 alerts off"; alertsBtn.setAttribute("aria-pressed", on);
+  };
+  showAlerts();
+  alertsBtn.onclick = async () => {
+    if (!("Notification" in window)) { alertsBtn.textContent = "🔔 not supported"; return; }
+    alerts = !(alerts && canNotify());
+    if (alerts && Notification.permission !== "granted") alerts = (await Notification.requestPermission()) === "granted";
+    try { localStorage.setItem("tama-alerts", alerts ? "1" : "0"); } catch {}
+    showAlerts();
+  };
+  setInterval(() => {
+    if (!document.hidden || !alerts || !canNotify()) return;
+    const id = game.poll_call(t0 + (performance.now() - wall0) / 1000 * speed);
+    if (id === undefined) return;
+    try {
+      const n = new Notification("Tamagotchi Paradise", { body: `Your Tamagotchi ${CALLS[id] ?? "is calling"}!`, tag: "tama-call" });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (e) { console.warn("notification:", e); }
+  }, 10_000);
   // Browsers only allow audio after a user gesture.
   const unlock = () => { audio ??= new AudioContext(); audio.resume(); };
   addEventListener("pointerdown", unlock); addEventListener("keydown", unlock);

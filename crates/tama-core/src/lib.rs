@@ -264,13 +264,28 @@ impl Game {
     /// The call melody when the pet starts calling (`FUN_1001abd0`, flag set by `FUN_10019b48` for
     /// HOMETRG, ONAKA, GOKIGEN, COLD, EVOL_SUPPORT and DODODO).
     fn call_alarm(&mut self) {
+        if self.new_call().is_some() {
+            self.sfx(ui::SND_CALL, 100);
+        }
+    }
+
+    /// The first call that started since the last check (request id), if any.
+    fn new_call(&mut self) -> Option<u8> {
         use pet::req;
         let calls = [req::HOMETRG, req::ONAKA, req::GOKIGEN, req::COLD, req::EVOL_SUPPORT, req::DODODO];
         let pending = calls.iter().filter(|&&r| self.pet.is_pending(r)).fold(0u64, |m, &r| m | 1 << r);
-        if pending & !self.calls_heard != 0 {
-            self.sfx(ui::SND_CALL, 100);
-        }
+        let new = pending & !self.calls_heard;
         self.calls_heard = pending;
+        // The specific need first; HOMETRG ("come and see me") last.
+        calls.into_iter().cycle().skip(1).take(calls.len()).find(|&r| new & 1 << r != 0)
+    }
+
+    /// While the page is hidden: advance the pet only (no scenes, no drawing) and report a call
+    /// that just started, for the platform to notify the player instead of lighting the screen.
+    pub fn poll_call(&mut self, now: u64) -> Option<u8> {
+        let now = now.saturating_add_signed(self.pet.clock_offset);
+        self.pet.advance_to(now);
+        self.new_call()
     }
 
     pub(crate) fn rand(&mut self) -> u32 {
@@ -616,6 +631,20 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_hidden_page_hears_each_call_once() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.def = g.data.character(2113).unwrap();
+        let t = 86_400 * 3 + 12 * 3600;
+        g.frame(t, 0);
+        g.pet.onaka = 0;
+        g.pet.raise(pet::req::ONAKA);
+        assert_eq!(g.poll_call(t + 1), Some(pet::req::ONAKA));
+        assert_eq!(g.poll_call(t + 2), None, "already told");
+        g.frame(t + 3, 0);
+        assert!(!g.take_sounds().iter().any(|s| s.0 == ui::SND_CALL), "no melody for it on return");
+    }
 
     #[test]
     fn deterministic() {
