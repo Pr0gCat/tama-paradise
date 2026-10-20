@@ -369,10 +369,13 @@ impl Game {
         self.screen.blit(item.icon_sprite, 0, 64, 40, 64, false, None);
         self.draw_elem(elem::CARD_NAME_BAR, None, None);
         self.draw_text(item.name, 64, 92, true, 0);
-        self.draw_elem(elem::CARD_CAPSULE, None, None);
+        // The count top left (element 0xd9); free items show the infinity sign instead. The
+        // capsule element 0xe6 is not shown on the card.
         if item.buy != 0xffff {
-            let n = self.pet.count(item.id) as u32;
-            self.draw_number(n, 12, 8, 1);
+            self.draw_number_elem(elem::CARD_COUNT, self.pet.count(item.id) as u32);
+        } else {
+            let e = self.ui_elem(elem::CARD_COUNT);
+            self.screen.blit(INFINITY, 0, e.x as i32, e.y as i32, 64, false, None);
         }
         if items.len() > 1 {
             self.screen.blit(ARROWS, 2, 10, 116, 64, false, None);

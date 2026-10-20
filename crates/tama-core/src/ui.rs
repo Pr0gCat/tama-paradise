@@ -86,7 +86,7 @@ mod elem {
     pub const LIST_BG: u16 = 0x2af;
     pub const CARD_PANEL: u16 = 0xdd;
     pub const CARD_NAME_BAR: u16 = 0xdf;
-    pub const CARD_CAPSULE: u16 = 0xe6;
+    pub const CARD_COUNT: u16 = 0xd9;
     pub const STATUS_BG: u16 = 0x296;
     pub const STATUS_FRAME: u16 = 0x297;
     pub const STATUS_HUNGER: [u16; 6] = [0x299, 0x29a, 0x29b, 0x29c, 0x29d, 0x29e];
@@ -98,6 +98,8 @@ mod elem {
 }
 
 const ARROWS: u16 = 89;
+/// Infinity sign: the count of free items on the food card.
+const INFINITY: u16 = 0x67;
 /// Melodies (docs/spec/data/sound_usage.csv): a pet call, mission clear, shop code unlocked,
 /// first start, egg-hunt trip music.
 pub(crate) const SND_CALL: u16 = 3;
