@@ -28,6 +28,9 @@ extern "C" {
 #define TAMA_GESTURE_SWIPE_DOWN 2
 #define TAMA_GESTURE_SWIPE_RIGHT 3
 #define TAMA_GESTURE_TAP 4
+/* The Digital Crown: like swipes up / down, but never turned round (the lab menu). */
+#define TAMA_GESTURE_CROWN_UP 5
+#define TAMA_GESTURE_CROWN_DOWN 6
 
 /* Opaque game handle. Not thread-safe: use one handle from one thread at a time. */
 typedef struct TamaGame TamaGame;

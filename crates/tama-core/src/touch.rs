@@ -12,6 +12,10 @@ pub const SWIPE_UP: u8 = 1;
 pub const SWIPE_DOWN: u8 = 2;
 pub const SWIPE_RIGHT: u8 = 3;
 pub const TAP: u8 = 4;
+/// The Digital Crown: as swipes up / down, except where swipes are turned round for the eye (the
+/// lab menu), since the crown is the device's dial.
+pub const CROWN_UP: u8 = 5;
+pub const CROWN_DOWN: u8 = 6;
 
 /// The buttons each gesture means. `up` / `down` / `tap` / `back` are pressed for one frame;
 /// `hold` stays down while the finger does.
@@ -53,6 +57,20 @@ impl Game {
         let mut held = match gesture {
             SWIPE_UP => m.up,
             SWIPE_DOWN => m.down,
+            CROWN_UP | CROWN_DOWN => {
+                let up = gesture == CROWN_UP;
+                match self.scene {
+                    Scene::LabMenu { .. } => {
+                        if up {
+                            UP
+                        } else {
+                            DOWN
+                        }
+                    }
+                    _ if up => m.up,
+                    _ => m.down,
+                }
+            }
             TAP => m.tap,
             SWIPE_RIGHT => m.back,
             _ => 0,

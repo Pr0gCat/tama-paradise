@@ -57,7 +57,7 @@ struct GameView: View {
             if d > 1000 { d -= 2000 } else if d < -1000 { d += 2000 }
             guard abs(d) >= Self.crownPerStep else { return }
             crownStep = new
-            engine.send(d > 0 ? TAMA_GESTURE_SWIPE_UP : TAMA_GESTURE_SWIPE_DOWN)
+            engine.send(d > 0 ? TAMA_GESTURE_CROWN_UP : TAMA_GESTURE_CROWN_DOWN)
         }
     }
 
