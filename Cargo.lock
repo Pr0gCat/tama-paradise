@@ -176,6 +176,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tama-ffi"
+version = "0.1.0"
+dependencies = [
+ "tama-core",
+]
+
+[[package]]
 name = "tama-web"
 version = "0.1.0"
 dependencies = [
