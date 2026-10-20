@@ -7,7 +7,7 @@ struct GameView: View {
     /// Display points per game pixel (filling the width would be about 1.6 on a 46 mm watch).
     static let uiScale: CGFloat = 1.5
     /// Crown turn (in its value units, medium sensitivity) for one dial step. Smaller = faster.
-    static let crownPerStep = 0.5
+    static let crownPerStep = 0.8
 
     @ObservedObject var engine: Engine
     @State private var crown = 0.0
