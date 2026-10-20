@@ -37,6 +37,13 @@
               border-radius: 4px; }
   canvas.qr[hidden] { display: none; }
   dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
+  /* phone held sideways: the screen on the left, the controls beside it */
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { display: grid; grid-template-columns: auto auto; align-content: center; justify-content: center;
+           gap: 12px 24px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); }
+    canvas { width: min(100dvh - 16px, 55vw); grid-column: 1; grid-row: 1 / span 3; }
+    .pad, .row, pre { grid-column: 2; }
+  }
 </style>
 <canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
 <div class="pad">
@@ -222,6 +229,8 @@
   const CALLS = { 0x0f: "wants to see you", 0x11: "is hungry", 0x12: "is unhappy", 0x0a: "has a cold",
     0x13: "is ready to evolve", 0x1c: "is up to something" };
   const alertsBtn = document.getElementById("alerts");
+  // Phones pause hidden pages and need a service worker to notify, so the toggle is desktop only.
+  alertsBtn.hidden = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   let alerts = (() => { try { return localStorage.getItem("tama-alerts") === "1"; } catch { return false; } })();
   const canNotify = () => "Notification" in window && Notification.permission === "granted";
   const showAlerts = () => {
