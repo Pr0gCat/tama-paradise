@@ -375,6 +375,10 @@ impl Lab06 {
 }
 
 impl MiniGame for Lab06 {
+    /// Touch: Holding A lifts.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { tap: crate::input::A, hold: crate::input::A, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, _pressed: u8, held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         self.frame += 1;
         if let Some(n) = &mut self.go {

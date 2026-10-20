@@ -71,6 +71,10 @@ impl Together01 {
 }
 
 impl MiniGame for Together01 {
+    /// Touch: A flag, B flag, both together.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { up: crate::input::A, down: crate::input::B, tap: crate::input::A | crate::input::B, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         self.pet.tick(&data.motions);
         let mut s = Vec::new();

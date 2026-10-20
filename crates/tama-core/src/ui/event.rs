@@ -475,7 +475,8 @@ impl Game {
             self.sfx(SFX_OK, 100);
             return Scene::Dead { page: 1, nodes: Vec::new() };
         }
-        if self.held & C != 0 && pressed & A != 0 {
+        // Touch: the long press (dial button held 14 frames) does it too.
+        if (self.held & C != 0 && pressed & A != 0) || self.push_frames == 14 {
             self.sfx(SFX_OK, 100);
             return Scene::Menu { items: vec![(NEW_EGG, Some(Action::NewEgg))], idx: 0, back: Some(Action::Tomb) };
         }

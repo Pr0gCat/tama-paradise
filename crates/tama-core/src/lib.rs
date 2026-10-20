@@ -17,6 +17,7 @@ pub mod screen;
 pub mod shop;
 pub mod social;
 pub mod sprite;
+pub mod touch;
 mod ui;
 pub mod world;
 
@@ -82,6 +83,8 @@ pub struct Game {
     focus: usize,
     /// Ring menu wheel position in items, for the menu (item count, first item, back) it belongs to.
     menu_pos: Option<(usize, u16, Option<ui::Action>, f32)>,
+    /// This frame's C came from a touch swipe left (a whole cancel, `touch.rs`).
+    touch_back: bool,
     /// The field camera is still more than 4 px from its focus (C waits).
     cam_moving: bool,
     cam: (i32, i32),
@@ -164,6 +167,7 @@ impl Game {
             push_frames: 0,
             focus: 0,
             cam_moving: false,
+            touch_back: false,
             menu_pos: None,
             cam: ui::PET_FOCUS,
             toy_nodes: Vec::new(),

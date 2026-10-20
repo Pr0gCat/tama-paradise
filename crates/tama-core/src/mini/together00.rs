@@ -104,6 +104,10 @@ impl Together00 {
 }
 
 impl MiniGame for Together00 {
+    /// Touch: A left, B right.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { up: crate::input::A, down: crate::input::B, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         if !self.started {
             // Opening jingle (`FUN_10052e7c` state 100).

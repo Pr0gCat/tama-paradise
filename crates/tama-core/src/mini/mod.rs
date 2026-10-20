@@ -279,6 +279,11 @@ pub trait MiniGame {
     fn uses_c(&self) -> bool {
         false
     }
+    /// Buttons for the touch controls (`crate::touch`): swipe up, swipe down, tap, hold, swipe
+    /// left. By default the dial, B, B held, and C.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map::DEFAULT
+    }
     /// Play-together games draw the current field background at 2× under everything (C2).
     fn field_bg(&self) -> bool {
         false

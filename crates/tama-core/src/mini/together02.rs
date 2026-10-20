@@ -246,6 +246,10 @@ impl Together02 {
 }
 
 impl MiniGame for Together02 {
+    /// Touch: A steps the pick, B confirms.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { up: crate::input::A, down: crate::input::A, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         let r = if self.wait > 0 {
             self.wait -= 1;

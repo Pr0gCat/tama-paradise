@@ -75,6 +75,10 @@ impl Lab00 {
 }
 
 impl MiniGame for Lab00 {
+    /// Touch: A moves the cursor, B feeds.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { up: crate::input::A, down: crate::input::A, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         for n in self.hole_nodes.iter_mut().chain([&mut self.bottle, &mut self.bg]) {
             n.tick(&data.motions);

@@ -164,6 +164,10 @@ impl Lab05 {
 }
 
 impl MiniGame for Lab05 {
+    /// Touch: Three lanes: A, B, C.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { up: crate::input::A, down: crate::input::C, back: 0, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, _held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         for n in self.effects.iter_mut().chain(self.bg.iter_mut()) {
             n.tick(&data.motions);

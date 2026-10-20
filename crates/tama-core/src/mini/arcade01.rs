@@ -426,6 +426,10 @@ impl Arcade01 {
 }
 
 impl MiniGame for Arcade01 {
+    /// Touch: C moves right, so swipe left does nothing; holding B charges the smash.
+    fn touch_map(&self) -> crate::touch::Map {
+        crate::touch::Map { back: 0, ..crate::touch::Map::DEFAULT }
+    }
     fn update(&mut self, pressed: u8, held: u8, data: &Data, sounds: &mut Vec<(u16, u8)>) -> Option<u8> {
         for (n, ..) in &mut self.fx {
             n.tick(&data.motions);

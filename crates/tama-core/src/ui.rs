@@ -816,7 +816,7 @@ impl Game {
     pub(crate) fn spin_keys(&self, pressed: u8) -> (u8, bool) {
         let step = if pressed & A != 0 && self.held & C != 0 { pressed & !A | DOWN } else { pressed };
         let since = self.frame_count.wrapping_sub(self.c_released);
-        (step, pressed & C != 0 && (3..=10).contains(&since))
+        (step, pressed & C != 0 && ((3..=10).contains(&since) || self.touch_back))
     }
 }
 
