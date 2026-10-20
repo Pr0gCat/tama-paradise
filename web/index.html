@@ -40,6 +40,8 @@
   dialog p { font: 14px system-ui; }
   #saves button { display: block; margin: 8px 0; }
   #saves [hidden] { display: none; }
+  #setup button { display: block; margin: 8px 0; }
+  #setup [hidden] { display: none; }
   dialog label { display: block; margin: 8px 0 4px; font: 14px system-ui; }
   dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
     /* 16px: iOS zooms the page into any focused field set smaller */
@@ -115,6 +117,14 @@
     <button class="small">Close</button>
   </form>
 </dialog>
+<dialog id="setup">
+  <h2>Your Tamagotchi Paradise</h2>
+  <p>This page brings no game data of its own. It reads the graphics and texts from a flash dump of
+    your own Tamagotchi Paradise, kept only in this browser.</p>
+  <button type="button" class="small" id="setup-pick">Choose the dump file (.bin)</button>
+  <input type="file" id="setup-file" accept=".bin,application/octet-stream" hidden>
+  <p id="setup-msg" role="status"></p>
+</dialog>
 <pre id="s" hidden></pre>
 <div id="scanner" hidden>
   <video playsinline muted></video>
@@ -124,7 +134,7 @@
 <script type="module">
   // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
   const glue = await (await fetch("./pkg/tama_web.js", { cache: "no-cache" })).text();
-  const { default: init, Tama, qr } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
+  const { default: init, Tama, Dump, qr } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
   // Revalidate the engine and data on every load (cheap 304s) so a rebuilt game is never stale.
   await init({ module_or_path: fetch("./pkg/tama_web_bg.wasm", { cache: "no-cache" }) });
   const params = new URLSearchParams(location.search);
@@ -142,7 +152,16 @@
   // ?hours=N shifts the clock for testing (debug only).
   const shift = params.has("debug") ? (Number(params.get("hours")) || 0) * 3600 : 0;
   const t0 = localSecs() + shift, wall0 = performance.now();
-  const data = await (await fetch("game.json", { cache: "no-cache" })).text();
+  // Game data: a local build serves data/game.json and the sprites (development; ?dump skips
+  // them); otherwise it all comes from the player's own flash dump, kept in IndexedDB.
+  let dump = null, data = null;
+  if (!params.has("dump")) {
+    try {
+      const res = await fetch("game.json", { cache: "no-cache" });
+      if (res.ok) data = await res.text();
+    } catch {}
+  }
+  if (!data) ({ dump, data } = await openDump());
   let game;
   const saved = store.get();
   if (saved) {
@@ -413,10 +432,15 @@
   async function loadSprite(id) {
     loading.add(id);
     try {
-      const res = await fetch(`sprites/${id}.tsp.gz`);
-      if (!res.ok) throw new Error(res.status);
-      const raw = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
-      if (!game.add_sprite(id, new Uint8Array(raw))) throw new Error("bad sprite");
+      let raw;
+      if (dump) {
+        raw = dump.sprite(id);
+      } else {
+        const res = await fetch(`sprites/${id}.tsp.gz`);
+        if (!res.ok) throw new Error(res.status);
+        raw = new Uint8Array(await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+      }
+      if (!game.add_sprite(id, raw)) throw new Error("bad sprite");
     } catch (e) {
       console.warn(`sprite ${id}:`, e);  // stays in `loading`, so it is not retried every frame
       return;
@@ -447,4 +471,46 @@
   requestAnimationFrame(frame);
   // Home-screen app: cache everything for offline play.
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e));
+
+  // The dump in IndexedDB ("tama" / "files" / "dump"), or the one the player picks now.
+  async function openDump() {
+    const db = await new Promise((ok, fail) => {
+      const r = indexedDB.open("tama", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("files");
+      r.onsuccess = () => ok(r.result); r.onerror = () => fail(r.error);
+    });
+    const tx = (mode, f) => new Promise((ok, fail) => {
+      const t = db.transaction("files", mode), r = f(t.objectStore("files"));
+      t.oncomplete = () => ok(r.result); t.onerror = () => fail(t.error);
+    });
+    const read = bytes => {
+      const dump = new Dump(bytes);
+      return { dump, data: dump.game_json() };
+    };
+    const stored = await tx("readonly", s => s.get("dump")).catch(() => null);
+    if (stored) {
+      try { return read(new Uint8Array(stored)); } catch (e) { console.warn("stored dump ignored:", e); }
+    }
+    const dlg = document.getElementById("setup"), file = document.getElementById("setup-file");
+    const msg = document.getElementById("setup-msg");
+    dlg.addEventListener("cancel", e => e.preventDefault());
+    document.getElementById("setup-pick").onclick = () => file.click();
+    dlg.showModal();
+    for (;;) {
+      await new Promise(ok => { file.onchange = ok; });
+      const f = file.files[0];
+      file.value = "";
+      if (!f) continue;
+      msg.textContent = "Reading…";
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      let got;
+      try { got = read(bytes); } catch (e) {
+        msg.textContent = `That file does not work: ${e.message ?? e}`;
+        continue;
+      }
+      await tx("readwrite", s => s.put(bytes.buffer, "dump")).catch(e => console.warn("dump not kept:", e));
+      dlg.close();
+      return got;
+    }
+  }
 </script>

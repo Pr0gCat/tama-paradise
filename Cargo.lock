@@ -180,7 +180,9 @@ name = "tama-web"
 version = "0.1.0"
 dependencies = [
  "qrcode",
+ "serde_json",
  "tama-core",
+ "tama-extract",
  "wasm-bindgen",
 ]
 

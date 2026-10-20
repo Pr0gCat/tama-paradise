@@ -10,6 +10,35 @@ pub fn qr(text: &str) -> Vec<u8> {
     std::iter::once(w as u8).chain(code.to_colors().into_iter().map(|c| (c == qrcode::Color::Dark) as u8)).collect()
 }
 
+/// The player's own flash dump: the page reads the game data and sprites from it instead of
+/// shipping them.
+#[wasm_bindgen]
+pub struct Dump(Vec<u8>);
+
+#[wasm_bindgen]
+impl Dump {
+    #[wasm_bindgen(constructor)]
+    pub fn new(bytes: Vec<u8>) -> Result<Dump, JsError> {
+        if !tama_extract::is_dump(&bytes) {
+            return Err(JsError::new("not a Tamagotchi Paradise flash dump"));
+        }
+        Ok(Dump(bytes))
+    }
+
+    /// What tama-extract writes to data/game.json.
+    pub fn game_json(&self) -> String {
+        serde_json::to_string(&tama_extract::extract(&self.0)).unwrap_or_default()
+    }
+
+    /// Sprite `id` as a .tsp file (empty if the dump has none).
+    pub fn sprite(&self, id: usize) -> Vec<u8> {
+        if id >= tama_extract::sprite_count(&self.0) {
+            return Vec::new();
+        }
+        tama_extract::sprite(&self.0, id).map(|s| s.to_bytes()).unwrap_or_default()
+    }
+}
+
 #[wasm_bindgen]
 pub struct Tama(Game);
 
