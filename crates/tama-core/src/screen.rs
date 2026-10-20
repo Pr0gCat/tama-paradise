@@ -6,10 +6,19 @@ use std::collections::{BTreeSet, HashMap};
 
 pub const WIDTH: usize = 128;
 pub const HEIGHT: usize = 128;
+/// Decoded sprite bytes kept before unused ones are dropped (the platform re-supplies them).
+// ponytail: flat 8 MB budget sized for Apple Watch; make it a Game setting if a platform needs another.
+pub const SPRITE_BUDGET: usize = 8 << 20;
+/// Frames a sprite must go undrawn before it can be dropped (5 s at 20 fps).
+const SPRITE_GRACE: u32 = 100;
 
 pub struct Screen {
     /// Decoded sprites by sprite-pack index.
     pub sprites: HashMap<u16, Sprite>,
+    /// Render count when each sprite was last drawn (see `evict`).
+    pub used: HashMap<u16, u32>,
+    /// Renders so far.
+    pub tick: u32,
     /// RGBA8888, row-major.
     pub fb: Vec<u8>,
     /// Sprites a draw asked for that are not loaded yet (the platform fetches them).
@@ -30,6 +39,8 @@ impl Default for Screen {
     fn default() -> Self {
         Screen {
             sprites: HashMap::new(),
+            used: HashMap::new(),
+            tick: 0,
             fb: vec![0; WIDTH * HEIGHT * 4],
             wanted: BTreeSet::new(),
             off: (0, 0),
@@ -42,6 +53,28 @@ impl Default for Screen {
 }
 
 impl Screen {
+    /// Once per render: drop the longest-unused sprites while the decoded total is over
+    /// `SPRITE_BUDGET`, sparing any drawn in the last `SPRITE_GRACE` renders.
+    pub fn evict(&mut self) {
+        let size = |s: &Sprite| s.pixels.len() + s.palettes.iter().map(|p| p.len() * 2).sum::<usize>();
+        let mut total: usize = self.sprites.values().map(size).sum();
+        if total > SPRITE_BUDGET {
+            let mut old: Vec<(u32, u16)> = (self.sprites.keys())
+                .map(|&id| (self.used.get(&id).copied().unwrap_or(0), id))
+                .filter(|&(t, _)| self.tick.wrapping_sub(t) > SPRITE_GRACE)
+                .collect();
+            old.sort_unstable();
+            for (_, id) in old {
+                if total <= SPRITE_BUDGET {
+                    break;
+                }
+                total -= self.sprites.remove(&id).map_or(0, |s| size(&s));
+                self.used.remove(&id);
+            }
+        }
+        self.tick = self.tick.wrapping_add(1);
+    }
+
     /// Where (x, y) lands on screen with `off` and `zoom` (before `rel`).
     pub fn project(&self, x: i32, y: i32) -> (f32, f32) {
         let z = |p: i32, o: i32| 64.0 + (p + o - 64) as f32 * self.zoom;
@@ -72,6 +105,10 @@ impl Screen {
         palette: Option<(u16, usize)>,
     ) -> bool {
         let (cx, cy) = (cx + self.off.0, cy + self.off.1);
+        self.used.insert(id, self.tick);
+        if let Some((pid, _)) = palette {
+            self.used.insert(pid, self.tick);
+        }
         let Some(s) = self.sprites.get(&id) else {
             self.wanted.insert(id);
             return false;
@@ -327,6 +364,33 @@ mod tests {
         let w = wrap(&fonts, &g, 95);
         assert_eq!(w.iter().filter(|&&c| c == NEWLINE).count(), 1);
         assert!(w.iter().position(|&c| c == NEWLINE) == Some(9));
+    }
+
+    #[test]
+    fn evicts_unused_sprites_over_budget() {
+        // 1 MB sprites: 12 of them overflow the 8 MB budget.
+        let big = || Sprite {
+            w: 1024,
+            h: 1024,
+            frames: 1,
+            bits: 8,
+            palettes: vec![vec![0; 1]],
+            pixels: vec![0; 1 << 20],
+            ..Default::default()
+        };
+        let mut sc = Screen::default();
+        for id in 0..12 {
+            sc.sprites.insert(id, big());
+        }
+        // Sprites 0 and 1 drawn every render; the rest only before the grace period.
+        for _ in 0..=SPRITE_GRACE + 1 {
+            sc.blit(0, 0, 0, 0, 64, false, None);
+            sc.blit(1, 0, 0, 0, 64, false, Some((0, 0)));
+            sc.evict();
+        }
+        assert!(sc.sprites.contains_key(&0) && sc.sprites.contains_key(&1), "in-use sprites kept");
+        assert!(sc.sprites.values().map(|s| s.pixels.len()).sum::<usize>() <= SPRITE_BUDGET);
+        assert_eq!(sc.sprites.len(), 7, "only as many dropped as needed");
     }
 
     #[test]
