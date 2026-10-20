@@ -132,6 +132,22 @@ pub unsafe extern "C" fn tama_framebuffer(game: *const TamaGame, len: *mut usize
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn tama_set_canvas(game: *mut TamaGame, width: usize, height: usize) {
+    (*game).0.set_canvas(width, height);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tama_canvas(game: *const TamaGame, width: *mut usize, height: *mut usize) {
+    let (w, h) = (*game).0.canvas();
+    if !width.is_null() {
+        *width = w;
+    }
+    if !height.is_null() {
+        *height = h;
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn tama_missing_sprites(game: *const TamaGame, len: *mut usize) -> *mut u16 {
     give((*game).0.missing_sprites(), len)
 }

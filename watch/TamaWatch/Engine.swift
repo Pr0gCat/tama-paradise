@@ -63,6 +63,7 @@ final class Engine: ObservableObject {
     private func start(_ loaded: Loaded) {
         error = loaded.error
         game = loaded.game
+        if let game, let (w, h) = canvas { tama_set_canvas(game, w, h) }
         if let json = loaded.json {
             let sound = self.sound
             Task.detached(priority: .utility) { sound.load(json: json) }
@@ -77,6 +78,16 @@ final class Engine: ObservableObject {
 
     /// One gesture, used by the next frame.
     func send(_ g: Int32) { gesture = UInt8(g) }
+
+    /// Canvas for a display of `size` points: the game's screen drawn `scale` times, the rest
+    /// of the display showing more around it.
+    func fit(_ size: CGSize, scale: CGFloat) {
+        let w = Int((size.width / scale).rounded()), h = Int((size.height / scale).rounded())
+        canvas = (w, h)
+        if let game { tama_set_canvas(game, w, h) }
+    }
+
+    private var canvas: (Int, Int)?
 
     func button(_ bit: UInt32, down: Bool) {
         let b = UInt8(bit)
@@ -160,13 +171,15 @@ final class Engine: ObservableObject {
     }
 
     private func framebufferImage(_ game: OpaquePointer) -> CGImage? {
-        var n = 0
+        var n = 0, w = 0, h = 0
+        tama_canvas(game, &w, &h)
         guard let p = tama_framebuffer(game, &n) else { return nil }
         let data = Data(bytes: p, count: n) as CFData
         guard let provider = CGDataProvider(data: data) else { return nil }
-        return CGImage(width: Int(TAMA_WIDTH), height: Int(TAMA_HEIGHT), bitsPerComponent: 8, bitsPerPixel: 32,
-                       bytesPerRow: Int(TAMA_WIDTH) * 4, space: CGColorSpaceCreateDeviceRGB(),
-                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+        // Transparent where the game draws nothing beyond its own screen (alpha 0, colour 0).
+        return CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 }

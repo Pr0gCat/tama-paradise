@@ -4,6 +4,9 @@ import SwiftUI
 /// the dial (the Digital Crown does too), a tap selects, swipe left goes back, a long press is
 /// the dial's long press.
 struct GameView: View {
+    /// Display points per game pixel (filling the width would be about 1.6 on a 46 mm watch).
+    static let uiScale: CGFloat = 1.5
+
     @ObservedObject var engine: Engine
     @State private var crown = 0.0
     @State private var crownStep = 0.0
@@ -12,18 +15,16 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // The whole game fits the display's width (nothing cropped, the UI at its own
-            // size); the bands above and below show a blurred, dimmed copy of the screen so the
-            // display looks full. The buttons float over the bottom edge, half see-through.
-            let side = min(geo.size.width, geo.size.height)
-            let d = side / 4.6
+            // The game renders on a canvas shaped like the display, its own screen centred at
+            // UI_SCALE points per pixel (smaller than filling the width), the world and
+            // backgrounds around it; spots nothing covers show the blurred screen behind.
+            let d = min(geo.size.width, geo.size.height) / 4.6
             ZStack(alignment: .bottom) {
                 Color.black
                 backdrop
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
                 screen
-                    .frame(width: side, height: side)
                     .frame(width: geo.size.width, height: geo.size.height)
                     .contentShape(Rectangle())
                     .gesture(touch)
@@ -37,6 +38,9 @@ struct GameView: View {
         }
         .ignoresSafeArea()
         .persistentSystemOverlays(.hidden)
+        .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in
+            engine.fit(size, scale: Self.uiScale)
+        }
         .focusable()
         .digitalCrownRotation($crown, from: -1000, through: 1000, sensitivity: .medium,
                               isContinuous: true, isHapticFeedbackEnabled: true)

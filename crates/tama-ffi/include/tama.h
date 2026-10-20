@@ -64,9 +64,15 @@ int32_t tama_poll_call(TamaGame *game, uint64_t now);
 /* Catch-up without input, e.g. after loading. */
 void tama_advance_to(TamaGame *game, uint64_t now);
 
-/* RGBA, TAMA_WIDTH x TAMA_HEIGHT, row-major. Borrowed: valid until the next call that takes a
- * non-const game. */
+/* RGBA, row-major, TAMA_WIDTH x TAMA_HEIGHT or the size set with tama_set_canvas. Borrowed:
+ * valid until the next call that takes a non-const game. */
 const uint8_t *tama_framebuffer(const TamaGame *game, size_t *len);
+
+/* Render on a width x height canvas (at least 128 x 128) with the game's screen centred: more
+ * of the world around it, full-screen backgrounds repeated into the margins, transparent where
+ * nothing is drawn. tama_framebuffer is then width x height RGBA. */
+void tama_set_canvas(TamaGame *game, size_t width, size_t height);
+void tama_canvas(const TamaGame *game, size_t *width, size_t *height);
 
 /* Sprite indexes to supply with tama_add_sprite. Free with tama_u16_free. */
 uint16_t *tama_missing_sprites(const TamaGame *game, size_t *len);

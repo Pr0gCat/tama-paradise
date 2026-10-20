@@ -406,6 +406,18 @@ impl Game {
         &self.screen.fb
     }
 
+    /// Render on a canvas of `w` × `h` (at least 128 × 128) with the game's screen centred and
+    /// more of the world around it (the remake's watch). RGBA, transparent where nothing is drawn.
+    pub fn set_canvas(&mut self, w: usize, h: usize) {
+        self.screen.resize(w, h);
+        self.render();
+    }
+
+    /// The canvas size (`framebuffer` is width × height × 4).
+    pub fn canvas(&self) -> (usize, usize) {
+        (self.screen.w, self.screen.h)
+    }
+
     /// A connection request from the game's CONNECTION menu, for the platform to show its
     /// friend-code panel: "playdate", "receive", or "gift:<code>" with a code to hand over.
     pub fn take_connect(&mut self) -> Option<String> {
@@ -626,7 +638,8 @@ impl Game {
     fn render(&mut self) {
         self.screen.evict();
         self.screen.wanted.clear();
-        self.screen.rect(0, 0, WIDTH as i32, HEIGHT as i32, [0, 0, 0]);
+        // Black under the game's screen; the margins of a larger canvas start transparent.
+        self.screen.clear();
         if !self.render_scene() {
             self.render_layers();
             self.draw_warp();

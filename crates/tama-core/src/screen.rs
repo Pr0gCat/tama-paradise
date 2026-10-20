@@ -19,8 +19,12 @@ pub struct Screen {
     pub used: HashMap<u16, u32>,
     /// Renders so far.
     pub tick: u32,
-    /// RGBA8888, row-major.
+    /// RGBA8888, row-major, `w` × `h` (128 × 128 unless the platform asks for a larger canvas).
     pub fb: Vec<u8>,
+    pub w: usize,
+    pub h: usize,
+    /// Where the game's 128 × 128 screen sits on the canvas (its top-left corner).
+    pub org: (i32, i32),
     /// Sprites a draw asked for that are not loaded yet (the platform fetches them).
     pub wanted: BTreeSet<u16>,
     /// Added to every blit position (camera scroll).
@@ -42,6 +46,9 @@ impl Default for Screen {
             used: HashMap::new(),
             tick: 0,
             fb: vec![0; WIDTH * HEIGHT * 4],
+            w: WIDTH,
+            h: HEIGHT,
+            org: (0, 0),
             wanted: BTreeSet::new(),
             off: (0, 0),
             zoom: 1.0,
@@ -81,10 +88,38 @@ impl Screen {
         (z(x, self.off.0), z(y, self.off.1))
     }
 
+    /// A canvas of `w` × `h` (at least 128 × 128) with the game's screen centred: the remake's
+    /// larger screens (the watch) show more around it. Full-screen backgrounds repeat into the
+    /// margins; whatever nothing covers stays transparent for the platform to fill.
+    pub fn resize(&mut self, w: usize, h: usize) {
+        let (w, h) = (w.max(WIDTH), h.max(HEIGHT));
+        (self.w, self.h) = (w, h);
+        self.org = (((w - WIDTH) / 2) as i32, ((h - HEIGHT) / 2) as i32);
+        self.fb = vec![0; w * h * 4];
+    }
+
+    /// Clear the canvas: the game's screen black, the margins transparent.
+    pub fn clear(&mut self) {
+        self.fb.fill(0);
+        let (ox, oy) = (self.org.0 as usize, self.org.1 as usize);
+        for y in oy..oy + HEIGHT {
+            for px in self.fb[(y * self.w + ox) * 4..(y * self.w + ox + WIDTH) * 4].as_chunks_mut::<4>().0 {
+                px[3] = 255;
+            }
+        }
+    }
+
+    /// A filled rectangle in screen coordinates; one covering the whole screen covers the canvas.
     pub fn rect(&mut self, x: i32, y: i32, w: i32, h: i32, c: [u8; 3]) {
-        for yy in y.max(0)..(y + h).min(HEIGHT as i32) {
-            for xx in x.max(0)..(x + w).min(WIDTH as i32) {
-                let i = (yy as usize * WIDTH + xx as usize) * 4;
+        let (x, y, w, h) = if x <= 0 && y <= 0 && x + w >= WIDTH as i32 && y + h >= HEIGHT as i32 {
+            (-self.org.0, -self.org.1, self.w as i32, self.h as i32)
+        } else {
+            (x, y, w, h)
+        };
+        let (cw, ch) = (self.w as i32, self.h as i32);
+        for yy in (y + self.org.1).max(0)..(y + h + self.org.1).min(ch) {
+            for xx in (x + self.org.0).max(0)..(x + w + self.org.0).min(cw) {
+                let i = (yy as usize * self.w + xx as usize) * 4;
                 self.fb[i..i + 4].copy_from_slice(&[c[0], c[1], c[2], 255]);
             }
         }
@@ -143,35 +178,48 @@ impl Screen {
         } else {
             (x0, y0, x0 + dw, y0 + dh)
         };
-        for py in by0.max(0)..by1.min(HEIGHT as i32) {
-            for px in bx0.max(0)..bx1.min(WIDTH as i32) {
-                let (x, y) = if turned {
-                    let (dx, dy) = (px as f32 + 0.5 - cxf, py as f32 + 0.5 - cyf);
-                    let (ux, uy) = (cos * dx + sin * dy, -sin * dx + cos * dy);
-                    let (x, y) =
-                        (((ux + dw as f32 / 2.0) / k).floor() as i32, ((uy + dh as f32 / 2.0) / k).floor() as i32);
-                    if x < 0 || y < 0 || x >= w || y >= h {
+        // A screen-sized background drawn over the whole screen repeats into the canvas margins.
+        let fills = !turned && (x0, y0, dw, dh) == (0, 0, WIDTH as i32, HEIGHT as i32) && self.org != (0, 0);
+        let tiles: &[(i32, i32)] = if fills {
+            &[(0, 0), (-128, 0), (128, 0), (0, -128), (0, 128), (-128, -128), (128, -128), (-128, 128), (128, 128)]
+        } else {
+            &[(0, 0)]
+        };
+        let (cw, ch) = (self.w as i32, self.h as i32);
+        for &(tx, ty) in tiles {
+            let (bx0, by0, bx1, by1) = (bx0 + tx, by0 + ty, bx1 + tx, by1 + ty);
+            let (x0, y0, cxf, cyf) = (x0 + tx, y0 + ty, cxf + tx as f32, cyf + ty as f32);
+            for py in by0.max(-self.org.1)..by1.min(ch - self.org.1) {
+                for px in bx0.max(-self.org.0)..bx1.min(cw - self.org.0) {
+                    let (x, y) = if turned {
+                        let (dx, dy) = (px as f32 + 0.5 - cxf, py as f32 + 0.5 - cyf);
+                        let (ux, uy) = (cos * dx + sin * dy, -sin * dx + cos * dy);
+                        let (x, y) =
+                            (((ux + dw as f32 / 2.0) / k).floor() as i32, ((uy + dh as f32 / 2.0) / k).floor() as i32);
+                        if x < 0 || y < 0 || x >= w || y >= h {
+                            continue;
+                        }
+                        (x, y)
+                    } else {
+                        ((((px - x0) as f32 / k) as i32).min(w - 1), (((py - y0) as f32 / k) as i32).min(h - 1))
+                    };
+                    let sx = if flip { w - 1 - x } else { x };
+                    let idx = s.pixels[f + (y * w + sx) as usize];
+                    if s.transparent && idx == s.key {
                         continue;
                     }
-                    (x, y)
-                } else {
-                    ((((px - x0) as f32 / k) as i32).min(w - 1), (((py - y0) as f32 / k) as i32).min(h - 1))
-                };
-                let sx = if flip { w - 1 - x } else { x };
-                let idx = s.pixels[f + (y * w + sx) as usize];
-                if s.transparent && idx == s.key {
-                    continue;
+                    let c = match pal {
+                        Some(_) if borrowed && idx >= BORROWED_COLOURS => s.rgba(0, idx),
+                        Some((p, set)) => p.rgba(set, idx),
+                        None => s.rgba(0, idx),
+                    };
+                    let i = ((py + self.org.1) as usize * self.w + (px + self.org.0) as usize) * 4;
+                    // On a transparent pixel (the canvas margins) a see-through sprite blends with black.
+                    for (dst, &src) in self.fb[i..i + 3].iter_mut().zip(&c[..3]) {
+                        *dst = ((src as u32 * a + *dst as u32 * (64 - a)) / 64) as u8;
+                    }
+                    self.fb[i + 3] = 255;
                 }
-                let c = match pal {
-                    Some(_) if borrowed && idx >= BORROWED_COLOURS => s.rgba(0, idx),
-                    Some((p, set)) => p.rgba(set, idx),
-                    None => s.rgba(0, idx),
-                };
-                let i = (py as usize * WIDTH + px as usize) * 4;
-                for (dst, &src) in self.fb[i..i + 3].iter_mut().zip(&c[..3]) {
-                    *dst = ((src as u32 * a + *dst as u32 * (64 - a)) / 64) as u8;
-                }
-                self.fb[i + 3] = 255;
             }
         }
         true
