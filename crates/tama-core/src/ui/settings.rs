@@ -123,8 +123,7 @@ impl Game {
                 self.draw_text_elem(elem::PLANET_NAME, &name);
                 self.draw_elem(elem::DAYS_BOX, None, None);
                 self.draw_text_elem(elem::DAYS_LABEL, &self.string(DAYS));
-                let days = self.digits(self.pet.play_days as u32);
-                self.draw_text_elem(elem::DAYS, &days);
+                self.draw_number_elem(elem::DAYS, self.pet.play_days as u32);
                 self.draw_elem(elem::POINTS_BOX, None, None);
                 self.draw_number_elem(elem::POINTS, self.pet.points);
                 self.draw_elem(elem::POINTS_MARK, None, None);
@@ -136,10 +135,7 @@ impl Game {
                 self.draw_elem(elem::DATE_BOX, None, None);
                 self.draw_number_elem(elem::MONTH, m);
                 self.draw_elem(elem::SLASH, None, None);
-                // The day starts right after the slash.
-                let e = self.ui_elem(elem::DAY);
-                let day = self.digits(d);
-                self.screen.text(&self.data.fonts, &day, e.x as i32 - 6, e.y as i32, false, e.p[7].max(0) as usize);
+                self.draw_number_elem(elem::DAY, d);
             }
         }
         for (i, id) in elem::ARROWS.into_iter().enumerate() {

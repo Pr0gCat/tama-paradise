@@ -35,7 +35,7 @@ pub fn weight(c: u8, p: i32) -> i32 {
         7 => {
             let x = 2 * (p - div_2pi(sin(p))) - ONE;
             let e = ONE - mul(ONE - x.abs(), ONE - x.abs());
-            ((x.signum().max(-1) | 1) * e >> 1) + 0x8000
+            (((x.signum().max(-1) | 1) * e) >> 1) + 0x8000
         }
         _ => p,
     }

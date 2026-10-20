@@ -108,6 +108,8 @@ const BORROWED_COLOURS: u8 = 8;
 
 /// Glyph codes 0xF000.. are control codes; 0xF000 is a newline.
 pub const NEWLINE: u16 = 0xF000;
+/// Text code that ends a page.
+pub const END: u16 = 0xF001;
 
 impl Screen {
     /// Width in pixels of one line of glyph codes. `fonts[1]` covers kana/Latin, `fonts[2]` adds CJK.
@@ -164,6 +166,75 @@ pub fn wrap(fonts: &[Font], glyphs: &[u16], max: i32) -> Vec<u16> {
     out
 }
 
+/// How a UI text element lays out its text (`textbox_init` 0x10064d90, from the element's p[]).
+#[derive(Clone, Copy, Debug)]
+pub struct TextBox {
+    /// Font number (p3).
+    pub font: usize,
+    /// 0 left, 1 centre, 2 right; 0 top, 1 middle, 2 bottom (p8 bits 4–5, 6–7).
+    pub h: u8,
+    pub v: u8,
+    /// Extra advance per glyph (p4) and extra line spacing (p5).
+    pub space: i32,
+    pub leading: i32,
+    /// Palette set (p7).
+    pub palette: usize,
+}
+
+impl Screen {
+    /// Draw text as the firmware's text box does (`FUN_100644d4`): glyphs centred on the pen,
+    /// `x`/`y` the centre of the first line (left: first glyph, right: last glyph, centre: the
+    /// middle of both), codes 0xF00C–0xF015 switch the palette, 0xF000 starts a line.
+    pub fn text_box(&mut self, fonts: &[Font], glyphs: &[u16], x: i32, y: i32, b: TextBox) {
+        let Some(font) = fonts.get(b.font) else { return };
+        let text: Vec<u16> = glyphs.split(|&c| c == END).next().unwrap_or(&[]).to_vec();
+        let lines: Vec<&[u16]> = text.split(|&c| c == NEWLINE).collect();
+        let pitch = font.line_height as i32 + b.leading;
+        let lines_up = (1 - lines.len() as i32) * pitch;
+        let mut ly = y + match b.v {
+            1 => lines_up.div_euclid(2),
+            2 => lines_up,
+            _ => 0,
+        };
+        let mut palette = b.palette;
+        for line in lines {
+            let shown: Vec<u16> = line.iter().copied().filter(|&c| c < 0xF000).collect();
+            let adv = |c: u16| advance(font, c) + b.space;
+            let w = match shown.as_slice() {
+                [] | [_] => 0,
+                [first, mid @ .., last] => {
+                    adv(*first) / 2 + mid.iter().map(|&c| adv(c)).sum::<i32>() + adv(*last) - adv(*last) / 2
+                }
+            };
+            let mut pen = x + match b.h {
+                1 => -(w / 2),
+                2 => -w,
+                _ => 0,
+            };
+            let mut first = true;
+            for &c in line {
+                match c {
+                    0xF00C..=0xF015 => palette = (c - 0xF00C) as usize,
+                    0xF000.. => {}
+                    _ => {
+                        let a = adv(c);
+                        if !first {
+                            pen += a / 2;
+                        }
+                        first = false;
+                        if c != SPACE && (c as usize) < font.adj.len() {
+                            let pal = (palette > 0).then_some((font.sprite, palette));
+                            self.blit(font.sprite, c - 1, pen, ly, 64, false, pal);
+                        }
+                        pen += (a + 1) / 2;
+                    }
+                }
+            }
+            ly += pitch;
+        }
+    }
+}
+
 fn glyph(fonts: &[Font], c: u16) -> Option<(&Font, u16)> {
     if c >= 0xF000 || c == 0 {
         return None;
@@ -179,6 +250,33 @@ fn advance(f: &Font, c: u16) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_box_aligns_like_the_firmware() {
+        // Font 2: digits (codes 2..11) advance 10. Right aligned at 72: "123" centres 52, 62, 72.
+        let mut font = Font { sprite: 900, advance: 12, line_height: 12, adj: vec![0; 20] };
+        for c in 1..12 {
+            font.adj[c] = -2;
+        }
+        let fonts = vec![font.clone(), font.clone(), font];
+        let mut s = Screen::default();
+        let sprite = Sprite {
+            w: 2,
+            h: 2,
+            frames: 12,
+            bits: 2,
+            transparent: false,
+            key: 0,
+            palettes: vec![vec![0xffff; 4]],
+            pixels: vec![0; 2 * 2 * 12],
+        };
+        s.sprites.insert(900, sprite);
+        let b = TextBox { font: 2, h: 2, v: 1, space: 0, leading: 0, palette: 0 };
+        s.text_box(&fonts, &[3, 4, 5], 72, 50, b);
+        let lit = |x: usize| s.fb[(50 * WIDTH + x) * 4 + 3] != 0;
+        assert!(lit(51) && lit(52) && lit(61) && lit(71) && lit(72));
+        assert!(!lit(73) && !lit(50), "glyphs centred on 52..72");
+    }
 
     #[test]
     fn wraps_at_spaces() {

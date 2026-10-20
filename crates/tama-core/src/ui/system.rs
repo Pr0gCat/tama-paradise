@@ -263,7 +263,7 @@ impl Game {
         for (i, id) in [(3u8, elem::HOUR), (4, elem::MINUTE)] {
             if shown(i) {
                 let digits = self.padded(vals[i as usize], 2);
-                self.draw_right_elem(id, &digits);
+                self.draw_text_elem(id, &digits);
             }
         }
         self.draw_elem(elem::COLON, None, None);
@@ -278,7 +278,7 @@ impl Game {
     }
 
     fn padded(&self, n: u16, width: usize) -> Vec<u16> {
-        format!("{n:0width$}").bytes().map(|b| DIGIT_0 + (b - b'0') as u16).collect()
+        super::event::printf_digits(&format!("{n:0width$}"))
     }
 
     /// The planet level's idle clock (`space_clock_update` 0x1006a074): 12-hour time, PM in the

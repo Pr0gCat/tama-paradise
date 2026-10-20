@@ -111,6 +111,17 @@ const SFX_OK: u16 = 1;
 const FLOWER_DROP: i32 = 256;
 const SFX_BACK: u16 = 2;
 
+/// "%d"/"%02d" output as text codes (`FUN_1008df10`): digit d → d + 2, ' ' → 1, '-' → 0xd.
+pub(crate) fn printf_digits(s: &str) -> Vec<u16> {
+    s.bytes()
+        .map(|b| match b {
+            b'0'..=b'9' => (b - b'0') as u16 + 2,
+            b'-' => 0xd,
+            _ => 1,
+        })
+        .collect()
+}
+
 impl Game {
     /// HOME's routing to event scenes (`FUN_1001abd0`): dead → EVENT_DEAD, dying → EVENT_DYING,
     /// with the sitter → HELP_SITTER.
@@ -313,24 +324,24 @@ impl Game {
         }
     }
 
-    /// A number in a text element, right-aligned against the bar, "G" or "/" after it
-    /// (p[7] = font palette set).
+    /// A number in a text element, printed with "%d" (`text_printf` 0x10064f1c: digit d is
+    /// code d + 2 in the element's font).
     pub(crate) fn draw_number_elem(&mut self, id: u16, n: u32) {
-        let glyphs = self.digits(n);
-        self.draw_right_elem(id, &glyphs);
+        self.draw_text_elem(id, &printf_digits(&n.to_string()));
     }
 
-    pub(crate) fn draw_right_elem(&mut self, id: u16, glyphs: &[u16]) {
-        let e = self.ui_elem(id);
-        // ponytail: the text box format (p[5], p[8..10]) is not decoded; x + 4 lines up with the art.
-        let w = crate::screen::Screen::text_width(&self.data.fonts, glyphs);
-        self.screen.text(&self.data.fonts, glyphs, e.x as i32 + 4 - w, e.y as i32, false, e.p[7].max(0) as usize);
-    }
-
-    /// Text centred in a text element.
+    /// Text in a UI text element, laid out as its p[] says (font, alignment, spacing, palette).
     pub(crate) fn draw_text_elem(&mut self, id: u16, glyphs: &[u16]) {
         let e = self.ui_elem(id);
-        self.screen.text(&self.data.fonts, glyphs, e.x as i32, e.y as i32, true, e.p[7].max(0) as usize);
+        let b = crate::screen::TextBox {
+            font: e.p[3].max(0) as usize,
+            h: (e.p[8] >> 4 & 3) as u8,
+            v: (e.p[8] >> 6 & 3) as u8,
+            space: e.p[4] as i32,
+            leading: e.p[5] as i32,
+            palette: e.p[7].max(0) as usize,
+        };
+        self.screen.text_box(&self.data.fonts, glyphs, e.x as i32, e.y as i32, b);
     }
 
     pub(crate) fn update_lab_result(
@@ -498,7 +509,8 @@ impl Game {
                 _ => (0, 1),
             };
             let fly = |a: i32, b: i32| crate::ease::ease(FLY_CURVE, a, b, p.0 as u32, p.1 as u32);
-            let (x, y, alpha) = (fly(e.x as i32, SUPPORT_TARGET.0), fly(e.y as i32, SUPPORT_TARGET.1), fly(64, 0) as u8);
+            let (x, y, alpha) =
+                (fly(e.x as i32, SUPPORT_TARGET.0), fly(e.y as i32, SUPPORT_TARGET.1), fly(64, 0) as u8);
             self.screen.blit(icon, 0, x, y, alpha, false, None);
         }
     }
