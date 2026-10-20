@@ -116,7 +116,7 @@ mod with_rom_data {
             g.frame(t, 0);
             g.scene = g.open(a);
             let mut seed = 7u32;
-            let mut frames = 0;
+            let mut frames: u64 = 0;
             while matches!(g.scene, Scene::Mini { .. }) && frames < 20_000 {
                 seed ^= seed << 13;
                 seed ^= seed >> 17;
