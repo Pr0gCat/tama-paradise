@@ -26,7 +26,7 @@ extern "C" {
 #define TAMA_GESTURE_NONE 0
 #define TAMA_GESTURE_SWIPE_UP 1
 #define TAMA_GESTURE_SWIPE_DOWN 2
-#define TAMA_GESTURE_SWIPE_LEFT 3
+#define TAMA_GESTURE_SWIPE_RIGHT 3
 #define TAMA_GESTURE_TAP 4
 
 /* Opaque game handle. Not thread-safe: use one handle from one thread at a time. */
@@ -53,7 +53,7 @@ char *tama_save(const TamaGame *game);
 
 /* One 20 fps frame. */
 void tama_frame(TamaGame *game, uint64_t now, uint8_t held);
-/* One 20 fps frame driven by touch: swipe up / down turn the dial, a tap selects, swipe left
+/* One 20 fps frame driven by touch: swipe up / down turn the dial, a tap selects, swipe right
  * goes back, `holding` while a finger rests past the long-press delay (the lab on HOME). The
  * game maps them to its buttons for the current screen (tama-core touch.rs). */
 void tama_frame_touch(TamaGame *game, uint64_t now, uint8_t gesture, bool holding);

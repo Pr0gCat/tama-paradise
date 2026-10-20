@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The 128×128 screen filling the whole display, the A / B / C buttons floating over it. On the screen: swipe up / down turn
-/// the dial (the Digital Crown does too), a tap selects, swipe left goes back, a long press is
-/// the dial's long press.
+/// The game filling the display. TOUCH ON: tap selects, swipe right goes back. TOUCH OFF: the
+/// A / B / C buttons float over the screen instead. Always: swipe up / down and the Digital Crown
+/// turn the dial, a long press is the dial's long press.
 struct GameView: View {
     /// Display points per game pixel (filling the width would be about 1.6 on a 46 mm watch).
     static let uiScale: CGFloat = 1.5
@@ -31,12 +31,15 @@ struct GameView: View {
                     .clipped()
                     .contentShape(Rectangle())
                     .gesture(touch)
-                HStack(spacing: d * 0.5) {
-                    key("A", TAMA_A, d)
-                    key("B", TAMA_B, d)
-                    key("C", TAMA_C, d)
+                // The buttons only with SETTINGS → TOUCH OFF.
+                if !engine.touchOn {
+                    HStack(spacing: d * 0.5) {
+                        key("A", TAMA_A, d)
+                        key("B", TAMA_B, d)
+                        key("C", TAMA_C, d)
+                    }
+                    .padding(.bottom, d * 0.25)
                 }
-                .padding(.bottom, d * 0.25)
             }
             // The canvas follows the whole display (this reader ignores the safe area).
             .onChange(of: geo.size, initial: true) { _, size in
@@ -114,13 +117,15 @@ struct GameView: View {
                 holdTask?.cancel()
                 defer { downAt = nil; engine.holding = false }
                 if engine.holding { return }
+                // Swipes up / down and the long press always; a tap and swipe right (C) only with
+                // SETTINGS → TOUCH ON (TOUCH OFF has the buttons). Swipe left does nothing.
                 let (dx, dy) = (v.translation.width, v.translation.height)
                 if max(abs(dx), abs(dy)) < 12 {
-                    engine.send(TAMA_GESTURE_TAP)
+                    if engine.touchOn { engine.send(TAMA_GESTURE_TAP) }
                 } else if abs(dy) >= abs(dx) {
                     engine.send(dy < 0 ? TAMA_GESTURE_SWIPE_UP : TAMA_GESTURE_SWIPE_DOWN)
-                } else if dx < 0 {
-                    engine.send(TAMA_GESTURE_SWIPE_LEFT)
+                } else if dx > 0, engine.touchOn {
+                    engine.send(TAMA_GESTURE_SWIPE_RIGHT)
                 }
             }
     }

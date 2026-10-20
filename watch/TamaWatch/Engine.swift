@@ -9,6 +9,8 @@ import Compression
 final class Engine: ObservableObject {
     @Published private(set) var image: CGImage?
     @Published private(set) var error: String?
+    /// SETTINGS → TOUCH: on, the screen takes taps and swipe right; off, the A / B / C buttons.
+    @Published private(set) var touchOn = true
 
     private var game: OpaquePointer?
     private var timer: Timer?
@@ -141,6 +143,8 @@ final class Engine: ObservableObject {
         playSounds(game)
         drain(tama_take_connect(game))
         image = framebufferImage(game)
+        let touch = tama_touch(game)
+        if touch != touchOn { touchOn = touch }
     }
 
     private func supplySprites(_ game: OpaquePointer) {

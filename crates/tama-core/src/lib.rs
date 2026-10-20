@@ -83,7 +83,7 @@ pub struct Game {
     focus: usize,
     /// Ring menu wheel position in items, for the menu (item count, first item, back) it belongs to.
     menu_pos: Option<(usize, u16, Option<ui::Action>, f32)>,
-    /// This frame's C came from a touch swipe left (a whole cancel, `touch.rs`).
+    /// This frame's C came from a touch swipe right (a whole cancel, `touch.rs`).
     touch_back: bool,
     /// The field camera is still more than 4 px from its focus (C waits).
     cam_moving: bool,

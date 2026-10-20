@@ -426,7 +426,7 @@ impl Arcade01 {
 }
 
 impl MiniGame for Arcade01 {
-    /// Touch: C moves right, so swipe left does nothing; holding B charges the smash.
+    /// Touch: C moves right, so swipe right does nothing; holding B charges the smash.
     fn touch_map(&self) -> crate::touch::Map {
         crate::touch::Map { back: 0, ..crate::touch::Map::DEFAULT }
     }

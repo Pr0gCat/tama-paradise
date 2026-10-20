@@ -1,6 +1,6 @@
 //! Touch controls (the remake's, for the Apple Watch): the platform reports gestures and the
 //! game turns them into its buttons for the screen it is on. Swipe up / down turn the dial, a
-//! tap selects, holding is the long press, swipe left goes back; swipe right does nothing.
+//! tap selects, holding is the long press, swipe right goes back (C); swipe left does nothing.
 
 use crate::input::{A, B, C, DOWN, PUSH, UP};
 use crate::ui::Scene;
@@ -10,7 +10,7 @@ use crate::Game;
 pub const NONE: u8 = 0;
 pub const SWIPE_UP: u8 = 1;
 pub const SWIPE_DOWN: u8 = 2;
-pub const SWIPE_LEFT: u8 = 3;
+pub const SWIPE_RIGHT: u8 = 3;
 pub const TAP: u8 = 4;
 
 /// The buttons each gesture means. `up` / `down` / `tap` / `back` are pressed for one frame;
@@ -52,14 +52,14 @@ impl Game {
             SWIPE_UP => m.up,
             SWIPE_DOWN => m.down,
             TAP => m.tap,
-            SWIPE_LEFT => m.back,
+            SWIPE_RIGHT => m.back,
             _ => 0,
         };
         if holding {
             held |= m.hold;
         }
-        // A swipe left is a whole cancel where the firmware wants C twice (date and birthday).
-        self.touch_back = gesture == SWIPE_LEFT;
+        // A swipe right is a whole cancel where the firmware wants C twice (date and birthday).
+        self.touch_back = gesture == SWIPE_RIGHT;
         self.frame(now, held);
         self.touch_back = false;
     }
@@ -85,13 +85,13 @@ mod tests {
         g.frame_touch(t, NONE, false);
         g.frame_touch(t, SWIPE_UP, false);
         g.frame_touch(t, NONE, false);
-        g.frame_touch(t, SWIPE_LEFT, false);
+        g.frame_touch(t, SWIPE_RIGHT, false);
         g.frame_touch(t, NONE, false);
-        assert!(!matches!(g.scene, Scene::Menu { back: Some(Action::Lab), .. }), "swipe left goes back");
+        assert!(!matches!(g.scene, Scene::Menu { back: Some(Action::Lab), .. }), "swipe right goes back");
         g.scene = Scene::Birthday { m: 1, d: 1, pos: 0, intro: false };
         g.frame_touch(t, NONE, false);
-        g.frame_touch(t, SWIPE_LEFT, false);
-        assert!(!matches!(g.scene, Scene::Birthday { .. }), "one swipe left cancels");
+        g.frame_touch(t, SWIPE_RIGHT, false);
+        assert!(!matches!(g.scene, Scene::Birthday { .. }), "one swipe right cancels");
     }
 }
 
