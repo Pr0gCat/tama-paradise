@@ -22,6 +22,13 @@ extern "C" {
 #define TAMA_DIAL_DOWN (1u << 6)
 #define TAMA_DIAL_UP (1u << 7)
 
+/* Touch gestures for tama_frame_touch (one per frame, or TAMA_GESTURE_NONE). */
+#define TAMA_GESTURE_NONE 0
+#define TAMA_GESTURE_SWIPE_UP 1
+#define TAMA_GESTURE_SWIPE_DOWN 2
+#define TAMA_GESTURE_SWIPE_LEFT 3
+#define TAMA_GESTURE_TAP 4
+
 /* Opaque game handle. Not thread-safe: use one handle from one thread at a time. */
 typedef struct TamaGame TamaGame;
 
@@ -46,6 +53,10 @@ char *tama_save(const TamaGame *game);
 
 /* One 20 fps frame. */
 void tama_frame(TamaGame *game, uint64_t now, uint8_t held);
+/* One 20 fps frame driven by touch: swipe up / down turn the dial, a tap selects, swipe left
+ * goes back, `holding` while a finger rests past the long-press delay (the lab on HOME). The
+ * game maps them to its buttons for the current screen (tama-core touch.rs). */
+void tama_frame_touch(TamaGame *game, uint64_t now, uint8_t gesture, bool holding);
 /* While in the background: advance the pet and return the request id of a care call that just
  * started (0x0f HOME, 0x11 hunger, 0x12 mood, 0x0a cold, 0x13 evolution support, 0x1c DODODO),
  * or -1 for none. */

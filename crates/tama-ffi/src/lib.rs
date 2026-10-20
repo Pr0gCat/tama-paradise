@@ -108,6 +108,11 @@ pub unsafe extern "C" fn tama_frame(game: *mut TamaGame, now: u64, held: u8) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn tama_frame_touch(game: *mut TamaGame, now: u64, gesture: u8, holding: bool) {
+    (*game).0.frame_touch(now, gesture, holding);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn tama_poll_call(game: *mut TamaGame, now: u64) -> i32 {
     (*game).0.poll_call(now).map_or(-1, i32::from)
 }

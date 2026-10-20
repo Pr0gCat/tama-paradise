@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
 
     uint64_t now = 1700000000;
     for (int i = 0; i < 100; i++) tama_frame(g, now, i % 10 == 0 ? TAMA_A : 0);
+    for (int i = 0; i < 20; i++) tama_frame_touch(g, now, i % 5 == 0 ? TAMA_GESTURE_TAP : TAMA_GESTURE_NONE, false);
     const uint8_t *fb = tama_framebuffer(g, &n);
     assert(fb && n == TAMA_WIDTH * TAMA_HEIGHT * 4);
     uint32_t *sounds = tama_take_sounds(g, &n);
