@@ -15,3 +15,11 @@
 # ROM-derived data: generate locally with tama-extract, never publish
 /data/game.json
 /docs/spec/data/strings.csv
+
+# Not published: reverse-engineering tools and notes (re/hant is the exception), the full spec
+# tables with ROM names (re/spec-data), and the local data links
+/re/*
+!/re/hant
+/docs/re-notes.md
+/web/game.json
+/web/sprites
