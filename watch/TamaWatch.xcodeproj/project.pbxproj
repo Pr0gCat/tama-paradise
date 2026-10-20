@@ -1,0 +1,61 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		872BB757E2309018E581F1BB /* TamaWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233542D731B029DF54325059 /* TamaWatchApp.swift */; };
+		4C5C827A70289F1186B5C4BB /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1648C016B2C8EC2B5445C47 /* Engine.swift */; };
+		8964E909897CA675879F4C01 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6662DCDB785B7B5DB48448F8 /* GameView.swift */; };
+		953D2D2E46D49372764462D0 /* Sound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9990B3363CD62C07A3BE8940 /* Sound.swift */; };
+		6C55CFEE60D2AD1F114A6D1C /* TamaCore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CDF05F798EFCC125DE5CE423 /* TamaCore.xcframework */; };
+/* End PBXBuildFile section */
+/* Begin PBXFileReference section */
+		233542D731B029DF54325059 /* TamaWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TamaWatchApp.swift; sourceTree = "<group>"; };
+		B1648C016B2C8EC2B5445C47 /* Engine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Engine.swift; sourceTree = "<group>"; };
+		6662DCDB785B7B5DB48448F8 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
+		9990B3363CD62C07A3BE8940 /* Sound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sound.swift; sourceTree = "<group>"; };
+		206D364FDCEC8984518C8B61 /* TamaWatch-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TamaWatch-Bridging-Header.h"; sourceTree = "<group>"; };
+		CDF05F798EFCC125DE5CE423 /* TamaCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = TamaCore.xcframework; path = ../target/TamaCore.xcframework; sourceTree = SOURCE_ROOT; };
+		D2A57DC1D883FD21FB995169 /* TamaWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TamaWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+/* Begin PBXFrameworksBuildPhase section */
+		A82E6F678DA6193022955957 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (6C55CFEE60D2AD1F114A6D1C /* TamaCore.xcframework in Frameworks */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+/* Begin PBXGroup section */
+		450B220DE8EEB27904FC3DC4 = {isa = PBXGroup; children = (CC0F851F1418F89420454479 /* TamaWatch */, 4EA42DE2C7E9C9D22AC4EF9B /* Frameworks */, 86024CAD1E83101D97359D73 /* Products */,); sourceTree = "<group>"; };
+		CC0F851F1418F89420454479 /* TamaWatch */ = {isa = PBXGroup; children = (233542D731B029DF54325059 /* TamaWatchApp.swift */, B1648C016B2C8EC2B5445C47 /* Engine.swift */, 6662DCDB785B7B5DB48448F8 /* GameView.swift */, 9990B3363CD62C07A3BE8940 /* Sound.swift */, 206D364FDCEC8984518C8B61 /* TamaWatch-Bridging-Header.h */,); path = TamaWatch; sourceTree = "<group>"; };
+		4EA42DE2C7E9C9D22AC4EF9B /* Frameworks */ = {isa = PBXGroup; children = (CDF05F798EFCC125DE5CE423 /* TamaCore.xcframework */,); name = Frameworks; sourceTree = "<group>"; };
+		86024CAD1E83101D97359D73 /* Products */ = {isa = PBXGroup; children = (D2A57DC1D883FD21FB995169 /* TamaWatch.app */,); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+/* Begin PBXNativeTarget section */
+		42AEFBAE01D2DFD981F7DA7D /* TamaWatch */ = {isa = PBXNativeTarget; buildConfigurationList = 6A40CDC7A0ADDD77AB1B9243; buildPhases = (F6BE306E6A9E42DE559F6EDC /* Sources */, A82E6F678DA6193022955957 /* Frameworks */, 7414EC6B391964FAEC8B0E90 /* Resources */, 100024E488DC0144AC1414F9 /* Copy game data */,); buildRules = (); dependencies = (); name = TamaWatch; productName = TamaWatch; productReference = D2A57DC1D883FD21FB995169 /* TamaWatch.app */; productType = "com.apple.product-type.application"; };
+/* End PBXNativeTarget section */
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700; }; buildConfigurationList = 81729A1A4B4353A900A3EB5B; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base,); mainGroup = 450B220DE8EEB27904FC3DC4; productRefGroup = 86024CAD1E83101D97359D73 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (42AEFBAE01D2DFD981F7DA7D /* TamaWatch */,); };
+/* End PBXProject section */
+/* Begin PBXResourcesBuildPhase section */
+		7414EC6B391964FAEC8B0E90 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+/* Begin PBXShellScriptBuildPhase section */
+		100024E488DC0144AC1414F9 /* Copy game data */ = {isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputPaths = (); name = "Copy game data"; outputPaths = (); runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "# The ROM-derived game data stays local (gitignored data/): copy it into this build only.\nset -e\nDATA=\"$SRCROOT/../data\"\nOUT=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nif [ ! -f \"$DATA/game.json\" ]; then echo \"warning: $DATA/game.json missing: run tama-extract on your dump\"; exit 0; fi\nmkdir -p \"$OUT/sprites\"\ncp \"$DATA/game.json\" \"$OUT/game.json\"\nrsync -a \"$DATA/sprites/\" \"$OUT/sprites/\"\n"; showEnvVarsInLog = 0; };
+/* End PBXShellScriptBuildPhase section */
+/* Begin PBXSourcesBuildPhase section */
+		F6BE306E6A9E42DE559F6EDC /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (872BB757E2309018E581F1BB /* TamaWatchApp.swift in Sources */, 4C5C827A70289F1186B5C4BB /* Engine.swift in Sources */, 8964E909897CA675879F4C01 /* GameView.swift in Sources */, 953D2D2E46D49372764462D0 /* Sound.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+/* Begin XCBuildConfiguration section */
+		519E67E9D8B5E08EAE06484C /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; ENABLE_USER_SCRIPT_SANDBOXING = NO; SDKROOT = watchos; SWIFT_VERSION = 5.0; WATCHOS_DEPLOYMENT_TARGET = 11.0; DEBUG_INFORMATION_FORMAT = dwarf; ONLY_ACTIVE_ARCH = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; }; name = Debug; };
+		305748451541F0B6D77FFDBE /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; ENABLE_USER_SCRIPT_SANDBOXING = NO; SDKROOT = watchos; SWIFT_VERSION = 5.0; WATCHOS_DEPLOYMENT_TARGET = 11.0; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_COMPILATION_MODE = wholemodule; }; name = Release; };
+		4A4FE1333A37C4DE4B276C88 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Tama; INFOPLIST_KEY_WKApplication = YES; INFOPLIST_KEY_WKWatchOnly = YES; PRODUCT_BUNDLE_IDENTIFIER = "com.example.tamaparadise.watch"; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_OBJC_BRIDGING_HEADER = "TamaWatch/TamaWatch-Bridging-Header.h"; HEADER_SEARCH_PATHS = "$(SRCROOT)/../crates/tama-ffi/include"; TARGETED_DEVICE_FAMILY = 4; OTHER_LDFLAGS = "-lc++"; }; name = Debug; };
+		43350BD1C9FE13465CA4E8F7 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Tama; INFOPLIST_KEY_WKApplication = YES; INFOPLIST_KEY_WKWatchOnly = YES; PRODUCT_BUNDLE_IDENTIFIER = "com.example.tamaparadise.watch"; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_OBJC_BRIDGING_HEADER = "TamaWatch/TamaWatch-Bridging-Header.h"; HEADER_SEARCH_PATHS = "$(SRCROOT)/../crates/tama-ffi/include"; TARGETED_DEVICE_FAMILY = 4; OTHER_LDFLAGS = "-lc++"; }; name = Release; };
+/* End XCBuildConfiguration section */
+/* Begin XCConfigurationList section */
+		81729A1A4B4353A900A3EB5B = {isa = XCConfigurationList; buildConfigurations = (519E67E9D8B5E08EAE06484C /* Debug */, 305748451541F0B6D77FFDBE /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		6A40CDC7A0ADDD77AB1B9243 = {isa = XCConfigurationList; buildConfigurations = (4A4FE1333A37C4DE4B276C88 /* Debug */, 43350BD1C9FE13465CA4E8F7 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}

@@ -30,6 +30,19 @@ Optionally extract the data once (`cargo run --release -p tama-extract -- <dump.
 `web/game.json` → `../data/game.json` and `web/sprites` → `../data/sprites`; the page then uses
 them instead of asking for a dump (`?dump` forces the dump path, `?debug` shows the pet's numbers).
 
+## Apple Watch
+
+`watch/TamaWatch.xcodeproj` is a watch-only SwiftUI app over the C ABI in `crates/tama-ffi`.
+
+```sh
+scripts/build-watchos.sh   # target/TamaCore.xcframework
+open watch/TamaWatch.xcodeproj
+```
+
+A build phase copies your local `data/game.json` and `data/sprites` into that build only (they
+are never committed). Controls: swipe up / down or the Digital Crown turn the dial, tap selects,
+swipe left goes back, a long press is the dial's long press.
+
 ## Credits
 
 Traditional Chinese glyphs missing from the original font are drawn from
