@@ -183,6 +183,7 @@ impl Game {
         if node.is_finished() {
             let stay = (self.rand() % 100 >= 80) as usize;
             node = Node::new(script::SITTER_STAY[stay]);
+            node.tick(&self.data.motions);
         }
         Scene::Sitter { node }
     }
