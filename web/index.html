@@ -71,9 +71,9 @@
 </style>
 <canvas id="c" aria-label="Pet screen. Swipe left or right to turn the dial, tap to press it."></canvas>
 <div class="pad">
-  <button data-k="0x40" aria-label="Dial left">◀</button>
+  <button data-k="0x80" aria-label="Dial left">◀</button>
   <button data-k="0x08" aria-label="Dial press">●</button>
-  <button data-k="0x80" aria-label="Dial right">▶</button>
+  <button data-k="0x40" aria-label="Dial right">▶</button>
   <button data-k="0x01">A</button>
   <button data-k="0x02">B</button>
   <button data-k="0x04">C</button>
@@ -167,7 +167,7 @@
   // Input bits as in the firmware. Buttons are held; dial turns are one-frame pulses.
   // Every press is also latched for one frame, so a tap shorter than a frame still counts.
   const A = 1, B = 2, C = 4, PUSH = 8, DOWN = 0x40, UP = 0x80, DIAL = DOWN | UP;
-  const keys = { a: A, s: B, d: C, " ": PUSH, Enter: PUSH, ArrowLeft: DOWN, ArrowRight: UP };
+  const keys = { a: A, s: B, d: C, " ": PUSH, Enter: PUSH, ArrowLeft: UP, ArrowRight: DOWN };
   let held = 0, pulses = 0;
   const down = bit => { pulses |= bit; if (!(bit & DIAL)) held |= bit; };
   const up = bit => { held &= ~bit; save(); };
@@ -189,7 +189,7 @@
   c.onpointermove = e => {
     if (swipeX === null) return;
     const dx = e.clientX - swipeX;
-    if (Math.abs(dx) >= 24) { down(dx > 0 ? UP : DOWN); swipeX = e.clientX; swiped = true; }
+    if (Math.abs(dx) >= 24) { down(dx > 0 ? DOWN : UP); swipeX = e.clientX; swiped = true; }
   };
   c.onpointerup = () => {
     if (swipeX !== null && !swiped) { down(PUSH); up(PUSH); }
