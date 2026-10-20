@@ -3,7 +3,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tama">
 <meta name="theme-color" content="#222">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
 <title>Tama Paradise</title>
 <style>
   :root { --bg: #222; --btn: #3a3a44; --btn-on: #5a5a6a; --fg: #ccc; }
@@ -14,7 +19,7 @@
     padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
     box-sizing: border-box; overflow: hidden;
     /* no double-tap zoom, text selection or tap flash while playing */
-    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none; overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
   }
   /* square screen: as large as fits next to the controls */
@@ -37,6 +42,11 @@
               border-radius: 4px; }
   canvas.qr[hidden] { display: none; }
   dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
+  .inline { display: flex; gap: 8px; align-items: center; }
+  #scanner { position: fixed; inset: 0; z-index: 10; background: #000; display: flex; flex-direction: column;
+             align-items: center; justify-content: center; gap: 16px; }
+  #scanner[hidden] { display: none; }
+  #scanner video { width: min(92vw, 70dvh); aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
   /* phone held sideways: the screen on the left, the controls beside it */
   @media (orientation: landscape) and (max-height: 500px) {
     body { display: grid; grid-template-columns: auto auto; align-content: center; justify-content: center;
@@ -64,6 +74,7 @@
     <canvas id="my-qr" class="qr" aria-label="QR code of your friend code"></canvas>
     <button type="button" id="copy-code" class="small">Copy</button>
     <label>Friend's code<input id="their-code" autocomplete="off" spellcheck="false" placeholder="TP1-…"></label>
+    <button type="button" class="small scan" data-field="their-code">📷 Scan QR</button>
     <label class="check"><input type="checkbox" id="marry"> Agree to marry (adults, best friends)</label>
     <button type="button" id="play" class="small">Playdate</button>
     <hr>
@@ -72,12 +83,18 @@
     <input id="gift-code" readonly>
     <canvas id="gift-qr" class="qr" hidden aria-label="QR code of the gift"></canvas>
     <label>Receive a gift<input id="recv-code" autocomplete="off" spellcheck="false" placeholder="TG1-…"></label>
+    <button type="button" class="small scan" data-field="recv-code">📷 Scan QR</button>
     <button type="button" id="recv" class="small">Receive</button>
     <p id="friends-msg" role="status"></p>
     <button class="small">Close</button>
   </form>
 </dialog>
 <pre id="s"></pre>
+<div id="scanner" hidden>
+  <video playsinline muted></video>
+  <p id="scan-msg">Point the camera at your friend's QR code</p>
+  <button type="button" class="small" id="scan-stop">Cancel</button>
+</div>
 <script type="module">
   // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
   const glue = await (await fetch("./pkg/tama_web.js", { cache: "no-cache" })).text();
@@ -202,6 +219,57 @@
     }
   }
 
+  // Scan a friend's QR with the camera (a home-screen app on iOS does not receive the QR's link):
+  // BarcodeDetector where the browser has it, else the bundled jsQR decoder.
+  const scanner = $("scanner"), video = scanner.querySelector("video");
+  let stream = null;
+  // The friends dialog sits in the top layer, so it steps aside while the camera is up.
+  const stopScan = () => {
+    stream?.getTracks().forEach(t => t.stop()); stream = null;
+    if (!scanner.hidden) { scanner.hidden = true; dlg.showModal(); }
+  };
+  $("scan-stop").onclick = stopScan;
+  const loadJsQr = () => window.jsQR ? Promise.resolve() : new Promise((ok, fail) => {
+    const s = document.createElement("script"); s.src = "vendor/jsQR.js"; s.onload = ok; s.onerror = fail;
+    document.head.append(s);
+  });
+  // A scanned text is this page's link (?friend= / ?gift=) or a bare code.
+  const codeFrom = text => {
+    try { const u = new URL(text); return u.searchParams.get("friend") ?? u.searchParams.get("gift") ?? text; }
+    catch { return text.trim(); }
+  };
+  for (const btn of document.querySelectorAll("button.scan")) btn.onclick = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) { msg("The camera needs HTTPS (or localhost)"); return; }
+    try {
+      const detector = "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
+      if (!detector) await loadJsQr();
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      video.srcObject = stream; dlg.close(); scanner.hidden = false; await video.play();
+      const grab = document.createElement("canvas"), g = grab.getContext("2d", { willReadFrequently: true });
+      while (stream) {
+        await new Promise(r => setTimeout(r, 150));
+        if (!video.videoWidth) continue;
+        let text = null;
+        if (detector) {
+          text = (await detector.detect(video))[0]?.rawValue ?? null;
+        } else {
+          grab.width = video.videoWidth; grab.height = video.videoHeight;
+          g.drawImage(video, 0, 0);
+          text = jsQR(g.getImageData(0, 0, grab.width, grab.height).data, grab.width, grab.height)?.data ?? null;
+        }
+        if (!text) continue;
+        stopScan();
+        const field = $(btn.dataset.field);
+        field.value = codeFrom(text);
+        navigator.vibrate?.(30);
+        msg(btn.dataset.field === "their-code" ? "Press Playdate to play with your friend" : "Press Receive to get the gift");
+      }
+    } catch (e) {
+      stopScan();
+      msg(e.name === "NotAllowedError" ? "Camera permission was denied" : `Camera error: ${e.message ?? e}`);
+    }
+  };
+
   // Opened from a scanned QR: fill in the code and show the panel (the link is then cleaned up).
   for (const [kind, field] of [["friend", "their-code"], ["gift", "recv-code"]]) {
     const code = params.get(kind);
@@ -319,4 +387,6 @@
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  // Home-screen app: cache everything for offline play.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e));
 </script>
