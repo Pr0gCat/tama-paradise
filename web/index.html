@@ -53,11 +53,13 @@
              flex-direction: column; align-items: center; justify-content: center; gap: 16px; font: 16px system-ui; }
   #scanner[hidden] { display: none; }
   #scanner video { width: min(92vw, 70dvh); aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
-  /* phones: bigger buttons for thumbs */
-  @media (pointer: coarse) and (orientation: portrait) {
-    .pad { grid-template-columns: repeat(3, min(96px, 26vw)); gap: 14px 18px; }
+  /* home-screen app held upright: the screen at the top, bigger buttons down by the thumbs */
+  @media (display-mode: standalone) and (orientation: portrait) {
+    body { justify-content: flex-start; padding-top: calc(env(safe-area-inset-top) + 16px);
+           padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .pad { margin-top: auto; grid-template-columns: repeat(3, min(96px, 26vw)); gap: 14px 18px; }
     .pad button { height: 72px; border-radius: 36px; font-size: 26px; }
-    canvas { width: min(92vw, 100dvh - 300px, 512px); }
+    canvas { width: min(92vw, 100dvh - 320px, 512px); }
   }
   /* phone held sideways: the screen on the left, the controls beside it */
   @media (orientation: landscape) and (max-height: 500px) {
