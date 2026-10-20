@@ -97,6 +97,11 @@ impl Game {
             | Action::Volume
             | Action::SaveData
             | Action::SettingsAtSaveData
+            | Action::Developer
+            | Action::DevGrow
+            | Action::DevPoints
+            | Action::DevCare
+            | Action::SettingsAtDeveloper
             | Action::ExportSave
             | Action::ImportSave
             | Action::NewGameAsk

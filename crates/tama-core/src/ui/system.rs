@@ -89,6 +89,38 @@ impl Game {
                 Scene::Ask { text: REALLY_DELETE, yes: false, on_yes: Action::ResetAll, back: Action::SaveData }
             }
             Action::SettingsAtSaveData => self.settings_menu(4),
+            Action::SettingsAtDeveloper => self.settings_menu(5),
+            // DEVELOPER (remake): GROW UP evolves now, +10000 points, FULL CARE fills and cures.
+            Action::Developer => self.developer_menu(0),
+            Action::DevGrow => {
+                if self.pet.def.stage < 5 {
+                    self.pet.raise(crate::pet::req::EVOLUTION);
+                    self.sfx(1, 100);
+                    return Scene::Home;
+                }
+                self.sfx(0x0b, 100);
+                self.developer_menu(0)
+            }
+            Action::DevPoints => {
+                self.pet.earn(10_000);
+                self.sfx(1, 100);
+                self.developer_menu(1)
+            }
+            Action::DevCare => {
+                let p = &mut self.pet;
+                (p.onaka, p.gokigen) = (p.onaka_max, p.gokigen_max);
+                p.clean();
+                p.groom();
+                while matches!(p.cond, crate::pet::Cond::Cold) && p.medicine() {}
+                if matches!(p.cond, crate::pet::Cond::Injury) {
+                    p.treat_injury();
+                }
+                for r in [crate::pet::req::ONAKA, crate::pet::req::GOKIGEN] {
+                    p.clear(r);
+                }
+                self.sfx(1, 100);
+                self.developer_menu(2)
+            }
             Action::DateOrder => {
                 let items = (0..3u8).map(|i| (DATE_ORDERS + i as u16, Some(Action::SetDateOrder(i)))).collect();
                 let menu = Scene::Menu { items, idx: 0, back: Some(Action::SettingsTimeDisplay) };
@@ -144,8 +176,18 @@ impl Game {
             (super::settings::language_name(self.pet.lang), Some(Action::Language)),
             (REMAKE_TEXT + !self.pet.touch as u16, Some(Action::ToggleTouch)),
             (REMAKE_TEXT + 2, Some(Action::SaveData)),
+            (REMAKE_TEXT + 7, Some(Action::Developer)),
         ];
         Scene::Menu { items, idx, back: Some(Action::Lab) }
+    }
+
+    fn developer_menu(&self, idx: usize) -> Scene {
+        let items = vec![
+            (REMAKE_TEXT + 8, Some(Action::DevGrow)),
+            (REMAKE_TEXT + 9, Some(Action::DevPoints)),
+            (REMAKE_TEXT + 10, Some(Action::DevCare)),
+        ];
+        Scene::Menu { items, idx, back: Some(Action::SettingsAtDeveloper) }
     }
 
     fn time_menu(&self, idx: usize) -> Scene {
@@ -455,7 +497,8 @@ mod tests {
         let mut g = Game::new(crate::evolve::tests::data(), 1);
         assert!(g.touch(), "on by default");
         g.scene = g.open(Action::Settings);
-        press(&mut g, UP); // SAVE DATA (last)
+        press(&mut g, UP); // DEVELOPER (last)
+        press(&mut g, UP); // SAVE DATA
         press(&mut g, UP); // TOUCH ON
         press(&mut g, B);
         assert!(!g.touch());
@@ -474,5 +517,21 @@ mod tests {
         press(&mut g, B);
         assert_eq!(g.pet.date_order, 1);
         assert!(matches!(g.scene, Scene::Menu { idx: 1, .. }));
+    }
+
+    #[test]
+    fn developer_mode_adds_points_and_cares() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.onaka = 0;
+        g.scene = g.open(Action::Developer);
+        let before = g.pet.points;
+        g.scene = g.open(Action::DevPoints);
+        g.scene = g.open(Action::DevCare);
+        assert_eq!(g.pet.points, before + 10_000);
+        assert_eq!(g.pet.onaka, g.pet.onaka_max);
+        assert!(matches!(&g.scene, Scene::Menu { idx: 2, .. }));
+        g.pet.def.stage = 3;
+        assert!(matches!(g.open(Action::DevGrow), Scene::Home));
+        assert!(g.pet.is_pending(crate::pet::req::EVOLUTION));
     }
 }

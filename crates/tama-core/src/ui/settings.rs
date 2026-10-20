@@ -352,7 +352,8 @@ mod tests {
             g.frame(86_400 * 3 + 12 * 3600, b);
             g.frame(86_400 * 3 + 12 * 3600, 0);
         };
-        press(&mut g, UP); // SAVE DATA (last)
+        press(&mut g, UP); // DEVELOPER (last)
+        press(&mut g, UP); // SAVE DATA
         press(&mut g, UP); // TOUCH
         press(&mut g, UP); // the language entry
         press(&mut g, B);

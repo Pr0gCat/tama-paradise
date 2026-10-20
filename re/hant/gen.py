@@ -48,21 +48,29 @@ TAIWAN = {'拓麻歌子': '塔麻可吉', '拓麻': '塔麻', '信息': '資訊'
           '巴士': '公車', '菠萝': '鳳梨', '牛油果': '酪梨', '鳄': '鱷', '歌子': '可吉'}
 rules.update(TAIWAN)
 NAME = '正體中文'
-# The remake's menu texts (ui.rs REMAKE_TEXTS order), per language in data::LANGS order.
+# The remake's menu texts (ui.rs REMAKE_TEXT ids), per language in data::LANGS order.
 REMAKE = [
-    ['タッチ ＯＮ', 'タッチ ＯＦＦ', 'セーブデータ', 'かきだし', 'よみこみ', 'はじめから'],
-    ['TOUCH ON', 'TOUCH OFF', 'SAVE DATA', 'EXPORT', 'IMPORT', 'NEW GAME'],
-    ['TACTILE ON', 'TACTILE OFF', 'SAUVEGARDE', 'EXPORTER', 'IMPORTER', 'NOUVEAU JEU'],
-    ['TOUCH EIN', 'TOUCH AUS', 'SPIELSTAND', 'EXPORT', 'IMPORT', 'NEUES SPIEL'],
-    ['TOQUE ON', 'TOQUE OFF', 'DADOS', 'EXPORTAR', 'IMPORTAR', 'NOVO JOGO'],
-    ['TÁCTIL ON', 'TÁCTIL OFF', 'DATOS', 'EXPORTAR', 'IMPORTAR', 'NUEVO JUEGO'],
-    ['TOCCO ON', 'TOCCO OFF', 'SALVATAGGIO', 'ESPORTA', 'IMPORTA', 'NUOVO GIOCO'],
-    ['触屏 开', '触屏 关', '存档', '导出', '导入', '新游戏'],
-    ['터치 ON', '터치 OFF', '저장 데이터', '내보내기', '가져오기', '새로 하기'],
-    ['觸控 開', '觸控 關', '存檔', '匯出', '匯入', '新遊戲'],
+    ['タッチ ＯＮ', 'タッチ ＯＦＦ', 'セーブデータ', 'かきだし', 'よみこみ', 'はじめから', NAME,
+     'かいはつしゃ', 'せいちょう', '+10000', 'ぜんぶおせわ'],
+    ['TOUCH ON', 'TOUCH OFF', 'SAVE DATA', 'EXPORT', 'IMPORT', 'NEW GAME', NAME,
+     'DEVELOPER', 'GROW UP', '+10000', 'FULL CARE'],
+    ['TACTILE ON', 'TACTILE OFF', 'SAUVEGARDE', 'EXPORTER', 'IMPORTER', 'NOUVEAU JEU', NAME,
+     'DÉVELOPPEUR', 'GRANDIR', '+10000', 'SOINS'],
+    ['TOUCH EIN', 'TOUCH AUS', 'SPIELSTAND', 'EXPORT', 'IMPORT', 'NEUES SPIEL', NAME,
+     'ENTWICKLER', 'WACHSEN', '+10000', 'PFLEGE'],
+    ['TOQUE ON', 'TOQUE OFF', 'DADOS', 'EXPORTAR', 'IMPORTAR', 'NOVO JOGO', NAME,
+     'DESENVOLV.', 'CRESCER', '+10000', 'CUIDAR'],
+    ['TÁCTIL ON', 'TÁCTIL OFF', 'DATOS', 'EXPORTAR', 'IMPORTAR', 'NUEVO JUEGO', NAME,
+     'DESARROLLO', 'CRECER', '+10000', 'CUIDAR'],
+    ['TOCCO ON', 'TOCCO OFF', 'SALVATAGGIO', 'ESPORTA', 'IMPORTA', 'NUOVO GIOCO', NAME,
+     'SVILUPPO', 'CRESCERE', '+10000', 'CURA'],
+    ['触屏 开', '触屏 关', '存档', '导出', '导入', '新游戏', NAME, '开发者', '成长', '+10000', '全部照顾'],
+    ['터치 ON', '터치 OFF', '저장 데이터', '내보내기', '가져오기', '새로 하기', NAME,
+     '개발자', '성장', '+10000', '모두 돌보기'],
+    ['觸控 開', '觸控 關', '存檔', '匯出', '匯入', '新遊戲', NAME, '開發者', '成長', '+10000', '全部照顧'],
 ]
 
-trad = sorted({c for v in rules.values() for c in v} | set(NAME) | set(''.join(REMAKE[9])) - {' '})
+trad = sorted({c for v in rules.values() for c in v} | set(NAME) | {c for c in ''.join(REMAKE[9]) if c >= '\u2e80'})
 missing = [c for c in trad if c not in cs]
 code = {c: FIRST + cs.index(c) for c in trad if c in cs}
 code.update({c: NEW + i for i, c in enumerate(missing)})
@@ -118,9 +126,9 @@ for a, b in sorted(rules.items(), key=lambda kv: (-len(kv[0]), kv[0])):
     rs.append(f'    (&{enc_s(a)}, &{enc_t(b)}),')
 rs.append('];')
 rs.append('/// The remake\'s menu texts, `[language][text]`.')
-rs.append('pub const REMAKE: [[&[u16]; 6]; 10] = [')
+rs.append(f'pub const REMAKE: [[&[u16]; {len(REMAKE[0])}]; 10] = [')
 for l, texts in enumerate(REMAKE):
-    rs.append('    [' + ', '.join(f'&{enc_any(t, l == 9)}' for t in texts) + '],')
+    rs.append('    [' + ', '.join(f'&{enc_any(t, l == 9 or t == NAME)}' for t in texts) + '],')
 rs.append('];')
 open(os.path.join(here, 'hant_table.rs'), 'w').write('\n'.join(rs) + '\n')
 print(len(rules), 'rules,', len(missing), 'new glyphs', file=sys.stderr)
