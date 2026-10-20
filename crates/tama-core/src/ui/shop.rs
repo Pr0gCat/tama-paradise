@@ -31,7 +31,9 @@ mod t {
     pub const INPUT_CODE: u16 = 0xcf;
     pub const WRONG_CODE: u16 = 0xd0;
     pub const CODE_USED: u16 = 0xd1;
-    pub const UNAVAILABLE: u16 = 0xd2;
+    /// CAN'T USE NOW! (0xd2 THIS CODE IS UNAVAILABLE belongs to shop codes only).
+    pub const UNAVAILABLE: u16 = 0x6a;
+    pub const CANT_BUY_MORE: u16 = 0xc3;
     pub const CALL_SITTER: u16 = 0xd3;
     pub const CANT_CALL_SITTER: u16 = 0xd6;
     pub const NOT_ENOUGH_POINTS: u16 = 0xd8;
@@ -126,12 +128,23 @@ impl Game {
                 idx: 0,
                 back: Some(Action::Lab),
             },
+            // BUY (`FUN_1004a438`): FOOD and SNACK are greyed when the planet has a rank but
+            // nothing to sell (their stock comes from rank 3 and shop codes); a tab above the
+            // rank says which rank it needs (0xf2–0xf4).
             Action::BuyMenu => Scene::Menu {
-                items: (0..4).map(|i| (t::TABS[i], self.pet.tab_open(i).then_some(Action::BuyTab(i as u8)))).collect(),
+                items: (0..4)
+                    .map(|i| {
+                        let empty = i < 2 && self.pet.rank > 0 && self.pet.shop_items(&self.data, i, now).is_empty();
+                        (t::TABS[i], (!empty).then_some(Action::BuyTab(i as u8)))
+                    })
+                    .collect(),
                 idx: 0,
                 back: Some(Action::Shop),
             },
             Action::BuyTab(tab) => {
+                if !self.pet.tab_open(tab as usize) {
+                    return self.message(0xf2 + tab.saturating_sub(1) as u16, Action::BuyMenu);
+                }
                 let items = self.pet.shop_items(&self.data, tab as usize, now);
                 if items.is_empty() {
                     return self.message(t::UNAVAILABLE, Action::BuyMenu);
@@ -479,6 +492,7 @@ impl Game {
             CardKind::Buy(_) => match self.pet.buy(&item, now) {
                 Ok(()) => (t::PURCHASE_MADE, true),
                 Err(ShopError::NotEnoughPoints) => (t::NOT_ENOUGH_POINTS, false),
+                Err(ShopError::Full) => (t::CANT_BUY_MORE, false),
                 Err(_) => (t::UNAVAILABLE, false),
             },
             CardKind::Sell => match self.pet.sell(&item) {
@@ -1191,5 +1205,19 @@ mod tests {
         }
         assert_eq!(g.pet.points, points + 2000);
         assert!(!matches!(g.scene, super::Scene::MissionClear { .. }));
+    }
+
+    #[test]
+    fn buy_tabs_follow_rank_and_stock() {
+        let mut g = Game::new(crate::evolve::tests::data(), 1);
+        g.pet.rank = 0;
+        let food = |g: &mut Game| match g.open(super::Action::BuyMenu) {
+            super::Scene::Menu { items, .. } => items[0].1,
+            _ => unreachable!(),
+        };
+        assert!(food(&mut g).is_some(), "selectable at rank 0");
+        assert!(matches!(g.open(super::Action::BuyTab(0)), super::Scene::Message { text: 0xf2, .. }));
+        g.pet.rank = 1;
+        assert!(food(&mut g).is_none(), "greyed: nothing to sell");
     }
 }
