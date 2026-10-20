@@ -282,8 +282,13 @@ impl Game {
                 self.draw_digits(*points, 64, 80);
                 true
             }
+            // Message box (`msgbox_create` 0x10025140): the white frame 0x9d, its text centred in
+            // element 0x9e.
             Scene::Message { text, .. } => {
-                self.draw_list(&[], 0, Some(*text));
+                self.draw_elem(elem::LIST_BG, None, None);
+                self.draw_elem(elem::MSG_BOX, None, None);
+                let glyphs = self.string(*text);
+                self.draw_text_elem(elem::MENU_TEXT, &glyphs);
                 true
             }
             Scene::Ask { text, yes, .. } => {

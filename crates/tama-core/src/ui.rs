@@ -87,7 +87,9 @@ mod elem {
     pub const CARD_PANEL: u16 = 0xdd;
     pub const CARD_NAME_BAR: u16 = 0xdf;
     pub const CARD_COUNT: u16 = 0xd9;
-    /// Ring-menu item text (style 1).
+    /// Message box frame (`msgbox_create`).
+    pub const MSG_BOX: u16 = 0x9d;
+    /// Ring-menu item text (style 1), also the message box text.
     pub const MENU_TEXT: u16 = 0x9e;
     pub const STATUS_BG: u16 = 0x296;
     pub const STATUS_FRAME: u16 = 0x297;
