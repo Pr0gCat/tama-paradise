@@ -25,6 +25,8 @@ pub struct Screen {
     pub h: usize,
     /// Where the game's 128 × 128 screen sits on the canvas (its top-left corner).
     pub org: (i32, i32),
+    /// Whether a screen-sized sprite repeats without a seam (`seamless`), by sprite.
+    seamless: HashMap<u16, bool>,
     /// Sprites a draw asked for that are not loaded yet (the platform fetches them).
     pub wanted: BTreeSet<u16>,
     /// Added to every blit position (camera scroll).
@@ -49,6 +51,7 @@ impl Default for Screen {
             w: WIDTH,
             h: HEIGHT,
             org: (0, 0),
+            seamless: HashMap::new(),
             wanted: BTreeSet::new(),
             off: (0, 0),
             zoom: 1.0,
@@ -179,7 +182,12 @@ impl Screen {
             (x0, y0, x0 + dw, y0 + dh)
         };
         // A screen-sized background drawn over the whole screen repeats into the canvas margins.
-        let fills = !turned && (x0, y0, dw, dh) == (0, 0, WIDTH as i32, HEIGHT as i32) && self.org != (0, 0);
+        // Only patterns that continue across their edges (stripes, plain colours): a picture
+        // repeated would show mirrored copies of itself at the edges.
+        let fills = !turned
+            && (x0, y0, dw, dh) == (0, 0, WIDTH as i32, HEIGHT as i32)
+            && self.org != (0, 0)
+            && *self.seamless.entry(id).or_insert_with(|| seamless(s, frame));
         let tiles: &[(i32, i32)] = if fills {
             &[(0, 0), (-128, 0), (128, 0), (0, -128), (0, 128), (-128, -128), (128, -128), (-128, 128), (128, 128)]
         } else {
@@ -289,6 +297,26 @@ pub fn wrap(fonts: &[Font], glyphs: &[u16], max: i32) -> Vec<u16> {
     out
 }
 
+/// Whether a sprite frame tiles without a seam: the colour step across its wrapped edges is no
+/// bigger than across its middle, both ways (the stripes and plain fills do; pictures don't).
+fn seamless(s: &Sprite, frame: u16) -> bool {
+    let (w, h) = (s.w as usize, s.h as usize);
+    let f = (frame % s.frames.max(1)) as usize * w * h;
+    let px = |x: usize, y: usize| s.rgba(0, s.pixels[f + y * w + x]);
+    let step = |a: [u8; 4], b: [u8; 4]| a.iter().zip(&b).map(|(&p, &q)| (p as i32 - q as i32).abs()).sum::<i32>();
+    if (0..w * h).any(|i| s.transparent && s.pixels[f + i] == s.key) {
+        return false;
+    }
+    let across = |edge: i32, mid: i32| edge as f32 <= mid as f32 * 1.2 + h as f32;
+    let (ex, mx) = (0..h).fold((0, 0), |(e, m), y| {
+        (e + step(px(w - 1, y), px(0, y)), m + step(px(w / 2, y), px(w / 2 - 1, y)))
+    });
+    let (ey, my) = (0..w).fold((0, 0), |(e, m), x| {
+        (e + step(px(x, h - 1), px(x, 0)), m + step(px(x, h / 2), px(x, h / 2 - 1)))
+    });
+    across(ex, mx) && across(ey, my)
+}
+
 /// How a UI text element lays out its text (`textbox_init` 0x10064d90, from the element's p[]).
 #[derive(Clone, Copy, Debug)]
 pub struct TextBox {
@@ -373,6 +401,23 @@ fn advance(f: &Font, c: u16) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_seamless_backgrounds_repeat() {
+        let tile = |f: &dyn Fn(usize, usize) -> u8| Sprite {
+            w: 128,
+            h: 128,
+            frames: 1,
+            bits: 2,
+            transparent: false,
+            key: 0,
+            palettes: vec![vec![0, 0xffff, 0xf800, 0x001f]],
+            pixels: (0..128 * 128).map(|i| f(i % 128, i / 128)).collect(),
+            origin: (0, 0),
+        };
+        assert!(seamless(&tile(&|x, y| ((x + y) / 8 % 2) as u8), 0), "diagonal stripes");
+        assert!(!seamless(&tile(&|x, _| (x < 20) as u8), 0), "a band on one side");
+    }
 
     #[test]
     fn text_box_aligns_like_the_firmware() {
