@@ -26,7 +26,7 @@
     -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
   }
   /* square screen: as large as fits next to the controls */
-  canvas { width: min(92vw, 100dvh - 280px, 384px); aspect-ratio: 1; image-rendering: pixelated;
+  canvas { width: min(92vw, 100dvh - 320px, 384px); aspect-ratio: 1; image-rendering: pixelated;
            border-radius: 12px; touch-action: none; }
   .pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 10px 14px; justify-content: center; }
   button { height: 56px; border: 0; border-radius: 28px; background: var(--btn); color: var(--btn-fg);
@@ -34,6 +34,8 @@
   button.on { background: var(--btn-on); }
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
   pre[hidden] { display: none; }
+  button, select.small { box-shadow: inset 0 0 0 2px var(--line, transparent); }
+  .small { white-space: nowrap; }
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
   .row { display: flex; gap: 8px; }
   .row[hidden] { display: none; }
@@ -65,7 +67,7 @@
   #scanner video { width: min(92vw, 70dvh); aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
   /* phone held upright: the screen edge to edge, no rounded frame */
   @media (orientation: portrait) and (max-width: 600px) {
-    canvas { width: min(100vw, 100dvh - 280px); border-radius: 0; }
+    canvas { width: min(100vw, 100dvh - 320px); border-radius: 0; }
   }
   /* home-screen app held upright: the screen at the top, bigger buttons down by the thumbs */
   @media (display-mode: standalone) and (orientation: portrait) {
@@ -73,13 +75,13 @@
            padding-bottom: max(16px, env(safe-area-inset-bottom)); }
     .pad { margin-top: auto; grid-template-columns: repeat(3, min(96px, 26vw)); gap: 14px 18px; }
     .pad button { height: 72px; border-radius: 36px; font-size: 26px; }
-    canvas { width: min(100vw, 100dvh - 320px, 512px); border-radius: 0; }
+    canvas { width: min(100vw, 100dvh - 360px, 512px); border-radius: 0; }
   }
   /* phone held sideways: the screen on the left, the controls beside it */
   @media (orientation: landscape) and (max-height: 500px) {
     body { display: grid; grid-template-columns: auto auto; align-content: center; justify-content: center;
            gap: 12px 24px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); }
-    canvas { width: min(100dvh - 16px, 55vw); grid-column: 1; grid-row: 1 / span 3; }
+    canvas { width: min(100dvh - 16px, 55vw); grid-column: 1; grid-row: 1 / span 4; }
     .pad, .row, pre { grid-column: 2; }
   }
 </style>
@@ -93,9 +95,9 @@
   <button data-k="0x04">C</button>
 </div>
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
-  <select id="shell" class="small" aria-label="Device colour"></select>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <div class="row" id="kbd-row" hidden><button id="kbd-btn" class="small">⌨ Keyboard</button></div>
+<div class="row"><select id="shell" class="small" aria-label="Device colour"></select></div>
 <input id="kbd" aria-label="Type the planet name" autocomplete="off" autocorrect="off"
   autocapitalize="characters" spellcheck="false" enterkeyhint="done" tabindex="-1">
 <dialog id="friends">
@@ -158,7 +160,7 @@
       { id: "jade-forest", name: "Paradise · Jade Forest", bg: "#cfe9d6", btn: "#3f9e6a", on: "#2f8456", fg: "#173a26", btnFg: "#fff" },
       { id: "white-glacier", name: "Paradise · White Glacier", bg: "#eef3fa", btn: "#9fc4e8", on: "#84aed8", fg: "#23344d", btnFg: "#fff" },
       { id: "orange-tropics", name: "Paradise · Orange Tropics", bg: "#ffd6b0", btn: "#f58a3a", on: "#da7228", fg: "#5a2a10", btnFg: "#fff" },
-      { id: "blackpink", name: "BLACKPINK", tint: "#f7c9dc", fg: "#6b1f40", btn: "#fff", on: "#ffe3ee", btnFg: "#e5609a",
+      { id: "blackpink", name: "BLACKPINK", tint: "#f7c9dc", fg: "#6b1f40", line: "#f08cb6", btn: "#fff", on: "#ffe3ee", btnFg: "#e5609a",
         bg: "radial-gradient(ellipse at 20% 15%, #fff 0 18%, transparent 40%), radial-gradient(ellipse at 80% 70%, #fff 0 14%, transparent 38%), radial-gradient(ellipse at 35% 85%, #fde3ee 0 12%, transparent 35%), #f7c9dc" },
     ];
     const root = document.documentElement, select = document.getElementById("shell");
@@ -166,7 +168,7 @@
     for (const t of THEMES) select.add(new Option(`🎨 ${t.name}`, t.id));
     const apply = id => {
       const t = THEMES.find(t => t.id === id) ?? THEMES[0];
-      for (const [k, v] of Object.entries({ "--bg": t.bg, "--btn": t.btn, "--btn-on": t.on, "--fg": t.fg, "--btn-fg": t.btnFg })) {
+      for (const [k, v] of Object.entries({ "--bg": t.bg, "--btn": t.btn, "--btn-on": t.on, "--fg": t.fg, "--btn-fg": t.btnFg, "--line": t.line ?? "transparent" })) {
         root.style.setProperty(k, v);
       }
       meta.content = t.tint ?? t.bg;
