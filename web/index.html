@@ -12,12 +12,9 @@
 <title>Tama Paradise</title>
 <style>
   :root { --bg: #222; --btn: #3a3a44; --btn-on: #5a5a6a; --fg: #ccc; --btn-fg: var(--fg); }
-  /* Shell themes (the 🎨 button): the device's body colour behind, its buttons' colour. */
-  :root[data-shell="glacier"] { --bg: #cdd6f2; --btn: #8f9ce8; --btn-on: #7280d8; --fg: #283066; --btn-fg: #fff; }
-  :root[data-shell="pink"] { --bg: #f7cde0; --btn: #e56ba6; --btn-on: #cf4f8c; --fg: #5a1838; --btn-fg: #fff; }
-  :root[data-shell="blue"] { --bg: #c3e4f6; --btn: #3f8fd4; --btn-on: #2e74b6; --fg: #12324f; --btn-fg: #fff; }
-  :root[data-shell="purple"] { --bg: #dacdf2; --btn: #8a5fd3; --btn-on: #7047b8; --fg: #2e1a55; --btn-fg: #fff; }
-  :root[data-shell="forest"] { --bg: #d3e8c8; --btn: #5c9c4c; --btn-on: #48833a; --fg: #1f3818; --btn-fg: #fff; }
+  /* Shell themes: set from the THEMES list in the script (the 🎨 select). */
+  select.small { height: 32px; padding: 0 12px; font: 14px system-ui; border: 0; border-radius: 16px;
+                 background: var(--btn); color: var(--btn-fg); }
   html, body { height: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
@@ -96,7 +93,7 @@
   <button data-k="0x04">C</button>
 </div>
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
-  <button id="shell" class="small" aria-label="Device colour">🎨</button>
+  <select id="shell" class="small" aria-label="Device colour"></select>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <div class="row" id="kbd-row" hidden><button id="kbd-btn" class="small">⌨ Keyboard</button></div>
 <input id="kbd" aria-label="Type the planet name" autocomplete="off" autocorrect="off"
@@ -149,22 +146,36 @@
   <button type="button" class="small" id="scan-stop">Cancel</button>
 </div>
 <script type="module">
-  // Shell colour (🎨): cycles the device body themes, remembered in this browser.
+  // Shell colour (🎨 select): the device's body colour behind the screen and its buttons'
+  // colour, remembered in this browser. Add a theme with one line here.
   {
-    const SHELLS = ["dark", "glacier", "pink", "blue", "purple", "forest"];
-    const root = document.documentElement, btn = document.getElementById("shell");
+    const THEMES = [
+      { id: "dark", name: "Dark", bg: "#222", btn: "#3a3a44", on: "#5a5a6a", fg: "#ccc", btnFg: "#ccc" },
+      { id: "glacier", name: "Glacier", bg: "#cdd6f2", btn: "#8f9ce8", on: "#7280d8", fg: "#283066", btnFg: "#fff" },
+      { id: "pink", name: "Pink", bg: "#f7cde0", btn: "#e56ba6", on: "#cf4f8c", fg: "#5a1838", btnFg: "#fff" },
+      { id: "blue", name: "Blue", bg: "#c3e4f6", btn: "#3f8fd4", on: "#2e74b6", fg: "#12324f", btnFg: "#fff" },
+      { id: "purple", name: "Purple", bg: "#dacdf2", btn: "#8a5fd3", on: "#7047b8", fg: "#2e1a55", btnFg: "#fff" },
+      { id: "forest", name: "Forest", bg: "#d3e8c8", btn: "#5c9c4c", on: "#48833a", fg: "#1f3818", btnFg: "#fff" },
+      { id: "sunset", name: "Sunset", bg: "#ffd9b8", btn: "#f08a4b", on: "#d8733a", fg: "#5a2a10", btnFg: "#fff" },
+      { id: "mint", name: "Mint", bg: "#cdf2e6", btn: "#3fbf9b", on: "#2fa583", fg: "#123f33", btnFg: "#fff" },
+      { id: "lemon", name: "Lemon", bg: "#fbf3c0", btn: "#e3c53a", on: "#c9ab25", fg: "#4a3d08", btnFg: "#3a2f05" },
+      { id: "night", name: "Night", bg: "#151a33", btn: "#2e3a73", on: "#3e4c94", fg: "#c9d2ff", btnFg: "#e6eaff" },
+    ];
+    const root = document.documentElement, select = document.getElementById("shell");
     const meta = document.querySelector('meta[name="theme-color"]');
-    const apply = name => {
-      root.dataset.shell = name;
-      meta.content = getComputedStyle(root).getPropertyValue("--bg").trim();
-      btn.textContent = `🎨 ${name}`;
+    for (const t of THEMES) select.add(new Option(`🎨 ${t.name}`, t.id));
+    const apply = id => {
+      const t = THEMES.find(t => t.id === id) ?? THEMES[0];
+      for (const [k, v] of Object.entries({ "--bg": t.bg, "--btn": t.btn, "--btn-on": t.on, "--fg": t.fg, "--btn-fg": t.btnFg })) {
+        root.style.setProperty(k, v);
+      }
+      meta.content = t.bg;
+      select.value = t.id;
     };
-    let shell = (() => { try { return localStorage.getItem("tama-shell"); } catch { return null; } })();
-    apply(SHELLS.includes(shell) ? shell : "dark");
-    btn.onclick = () => {
-      shell = SHELLS[(SHELLS.indexOf(root.dataset.shell) + 1) % SHELLS.length];
-      apply(shell);
-      try { localStorage.setItem("tama-shell", shell); } catch {}
+    apply((() => { try { return localStorage.getItem("tama-shell"); } catch { return null; } })());
+    select.onchange = () => {
+      apply(select.value);
+      try { localStorage.setItem("tama-shell", select.value); } catch {}
     };
   }
   // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
