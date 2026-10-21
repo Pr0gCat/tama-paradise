@@ -39,7 +39,7 @@
   button.small { height: 32px; padding: 0 16px; font-size: 14px; border-radius: 16px; }
   .row { display: flex; gap: 8px; }
   .row[hidden] { display: none; }
-  dialog { background: #2c2c34; color: var(--fg); border: 0; border-radius: 12px; width: min(92vw, 360px);
+  dialog { background: light-dark(#fff, #111); color: light-dark(var(--fg), #f7c9dc); border: 0; border-radius: 12px; width: min(92vw, 360px);
            max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px); overflow: auto;
            margin: max(8px, env(safe-area-inset-top)) auto auto; }
   dialog h2 { margin: 0 0 8px; font: 600 18px system-ui; outline: none; }
@@ -54,12 +54,12 @@
   dialog label { display: block; margin: 8px 0 4px; font: 14px system-ui; }
   dialog input, dialog select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
     /* 16px: iOS zooms the page into any focused field set smaller */
-    font: 16px ui-monospace, monospace; background: #1c1c22; color: var(--fg); border: 1px solid #555; border-radius: 6px; }
+    font: 16px ui-monospace, monospace; background: light-dark(#f4f4f6, #222); color: inherit; border: 1px solid light-dark(#ccc, #555); border-radius: 6px; }
   dialog .check input { display: inline; width: auto; }
   canvas.qr { display: block; width: 168px; height: 168px; margin: 8px auto; image-rendering: pixelated;
               border-radius: 4px; }
   canvas.qr[hidden] { display: none; }
-  dialog hr { border: 0; border-top: 1px solid #444; margin: 12px 0; }
+  dialog hr { border: 0; border-top: 1px solid light-dark(#ddd, #444); margin: 12px 0; }
   .inline { display: flex; gap: 8px; align-items: center; }
   #scanner { position: fixed; inset: 0; height: 100lvh; z-index: 10; background: #000; display: flex;
              flex-direction: column; align-items: center; justify-content: center; gap: 16px; font: 16px system-ui; }
@@ -152,7 +152,7 @@
   // colour, remembered in this browser. Add a theme with one line here.
   {
     // Real Tamagotchi shells only: the Paradise colours, then collaborations. `bg` may be a
-    // gradient (a marbled shell); `tint` is then the browser bar's colour.
+    // gradient (a marbled shell); `tint` is then the browser bar's colour. `dark`: black dialogs.
     const THEMES = [
       { id: "pink-land", name: "Paradise · Pink Land", bg: "#f9c6dc", btn: "#ec5f9e", on: "#d44886", fg: "#5a1838", btnFg: "#fff" },
       { id: "blue-water", name: "Paradise · Blue Water", bg: "#bfe3f5", btn: "#2f8fd8", on: "#2374b8", fg: "#12324f", btnFg: "#fff" },
@@ -160,7 +160,7 @@
       { id: "jade-forest", name: "Paradise · Jade Forest", bg: "#cfe9d6", btn: "#3f9e6a", on: "#2f8456", fg: "#173a26", btnFg: "#fff" },
       { id: "white-glacier", name: "Paradise · White Glacier", bg: "#eef3fa", btn: "#9fc4e8", on: "#84aed8", fg: "#23344d", btnFg: "#fff" },
       { id: "orange-tropics", name: "Paradise · Orange Tropics", bg: "#ffd6b0", btn: "#f58a3a", on: "#da7228", fg: "#5a2a10", btnFg: "#fff" },
-      { id: "blackpink", name: "BLACKPINK", tint: "#f7c9dc", fg: "#6b1f40", line: "#f08cb6", btn: "#fff", on: "#ffe3ee", btnFg: "#e5609a",
+      { id: "blackpink", name: "BLACKPINK", dark: true, tint: "#f7c9dc", fg: "#6b1f40", line: "#f08cb6", btn: "#fff", on: "#ffe3ee", btnFg: "#e5609a",
         bg: "radial-gradient(ellipse at 20% 15%, #fff 0 18%, transparent 40%), radial-gradient(ellipse at 80% 70%, #fff 0 14%, transparent 38%), radial-gradient(ellipse at 35% 85%, #fde3ee 0 12%, transparent 35%), #f7c9dc" },
     ];
     const root = document.documentElement, select = document.getElementById("shell");
@@ -171,6 +171,7 @@
       for (const [k, v] of Object.entries({ "--bg": t.bg, "--btn": t.btn, "--btn-on": t.on, "--fg": t.fg, "--btn-fg": t.btnFg, "--line": t.line ?? "transparent" })) {
         root.style.setProperty(k, v);
       }
+      root.style.colorScheme = t.dark ? "dark" : "light";
       meta.content = t.tint ?? t.bg;
       select.value = t.id;
     };
