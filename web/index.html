@@ -11,7 +11,13 @@
 <link rel="icon" href="icons/icon-192.png">
 <title>Tama Paradise</title>
 <style>
-  :root { --bg: #222; --btn: #3a3a44; --btn-on: #5a5a6a; --fg: #ccc; }
+  :root { --bg: #222; --btn: #3a3a44; --btn-on: #5a5a6a; --fg: #ccc; --btn-fg: var(--fg); }
+  /* Shell themes (the 🎨 button): the device's body colour behind, its buttons' colour. */
+  :root[data-shell="glacier"] { --bg: #cdd6f2; --btn: #8f9ce8; --btn-on: #7280d8; --fg: #283066; --btn-fg: #fff; }
+  :root[data-shell="pink"] { --bg: #f7cde0; --btn: #e56ba6; --btn-on: #cf4f8c; --fg: #5a1838; --btn-fg: #fff; }
+  :root[data-shell="blue"] { --bg: #c3e4f6; --btn: #3f8fd4; --btn-on: #2e74b6; --fg: #12324f; --btn-fg: #fff; }
+  :root[data-shell="purple"] { --bg: #dacdf2; --btn: #8a5fd3; --btn-on: #7047b8; --fg: #2e1a55; --btn-fg: #fff; }
+  :root[data-shell="forest"] { --bg: #d3e8c8; --btn: #5c9c4c; --btn-on: #48833a; --fg: #1f3818; --btn-fg: #fff; }
   html, body { height: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
@@ -26,7 +32,7 @@
   canvas { width: min(92vw, 100dvh - 280px, 384px); aspect-ratio: 1; image-rendering: pixelated;
            border-radius: 12px; touch-action: none; }
   .pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 10px 14px; justify-content: center; }
-  button { height: 56px; border: 0; border-radius: 28px; background: var(--btn); color: var(--fg);
+  button { height: 56px; border: 0; border-radius: 28px; background: var(--btn); color: var(--btn-fg);
            font: 600 20px system-ui; touch-action: none; }
   button.on { background: var(--btn-on); }
   pre { margin: 0; font-size: 12px; text-align: center; min-height: 3em; }
@@ -90,6 +96,7 @@
   <button data-k="0x04">C</button>
 </div>
 <div class="row"><button id="mute" class="small" aria-pressed="false">♪ sound on</button>
+  <button id="shell" class="small" aria-label="Device colour">🎨</button>
   <button id="friends-btn" class="small" aria-expanded="false">Friends</button></div>
 <div class="row" id="kbd-row" hidden><button id="kbd-btn" class="small">⌨ Keyboard</button></div>
 <input id="kbd" aria-label="Type the planet name" autocomplete="off" autocorrect="off"
@@ -142,6 +149,24 @@
   <button type="button" class="small" id="scan-stop">Cancel</button>
 </div>
 <script type="module">
+  // Shell colour (🎨): cycles the device body themes, remembered in this browser.
+  {
+    const SHELLS = ["dark", "glacier", "pink", "blue", "purple", "forest"];
+    const root = document.documentElement, btn = document.getElementById("shell");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const apply = name => {
+      root.dataset.shell = name;
+      meta.content = getComputedStyle(root).getPropertyValue("--bg").trim();
+      btn.textContent = `🎨 ${name}`;
+    };
+    let shell = (() => { try { return localStorage.getItem("tama-shell"); } catch { return null; } })();
+    apply(SHELLS.includes(shell) ? shell : "dark");
+    btn.onclick = () => {
+      shell = SHELLS[(SHELLS.indexOf(root.dataset.shell) + 1) % SHELLS.length];
+      apply(shell);
+      try { localStorage.setItem("tama-shell", shell); } catch {}
+    };
+  }
   // The glue is revalidated like the wasm, so an updated build never pairs with a stale glue.
   const glue = await (await fetch("./pkg/tama_web.js", { cache: "no-cache" })).text();
   const { default: init, Tama, Dump, qr, set_build } = await import(URL.createObjectURL(new Blob([glue], { type: "text/javascript" })));
